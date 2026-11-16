@@ -17,7 +17,7 @@ trap 'lhb_journal_fire "$?" "guard_canon_write.sh" "PreToolUse" "Bash|Write|Edit
 #            being believed. Those belong in records/, dated, retrieved on demand.
 #        (b) OVERSIZED: over 3,200 characters. Derived, not picked — see the rail below.
 # REPO CANON (2026-11-14, canon-folder move, Enver-approved, plans/canon-folder.plan.md D1): a `canon/` folder at the TOP
-#      of a git work tree (V2's canon/, ClaudeOps's canon/) holds the approved rulebooks. Nothing loads it at session
+#      of a git work tree (V2's canon/, the private repo's canon/) holds the approved rulebooks. Nothing loads it at session
 #      start, and its documents run to 265k characters, so the two rails above (size, expiry) are NOTES rails and do
 #      not apply there. The approval rails do: the whole-file replace ask, archive-before-cut, and the closed Bash door.
 #      Repo canon = a flat file directly in <git-root>/canon/, never under the notes root. Anything not provably repo

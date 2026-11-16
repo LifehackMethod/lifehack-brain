@@ -21,7 +21,7 @@
 #      worse than no logging shim. Rotation inherits this exactly: a rotation that fails (read-only
 #      dir, a rotated file that can't be deleted, a lost lock race) degrades to "the journal keeps
 #      growing a bit past its cap this cycle," never to a changed decision, never to a leaked byte.
-# UPDATED: 2026-11-02 (the decision note: asks journal as "ask") · 2026-09-19
+# UPDATED: 2026-11-16 (stale rotation-lock recovery) · 2026-11-02 (the decision note: asks journal as "ask") · 2026-09-19
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Contract for callers (every system/hooks/*.sh entry point + system/tools/mirror_line.sh):
@@ -113,6 +113,14 @@
 #     `mv` to "<journal>.<epoch>.<pid>" (never a truncate-in-place — see concurrency note below),
 #     under a non-blocking `mkdir`-based lock so two concurrent rotators can't race each other.
 #     Losing that race is not a failure: the other fire is already handling it.
+#   - STALE LOCK (2026-11-16): a rotator that dies between its `mkdir` and its `rmdir` leaves the
+#     lock behind, and every later fire "loses the race" to a holder that no longer exists, so
+#     rotation and retention stop for good (it happened: lock held 2026-11-02 to 2026-11-16, the
+#     live journal reached 405 MB). So when `mkdir` fails, the lock dir's age is read (macOS
+#     `stat -f %m`, else GNU `stat -c %Y`) against the fire's own "$_ts"; older than
+#     LHB_JOURNAL_LOCK_STALE_S (default 600 s, far beyond any real rotation) it is `rmdir`'d (never
+#     `rm -rf`) and `mkdir` retried ONCE. Age unreadable -> give up as before. The `stat` fork runs
+#     only on this lock-held path, after the time gate and the size check, never per fire.
 #   - Retention is a TOTAL byte budget across current + every rotated shard
 #     (LHB_JOURNAL_MAX_TOTAL_BYTES): oldest shard deleted first, repeat until under budget. The
 #     live file is never deleted, even if it alone exceeds the total budget (a misconfiguration —
@@ -475,7 +483,7 @@ lhb_journal_maybe_rotate() {
     # never be the reason a fire behaves differently. See the rotation header note for the full
     # design rationale (time-gated sampling, rename-based rotation, byte-budget retention).
     local _j _now _dir _base _statefile _lockdir _lastcheck _maxbytes _maxtotal _interval _cursz
-    local _rotated _shard _suffix _shard_ts _oldest _oldest_ts _total _sz _iterguard
+    local _rotated _shard _suffix _shard_ts _oldest _oldest_ts _total _sz _iterguard _lockage _stale
 
     _j="${1:-}"
     _now="${2:-}"
@@ -536,8 +544,18 @@ lhb_journal_maybe_rotate() {
     fi
 
     # Non-blocking mutex: `mkdir` is atomic for exactly one racer. Failing to acquire it is not a
-    # failure — another fire is already doing rotation/retention this cycle.
-    mkdir "$_lockdir" 2>/dev/null || return 0
+    # failure — another fire is already doing rotation/retention this cycle — UNLESS the lock is
+    # stale (its holder died; see "STALE LOCK" in the rotation header): then rmdir it, retry once.
+    if ! mkdir "$_lockdir" 2>/dev/null; then
+        _lockage="$(stat -f %m "$_lockdir" 2>/dev/null)"
+        case "$_lockage" in ''|*[!0-9]*) _lockage="$(stat -c %Y "$_lockdir" 2>/dev/null)" ;; esac
+        case "$_lockage" in ''|*[!0-9]*) return 0 ;; esac
+        _stale="${LHB_JOURNAL_LOCK_STALE_S:-600}"
+        case "$_stale" in ''|*[!0-9]*) _stale=600 ;; esac
+        [ $(( _now - _lockage )) -gt "$_stale" ] || return 0
+        rmdir "$_lockdir" 2>/dev/null
+        mkdir "$_lockdir" 2>/dev/null || return 0
+    fi
 
     _cursz=0
     if [ -f "$_j" ]; then

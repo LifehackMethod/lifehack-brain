@@ -305,6 +305,59 @@ fi
 rm -rf "$ROTDIR2"
 
 # ---------------------------------------------------------------------------
+echo "── rotation: a STALE lock left by a dead rotator is recovered; a fresh lock is left alone ─"
+# ---------------------------------------------------------------------------
+# Regression (2026-11-16): a rotator that died holding the mkdir lock left it in place from
+# 2026-11-02 to 2026-11-16; every later fire lost the "race" to a lock nobody held and the live
+# journal grew to 405 MB. A lock older than LHB_JOURNAL_LOCK_STALE_S is now rmdir'd and retried once.
+# mk_overcap_journal $1=journal path : a live file well over a 500-byte shard cap
+mk_overcap_journal() {
+    python3 -c "
+line = '{\"ts\":1001,\"hook\":\"live_pad.sh\",\"event\":\"PreToolUse\",\"matcher\":\"Bash\",\"decision\":\"allow\",\"exit_code\":0,\"session_id\":\"\"}\n'
+with open('$1', 'w') as f:
+    while f.tell() < 2000:
+        f.write(line)
+"
+}
+# age_path $1=path $2=seconds ago : set its mtime into the past (portable: no GNU/BSD touch flags)
+age_path() { python3 -c "import os,sys,time; t=time.time()-int(sys.argv[2]); os.utime(sys.argv[1],(t,t))" "$1" "$2"; }
+fire_small_caps() { # $1=journal path
+    bash -c "
+. '$LIB'
+export LHB_JOURNAL_PATH='$1'
+export LHB_JOURNAL_MAX_BYTES=500
+export LHB_JOURNAL_MAX_TOTAL_BYTES=100000
+export LHB_JOURNAL_CHECK_INTERVAL_S=0
+export LHB_JOURNAL_LOCK_STALE_S=600
+lhb_journal_fire 0 guard_after_lock.sh PreToolUse Bash
+"
+}
+rot_shards() { ls "$1".[0-9]*.[0-9]* 2>/dev/null | wc -l | tr -d ' '; }
+
+ROTDIR5="$(mktemp -d "${TMPDIR:-/tmp}/lhb-rot5.XXXXXX")"
+JPATH5="$ROTDIR5/j.jsonl"
+mk_overcap_journal "$JPATH5"
+mkdir "$ROTDIR5/.j.jsonl.rotlock"
+age_path "$ROTDIR5/.j.jsonl.rotlock" 7200
+fire_small_caps "$JPATH5"
+[ "$(rot_shards "$JPATH5")" -ge 1 ] && ok "stale lock (2 h old): rotation ran anyway" \
+    || bad "stale lock (2 h old): rotation ran anyway -> no rotated shard"
+[ ! -e "$ROTDIR5/.j.jsonl.rotlock" ] && ok "stale lock (2 h old): the lock is gone afterwards" \
+    || bad "stale lock (2 h old): the lock is gone afterwards -> still present"
+rm -rf "$ROTDIR5"
+
+ROTDIR6="$(mktemp -d "${TMPDIR:-/tmp}/lhb-rot6.XXXXXX")"
+JPATH6="$ROTDIR6/j.jsonl"
+mk_overcap_journal "$JPATH6"
+mkdir "$ROTDIR6/.j.jsonl.rotlock"
+fire_small_caps "$JPATH6"
+[ "$(rot_shards "$JPATH6")" -eq 0 ] && ok "fresh lock: no rotation (another fire holds it)" \
+    || bad "fresh lock: no rotation (another fire holds it) -> a shard was written"
+[ -d "$ROTDIR6/.j.jsonl.rotlock" ] && ok "fresh lock: the lock is left alone" \
+    || bad "fresh lock: the lock is left alone -> it was removed"
+rm -rf "$ROTDIR6"
+
+# ---------------------------------------------------------------------------
 echo "── concurrency + rotation: 20 parallel real fires forced through a rotation mid-burst ─"
 # ---------------------------------------------------------------------------
 ROTDIR3="$(mktemp -d "${TMPDIR:-/tmp}/lhb-rot3.XXXXXX")"
