@@ -698,3 +698,11 @@ These lines were PROPOSED in the live text, not ruled. They wait here, word for 
 - From section 11a, "A person may knowingly run their own job outside the checker", step 4: **PROPOSED:** the offer line above still applies each time the refusal comes up for such a row (see the offer section: P-127 does not name this case); it is one line, never a block.
 - From section 11a, "Sources": PROPOSED, not in P-127: the exact wording of both refusal texts (code, dated 2026-11-05, no owner named), the example offer line, the fork-warning wording, "a no leaves everything as it is", step 5's details, step 6's `off`-first.
 ~~~~
+
+## 2026-11-16 - reason: round four landing, on Enver's 'land it' (every line the round-four edits replace; old wording, word for word)
+
+~~~~
+1. **launchd** runs one LaunchAgent per `yes` row (`ai.lifehack.<job>`), written by `install-schedulers.sh --install`. Its only line: `/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`. A run missed in sleep fires once on wake. An interval is either a whole number of hours that divides 86400 (3600, 7200 ... 86400) or a multiple of 86400 (a weekly row gets a daily trigger, and `--if-overdue` enforces the real interval); any other value stops the installer loudly.
+| interval | seconds: a whole-hour divisor of 86400, or a multiple of 86400 (section 4) |
+- Not covered by the rig: real launchd wake behavior, real logins, real push delivery, real Google or Claude auth. One live `launchctl kickstart` per gate keeps those honest. Not covered: if no job runs at all (scheduler stopped, Mac off, every job unloaded), no text is sent; the session line at the start of a session is the only backstop.
+~~~~

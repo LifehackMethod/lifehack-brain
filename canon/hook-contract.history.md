@@ -168,3 +168,9 @@ any machine. An absolute path baked into this file works on exactly one computer
   > separately installed into the other machine's own `~/.claude/settings.json` (e.g. via
   > `system/tools/install-guard-registrations.py`), not "confirm its symlink."  ⛔ not shipped to the public subset — private-clone only.
 ~~~~
+
+## 2026-11-16 - reason: round four landing, on Enver's 'land it' (every line the round-four edits replace; old wording, word for word)
+
+~~~~
+PostToolUse hooks always exit 0. Use stderr for warnings. **Fail-closed:** a guard that can't parse its input DENIES (`exit 2`), never `exit 0`.
+~~~~

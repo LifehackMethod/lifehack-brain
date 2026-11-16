@@ -1632,3 +1632,38 @@ Text moved word for word out of the live body by checklist v3. When the draft la
 ~~~~
 > **Not the always-loaded layer.** The session loader reads `<brain>/canon.md` and `desks/*/canon/`
 ~~~~
+
+## 2026-11-16 - reason: round four landing, on Enver's 'land it' (the old route rows (regenerated) and every line the round-four edits replace; old wording, word for word)
+
+~~~~
+  - ["frame.testing", 53, "centering frame: testing asks does it work, security asks what happens when it does not; you buy friction, not certainty"]
+  - ["frame.friction", 69, "layers of friction: overlapping circles, compliance is the center of the Venn diagram"]
+  - ["frame.what", 97, "what this document is, evidence tiers, the standalone admission gate, the governing caveat"]
+  - ["frame", 132, "the frame: the stochastic-environment sentence (the one rule), evidence tiers, operating rule, keep it small, human in the loop, stateless"]
+  - ["§0", 182, "why an AI differs from code; how a model session really works"]
+  - ["§0.1", 209, "what you are guarding against: drift and rationalisation; a real layer needs neither memory nor agreement; how to count layers"]
+  - ["§0.2", 245, "the step-runner: one more circle of friction, with evidence and what it does not claim"]
+  - ["§0.3", 278, "a picture that helps: the hospital (illustrates friction, does not replace it)"]
+  - ["§1", 294, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
+  - ["§2", 338, "subtract, do not add"]
+  - ["§3", 363, "complicated versus complex; the growth chain; the desk model"]
+  - ["§4", 385, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
+  - ["§4.6", 443, "code works when it takes away an ability or checks what happened; a hook is two different things"]
+  - ["§5", 523, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
+  - ["§5.4", 549, "bind what is predictable and catastrophic; the smallest tool that does the job"]
+  - ["§5.12", 679, "the smallest tool that does the job; decomposing by trust boundary; handoffs"]
+  - ["§5.20", 764, "compliance is the center of the Venn diagram, not a choice"]
+  - ["§6", 782, "learning, refutation, choosing not to build, secrets"]
+  - ["§7", 810, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
+  - ["§8", 904, "one-line practices"]
+  - ["§9", 955, "Enver's rulings, including the GitHub and shipping rulings"]
+  - ["§10", 998, "claims retracted; do not carry forward"]
+  - ["§10a", 1032, "approaches proven not to work, with receipts"]
+  - ["§11", 1073, "corrections to earlier answers"]
+  - ["§12", 1083, "unresolved or resolved tensions, kept visible"]
+  - ["§14", 1156, "where the evidence lives"]
+  - ["§15", 1162, "research candidates, held, bind nothing"]
+  - ["§16", 1324, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
+  - ["§17", 1452, "experiments: proposed and run, with dated ground results"]
+> **A tier without a dated receipt decays one step** (§7.2). **Structural findings** — what a model cannot do by
+~~~~

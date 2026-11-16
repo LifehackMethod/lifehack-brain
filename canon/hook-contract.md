@@ -118,7 +118,7 @@ Both work: `exit 2` + stderr (house standard) AND the `{"decision":"block"}` JSO
 | 2 | **Block — exit 2 is the block signal; deny text on stderr is shown to the model (house standard)** | n/a |
 | 1 | Block via `{"decision":"block"}` JSON on **stdout** only (also works) | Invalid — do not use |
 
-PostToolUse hooks always exit 0. Use stderr for warnings. **Fail-closed:** a guard that can't parse its input DENIES (`exit 2`), never `exit 0`.
+PostToolUse hooks always exit 0. Use stderr for warnings. **Fail-closed (narrow, single-target guards):** a guard that can't parse its input DENIES (`exit 2`), never `exit 0`. A broad matcher (`Bash`, `Write|Edit`) is degrade-safe instead, and a hook may be `open` if it says why; see `canon/hook-sop.md` §3.
 
 ---
 

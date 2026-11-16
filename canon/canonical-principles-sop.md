@@ -15,35 +15,37 @@ read_when: "Only when you need the reasoning behind a design choice (for example
 history: "canon/canonical-principles-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
-  - ["frame.testing", 53, "centering frame: testing asks does it work, security asks what happens when it does not; you buy friction, not certainty"]
-  - ["frame.friction", 69, "layers of friction: overlapping circles, compliance is the center of the Venn diagram"]
-  - ["frame.what", 97, "what this document is, evidence tiers, the standalone admission gate, the governing caveat"]
-  - ["frame", 132, "the frame: the stochastic-environment sentence (the one rule), evidence tiers, operating rule, keep it small, human in the loop, stateless"]
-  - ["§0", 182, "why an AI differs from code; how a model session really works"]
-  - ["§0.1", 209, "what you are guarding against: drift and rationalisation; a real layer needs neither memory nor agreement; how to count layers"]
-  - ["§0.2", 245, "the step-runner: one more circle of friction, with evidence and what it does not claim"]
-  - ["§0.3", 278, "a picture that helps: the hospital (illustrates friction, does not replace it)"]
-  - ["§1", 294, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
-  - ["§2", 338, "subtract, do not add"]
-  - ["§3", 363, "complicated versus complex; the growth chain; the desk model"]
-  - ["§4", 385, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
-  - ["§4.6", 443, "code works when it takes away an ability or checks what happened; a hook is two different things"]
-  - ["§5", 523, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
-  - ["§5.4", 549, "bind what is predictable and catastrophic; the smallest tool that does the job"]
-  - ["§5.12", 679, "the smallest tool that does the job; decomposing by trust boundary; handoffs"]
-  - ["§5.20", 764, "compliance is the center of the Venn diagram, not a choice"]
-  - ["§6", 782, "learning, refutation, choosing not to build, secrets"]
-  - ["§7", 810, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
-  - ["§8", 904, "one-line practices"]
-  - ["§9", 955, "Enver's rulings, including the GitHub and shipping rulings"]
-  - ["§10", 998, "claims retracted; do not carry forward"]
-  - ["§10a", 1032, "approaches proven not to work, with receipts"]
-  - ["§11", 1073, "corrections to earlier answers"]
-  - ["§12", 1083, "unresolved or resolved tensions, kept visible"]
-  - ["§14", 1156, "where the evidence lives"]
-  - ["§15", 1162, "research candidates, held, bind nothing"]
-  - ["§16", 1324, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
-  - ["§17", 1452, "experiments: proposed and run, with dated ground results"]
+  - ["frame.testing", 55, "centering frame: testing asks does it work, security asks what happens when it does not; you buy friction, not certainty"]
+  - ["frame.friction", 71, "layers of friction: overlapping circles, compliance is the center of the Venn diagram"]
+  - ["frame.what", 99, "what this document is, evidence tiers, the standalone admission gate, the governing caveat"]
+  - ["frame", 134, "the frame: the stochastic-environment sentence (the one rule), evidence tiers, operating rule, keep it small, human in the loop, stateless"]
+  - ["§0", 184, "why an AI differs from code; how a model session really works"]
+  - ["§0.1", 211, "what you are guarding against: drift and rationalisation; a real layer needs neither memory nor agreement; how to count layers"]
+  - ["§0.2", 247, "the step-runner: one more circle of friction, with evidence and what it does not claim"]
+  - ["§0.3", 280, "a picture that helps: the hospital (illustrates friction, does not replace it)"]
+  - ["§0.4", 296, "rules about rules: rules exist only as architecture; implementation has no rules, only code (Enver, 2026-11-15)"]
+  - ["§0.5", 307, "canon as gravity: easier to carry down than up, in Enver's words (2026-11-15)"]
+  - ["§1", 310, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
+  - ["§2", 354, "subtract, do not add"]
+  - ["§3", 379, "complicated versus complex; the growth chain; the desk model"]
+  - ["§4", 401, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
+  - ["§4.6", 459, "code works when it takes away an ability or checks what happened; a hook is two different things"]
+  - ["§5", 539, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
+  - ["§5.4", 565, "bind what is predictable and catastrophic; the smallest tool that does the job"]
+  - ["§5.12", 695, "the smallest tool that does the job; decomposing by trust boundary; handoffs"]
+  - ["§5.20", 780, "compliance is the center of the Venn diagram, not a choice"]
+  - ["§6", 798, "learning, refutation, choosing not to build, secrets"]
+  - ["§7", 826, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
+  - ["§8", 920, "one-line practices"]
+  - ["§9", 971, "Enver's rulings, including the GitHub and shipping rulings"]
+  - ["§10", 1014, "claims retracted; do not carry forward"]
+  - ["§10a", 1048, "approaches proven not to work, with receipts"]
+  - ["§11", 1089, "corrections to earlier answers"]
+  - ["§12", 1099, "unresolved or resolved tensions, kept visible"]
+  - ["§14", 1172, "where the evidence lives"]
+  - ["§15", 1178, "research candidates, held, bind nothing"]
+  - ["§16", 1340, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
+  - ["§17", 1468, "experiments: proposed and run, with dated ground results"]
 ---
 
 # Canonical principles — the merged canon — v2 (in force in the V2 sandbox)
@@ -147,7 +149,7 @@ route:
 >
 > For a fix specifically, the same ladder, read from the top: VALIDATED — a designed experiment built the failing state first, and the fix held across blind sessions that were not trying to make it hold · REPRODUCED — observed holding repeatedly in practice, receipts named, no designed experiment yet · OBSERVED — watched holding once, at one site, receipt named · RESEARCHED — the outside world converged on it; it has not been watched holding here · CANDIDATE — proposed, nothing has been watched. A fix line without one of these words is at CANDIDATE.
 >
-> **A tier without a dated receipt decays one step** (§7.2). **Structural findings** — what a model cannot do by
+> **A tier without a dated receipt decays one step** (§7.0: a claim with no dated, named receipt reads as a proposal). **Structural findings** — what a model cannot do by
 > construction — earn OBSERVED on one clean case; more cases do not make them truer. **Behavioural findings** — how
 > often something happens — need reproduction to move up.
 >
@@ -290,6 +292,20 @@ the memory-or-agreement test **CANDIDATE** — a reframing, not a measurement.
 This picture illustrates friction; it does not replace it.
 
 ---
+
+## 0.4 — Rules about rules (v2, 2026-11-15)
+> Enver's doctrine, approved 2026-11-15.
+
+1. Rules exist only at high altitude, as architectural principles.
+2. Going down, a rule is transformed, not carried: at medium and low altitude there are only code and the friction it creates.
+3. A low-altitude document never holds a rule; it explains the friction.
+4. Status belongs to the code, never the rule; a high-level rule with no code yet is architecture not yet built, and the missing code goes to the debt ledger.
+5. Filters for what earns a place as a rule at the top (a confidence test, not a rule): hard to undo; no "unless"; can be transformed into code (visible, held by conformance friction in code, not making him the checkpoint every time); few; his dated yes.
+
+One line: rules exist only as architecture; implementation has no rules, only code.
+
+## 0.5 — Canon as gravity (v2, 2026-11-15)
+> Enver, 2026-11-15: "the way we should treat canonical documents is like gravity It's harder and harder and harder. It's a gravity that increases more as you go upward, right? It's not impossible But it's easy for higher level documents information to be persisted downward and it's harder for lower level documents to be persisted upwards, so But it is possible"
 
 ## 1. THE DIAGNOSIS
 

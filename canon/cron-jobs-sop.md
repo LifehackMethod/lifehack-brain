@@ -78,7 +78,7 @@ Also: "ran" is not "succeeded". No job writes job state to Drive: content yes, s
 launchd -> code-root pointer -> job-run.sh -> the row's command -> the row's check -> last-success -> session line / text
 ```
 
-1. **launchd** runs one LaunchAgent per `yes` row (`ai.lifehack.<job>`), written by `install-schedulers.sh --install`. Its only line: `/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`. A run missed in sleep fires once on wake. An interval is either a whole number of hours that divides 86400 (3600, 7200 ... 86400) or a multiple of 86400 (a weekly row gets a daily trigger, and `--if-overdue` enforces the real interval); any other value stops the installer loudly.
+1. **launchd** runs one LaunchAgent per `yes` row (`ai.lifehack.<job>`), written by `install-schedulers.sh --install`. Its only line: `/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`. A run missed in sleep fires once on wake. An interval is a number of seconds, and a job may be set to any interval, on the hour or not; `--if-overdue` holds the real interval (a weekly row, for one, gets a daily trigger).
 2. **The pointer** `$HOME/.config/lifehack/code-root` holds one line, the code root. The session-start hook rewrites it every session. A plist never holds a code path. If it is wrong, launchd's stderr lands in `launch.err` and the session line says to open any desk once to repair.
 3. **job-run.sh** reads the row, takes the lock, runs the command under a watchdog, then runs the check. It is the only place exit 0 is earned.
 4. **The command** is `bash -c "<command>"`. By hand: `bash $CODE/system/tools/job-run.sh <job> [--force]`.
@@ -111,7 +111,7 @@ name | enabled | interval | outcome | check | model | budget | source | command
 |---|---|
 | name | lowercase letters, digits, hyphens. Also the state folder and the plist label |
 | enabled | `yes` runs. Any other word is a declared disposition (`off`, `waiting-on-<thing>`). Never ambiguous |
-| interval | seconds: a whole-hour divisor of 86400, or a multiple of 86400 (section 4) |
+| interval | seconds: any interval, on the hour or not (section 4) |
 | outcome | ONE sentence: what is true after a good run. The check is written against it |
 | check | `<path> ~ <ERE>` (section 6) |
 | model | `none`, `small`, `medium` or `large`. Ids live only in `system/tools/model.lib.sh` |
@@ -174,7 +174,7 @@ Every run that gets past the overdue test rewrites `last-run`:
 - `--bite` plants known faults, one per rule, and asserts each is caught and NAMED exactly. `--gate` runs the bite first. A rig that was never shown to fail is not trusted.
 - A change that cannot be expressed as a rig scenario is suspect. Add the scenario first.
 - **A person's job needs no scenario written by hand.** The rig reads the merged job list (`shared/jobs_manifest.py`: the plugin's `system/jobs.md` plus `<personal-code>/jobs.md`; on a name clash the personal row is the one tested) and generates one scenario per personal row, named `personal:<job>`. The row's own check is shown to pass on a good receipt line and fail on a wrong one, with a generic stub standing in for the runner (the real command never runs; throwaway home, fake clock, no network). The good line is built from the check's regex, the bad line is one the regex does not match, and both are verified with the same `grep -E` the runner uses; a regex that cannot be built, or whose every bad candidate matches, is a named failure that says why. The expected model calls are 0 for model `none`, else 1. An optional `<personal-code>/job-sim/<job>.json` with `{"good": "...", "bad": "...", "calls": N}` replaces any key it gives; a malformed file (not JSON, wrong types, an unknown key) is a named failure. It lives in the personal code folder, never in the plugin. A row whose check is `TBD` or empty, or that the door refuses, prints `SKIP personal:<job>: <reason>` and is not a failure: the door is its gate. `off` rows are tested too. The plugin's own jobs (rows in `system/jobs.md`) keep hand-written receipts in `job-sim.sh`, which the plugin maintains (`job-sim.sh`, the `receipt_contract` rows in its main run; not every plugin row has one). A plugin job's scenario duty is therefore unchanged: its receipt is hand-written in `job-sim.sh`, not generated.
-- Not covered by the rig: real launchd wake behavior, real logins, real push delivery, real Google or Claude auth. One live `launchctl kickstart` per gate keeps those honest. Not covered: if no job runs at all (scheduler stopped, Mac off, every job unloaded), no text is sent; the session line at the start of a session is the only backstop.
+- Not covered by the rig: real launchd wake behavior, real logins, real push delivery, real Google or Claude auth. One live `launchctl kickstart` per gate keeps those honest. Not covered: if no job runs at all (scheduler stopped, Mac off, every job unloaded), no text is sent; the session line at the start of a session is the first backstop, and the weekly human-validated roll-up the last.
 
 ## 11. Add a job (the recipe)
 

@@ -48,7 +48,7 @@ is not set, the honest answer is "not set" and the tool refuses.
 ├── memory/
 │   └── topic-vocab.md               your subjects, in your words — written by you, never shipped
 └── desks/<subject>/                 root only. one folder per subject, built by `/ingest` from your material
-    ├── canon/current.md
+    ├── canon/canon.md
     ├── canon/purpose.md
     └── records/
 ```
@@ -137,9 +137,9 @@ Closed means closed: a seventh type is a change to this page, not a judgment cal
 
 - `<brain>/canon/canon.md` — the top-level file. The handful of things that are true across everything.
   Written only when a person says to. Keep it small; it is read often.
-- `<subject>/canon/current.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
+- `<subject>/canon/canon.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
   subject it finds in your material, and what a project settles about itself. `purpose.md` says what
-  the folder is *for*; `current.md` holds what it has established.
+  the folder is *for*; `canon.md` holds what it has established (an older `current.md` is still read if it is all a folder has).
 
 Every line in either has to survive being read cold, alone, months later, by someone with no memory of
 the conversation that produced it. If it needs the backstory, it is a record, not canon.
@@ -254,7 +254,7 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<brain>/memory/topic-vocab.md` | a person, by hand | your subjects, in your words |
 | `<brain>/desks/<subject>/canon/` | `/ingest` | once per subject it finds |
 | `<brain>/desks/<subject>/records/` | `/ingest` | a stub file per finding it places |
-| `<brain>/desks/<subject>/records/proposals/` | `/ingest` | a canon candidate, awaiting your ruling |
+| `<brain>/desks/<subject>/records/proposals/` | `/ingest` | canon lines, written only after you approve the placement preview |
 
 ## When you add something that writes
 

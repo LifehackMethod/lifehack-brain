@@ -205,3 +205,12 @@ move to `<notes>/system/journal/YYYY-MM.md`.
 ~~~~
 | `plans/` split into a folder per machine (five of them, named after their hosts, 359 files) | one flat `plans/` | there is one machine. The two-machine plane is not part of this system. |
 ~~~~
+
+## 2026-11-16 - reason: round four landing, on Enver's 'land it' (every line the round-four edits replace; old wording, word for word)
+
+~~~~
+    ├── canon/current.md
+- `<subject>/canon/current.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
+  the folder is *for*; `current.md` holds what it has established.
+| `<brain>/desks/<subject>/records/proposals/` | `/ingest` | a canon candidate, awaiting your ruling |
+~~~~
