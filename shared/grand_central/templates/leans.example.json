@@ -1,0 +1,55 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/leans.json and replace every placeholder. A lean is the owner's own tilt, with a stated reason. The 'senders', 'merges' and 'starter_people' sections start empty; empty is a valid, working state.",
+  "_example_senders_not_read": {
+    "someone@example.test": {
+      "kind": "floor",
+      "value": 3.5,
+      "reason": "placeholder: a lean is the owner's own tilt, with a stated reason"
+    }
+  },
+  "_level_points": "Example values only: level_points under attention and path_a are +1.0 one level above the owner, +0.5 two, +0.25 three or more; an unknown level counts 0.",
+  "senders": {},
+  "merges": [],
+  "starter_people": [],
+  "approved_rulings": {
+    "proposed_points.standing.keep_floor": "0.50 example value: replace with the owner's own ruling."
+  },
+  "proposed_points": {
+    "standing": {
+      "depth_weight": 1.0, "breadth_weight": 0.5, "deep_thread_weight": 0.75, "deep_thread_min_msgs": 6, "deep_thread_min_each_side": 2,
+      "calendar_weight": 0.5, "initiation_weight": 0.5,
+      "speed_bonus": {"le_1h": 1.0, "le_6h": 0.6, "le_24h": 0.3}, "speed_min_answers": 3,
+      "inbound_weight": 0.1, "inbound_cap": 0.5,
+      "cc_weight": 0.25, "per_thread_cap_msgs": 8, "unanswered_weight": 0.5, "unanswered_cap": 4,
+      "big_send_over": 5, "automated_cap": 0.5, "automated_share": 0.5,
+      "keep_floor": 0.50, "tau_days": 365, "episode_gap_days": 90, "grace_factor": 1.25, "squash_k": 8.0, "scale_max": 4.0,
+      "reliability_bonus": 0.5, "reliability_min_threads": 2, "reliability_min_share": 0.8
+    },
+    "attention": {
+      "standing_weight": 1.0,
+      "level_points": {"1": 1.0, "2": 0.5, "3_or_more": 0.25},
+      "personal_tab": 1.0, "to_him": 0.5, "cc_only": 0.2,
+      "bulk_penalty": -2.0,
+      "thread_heating": 0.5, "reply_to_his_message": 1.5, "reply_in_active_thread": 0.75, "active_thread_days": 14,
+      "calendar_sender_attends": 1.5, "calendar_subject_match": 1.0, "calendar_ahead_days": 14, "calendar_subject_min_shared_words": 1,
+      "task_subject_match": 0.75,
+      "medium_at": 1.5, "high_at": 3.0,
+      "shortlist_min_level": "medium", "shortlist_max_items": 10, "shortlist_window_days": 7,
+      "new_sender_job_keyword_min_level": "medium"
+    },
+    "path_a": {
+      "standing_weight": 1.0,
+      "level_points": {"1": 1.0, "2": 0.5, "3_or_more": 0.25},
+      "direct_ask": 1.5, "reply_expected": 1.0, "money": 1.0, "deadline_present": 0.5, "bulk_penalty": -2.0,
+      "urgency_deadline_le_2d": 3.0, "urgency_deadline_le_7d": 2.0, "urgency_deadline_later": 1.0,
+      "urgency_direct_ask": 1.0, "urgency_reply_expected": 0.5,
+      "medium_at": 1.5, "high_at": 3.0
+    },
+    "delta": {
+      "heat_window_hours": 48, "heat_min_msgs": 4, "heat_min_senders": 2,
+      "burst_lookback_days": 180, "burst_min_msgs": 4, "burst_ratio": 4.0, "burst_quiet_max_per_week": 1.0,
+      "missing_min_past_replies": 2, "missing_reply_factor": 3.0, "missing_floor_days": 2.0, "missing_forget_days": 90,
+      "cadence_min_msgs": 4, "cadence_silence_factor": 3.0
+    }
+  }
+}

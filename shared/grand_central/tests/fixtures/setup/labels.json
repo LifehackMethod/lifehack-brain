@@ -1,0 +1,36 @@
+{
+  "_status": "SYNTHETIC test fixture. Same shape as a real setup/labels.json: invented labels, people and parts only.",
+  "labels": {
+    "Example-Reads": {
+      "read": true,
+      "alarm": false,
+      "life_part": "part-a",
+      "status": "synthetic placeholder"
+    }
+  },
+  "people": {
+    "person-one": {
+      "life_part": "Family",
+      "status": "synthetic placeholder"
+    }
+  },
+  "natural_first_read_label": {
+    "label": "Example-Label",
+    "note": "A pointer, not a setting.",
+    "status": "synthetic"
+  },
+  "gmail_names": {
+    "_note": "The label word in an answer -> the Gmail label name it means. null = no label.",
+    "Top": "Example-Top",
+    "Receipts": "Example-C-Inbox/Receipts",
+    "part-b": "Example-B-Inbox",
+    "Sub": "Example-D Inbox/Example-Sub",
+    "Notifications": "Example-Notifications",
+    "Code": "Example-Code",
+    "Family": "Example-Family",
+    "Travel": "Example-Travel",
+    "Promos": "Example-Promos",
+    "Sample Gig":"Example-Current",
+    "person-one": null
+  }
+}

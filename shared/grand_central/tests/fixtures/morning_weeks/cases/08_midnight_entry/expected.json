@@ -1,0 +1,13 @@
+{
+  "case": "08_midnight_entry",
+  "summary": "Two staged morning write-ups from the same day (an early one and a later top-up). The midnight job must write ONE diary entry per desk for the day, marked low confidence, pointing to BOTH staged write-ups, and must never edit an earlier diary entry.",
+  "date": "2026-11-15",
+  "checks": [
+    {"id": "one-entry-today", "kind": "midnight_one_entry", "date": "2026-11-15"},
+    {"id": "low-confidence", "kind": "midnight_low_confidence", "date": "2026-11-15"},
+    {"id": "points-to-both-staged", "kind": "midnight_points_to_staged", "date": "2026-11-15",
+     "files": ["early_morning.md", "topup.md"]},
+    {"id": "earlier-entries-untouched", "kind": "midnight_no_earlier_edit", "date": "2026-11-15",
+     "before_dir": "diary_before"}
+  ]
+}

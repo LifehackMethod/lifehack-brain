@@ -1,0 +1,16 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/routing.json and replace every placeholder. The one routing table: which part of life goes to which desk's diary. A part not listed goes to the main diary.",
+  "main_diary": "Main-Diary",
+  "diary_pattern": "{desk}-Diary",
+  "parts_to_desk": {
+    "part-b": "Bravo",
+    "part-c": "Charlie",
+    "part-d": "Delta"
+  },
+  "row_status": {
+    "part-b": "example placeholder",
+    "part-c": "example placeholder",
+    "part-d": "example placeholder"
+  },
+  "status": "example to edit"
+}

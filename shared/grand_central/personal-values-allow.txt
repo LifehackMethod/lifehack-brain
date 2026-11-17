@@ -1,0 +1,2 @@
+# Intentionally empty. The real allow-list for check_personal_values.py lives in the person's setup folder
+# (<setup dir>/personal-values-allow.txt), never in the plugin. See templates/personal-values-allow.example.txt.

@@ -1,0 +1,7 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/keywords.json and replace every placeholder. Phrases are matched as lowercase substrings of the subject line; 'weight' is the attention points one match adds (once per list).",
+  "lists": {
+    "job": {"weight": 1.0, "phrases": ["example call sheet", "example wardrobe fitting", "example booking notice"]},
+    "clock": {"weight": 0.5, "phrases": ["example time-sensitive notice", "example payment reminder", "example late-fee alert", "example schedule change"]}
+  }
+}

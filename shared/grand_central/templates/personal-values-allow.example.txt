@@ -1,0 +1,3 @@
+# Copy to <setup dir>/personal-values-allow.txt. One exception per line: path:term  # reason
+# path is relative to shared/grand_central; term is the matched text or sha:<hash8> (the check prints the hash).
+reader/review.py:sha:00000000  # reason

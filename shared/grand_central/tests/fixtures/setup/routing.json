@@ -1,0 +1,16 @@
+{
+  "_status": "PROPOSED, NOT APPROVED: SYNTHETIC test fixture (invented values only). Same shape as a real setup/routing.json.",
+  "main_diary": "Main-Diary",
+  "diary_pattern": "{desk}-Diary",
+  "parts_to_desk": {
+    "part-b": "Bravo",
+    "part-c": "Charlie",
+    "part-d": "Delta"
+  },
+  "row_status": {
+    "part-b": "synthetic",
+    "part-c": "synthetic",
+    "part-d": "synthetic"
+  },
+  "status": "synthetic fixture"
+}

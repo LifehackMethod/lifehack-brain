@@ -1,0 +1,12 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/desks.json and replace every placeholder. The desk list for the diary naming pattern; adding a desk = one line here, and its diary is created with the desk.",
+  "diary_pattern": "{display}-Diary",
+  "main_diary": {"desk": "desk-a", "name": "Main-Diary", "note": "the main desk's existing diary; its files stay at desks/desk-a/diary"},
+  "desks": {
+    "desk-a": {"display": "Alpha"},
+    "desk-b": {"display": "Bravo"},
+    "desk-c": {"display": "Charlie"},
+    "desk-d": {"display": "Delta"}
+  },
+  "status": "example to edit"
+}

@@ -1,0 +1,39 @@
+{
+  "case": "06_junk_triaged_out",
+  "summary": "Two messages triaged junk/notification (Grammarly stats; package-delivered notice). Right answer: both are kept out of the write-up — accounted for only in coverage — and nothing new enters the fixed form.",
+  "checks": [
+    {
+      "id": "junk-grammarly-kept-out",
+      "kind": "not_in_markdown",
+      "contains": [
+        "Grammarly"
+      ]
+    },
+    {
+      "id": "junk-package-kept-out",
+      "kind": "not_in_markdown",
+      "contains": [
+        "package was delivered"
+      ]
+    },
+    {
+      "id": "nothing-new",
+      "kind": "max_change",
+      "max_changed_lines": 2,
+      "empty_fields": [
+        "needs_him",
+        "deadlines",
+        "money",
+        "project_updates"
+      ]
+    },
+    {
+      "id": "coverage",
+      "kind": "coverage",
+      "status": {
+        "msg-601": "sorted_out_by_triage",
+        "msg-602": "sorted_out_by_triage"
+      }
+    }
+  ]
+}

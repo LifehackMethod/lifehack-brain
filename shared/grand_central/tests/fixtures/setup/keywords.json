@@ -1,0 +1,7 @@
+{
+  "_status": "SYNTHETIC test fixture: placeholder phrases only. Phrases are matched as lowercase substrings of the subject line; 'weight' is the attention points one match adds (once per list).",
+  "lists": {
+    "job": {"weight": 1.0, "phrases": ["example call sheet", "example wardrobe fitting", "example callback"]},
+    "clock": {"weight": 0.5, "phrases": ["due today", "deadline", "overdue", "cancelled"]}
+  }
+}

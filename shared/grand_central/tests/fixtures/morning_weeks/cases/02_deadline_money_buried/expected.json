@@ -1,0 +1,52 @@
+{
+  "case": "02_deadline_money_buried",
+  "summary": "A $2,400 overage invoice deadline (2026-11-21) sits in message 9 of a 12-message thread; the newest message is small talk with no action. Right answer: the whole transcript is read, so the deadline and the money both land in the fixed form.",
+  "checks": [
+    {
+      "id": "deadline-nov21",
+      "kind": "required_fixed",
+      "field": "deadlines",
+      "contains": [
+        "2026-11-21"
+      ],
+      "couldnt_tell_allowed": false
+    },
+    {
+      "id": "money-2400",
+      "kind": "required_fixed",
+      "field": "money",
+      "contains": [
+        "2400"
+      ],
+      "couldnt_tell_allowed": false
+    },
+    {
+      "id": "needs-him-invoice",
+      "kind": "required_fixed",
+      "field": "needs_him",
+      "contains": [
+        "invoice"
+      ],
+      "couldnt_tell_allowed": true,
+      "topic": "overage"
+    },
+    {
+      "id": "coverage",
+      "kind": "coverage",
+      "status": {
+        "msg-201": "used",
+        "msg-202": "used",
+        "msg-203": "used",
+        "msg-204": "used",
+        "msg-205": "used",
+        "msg-206": "used",
+        "msg-207": "used",
+        "msg-208": "used",
+        "msg-209": "used",
+        "msg-210": "used",
+        "msg-211": "used",
+        "msg-212": "used"
+      }
+    }
+  ]
+}

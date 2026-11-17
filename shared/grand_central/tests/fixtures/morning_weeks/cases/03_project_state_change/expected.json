@@ -1,0 +1,32 @@
+{
+  "case": "03_project_state_change",
+  "summary": "The city approves permit #PR-4471 and schedules an inspection for 2026-11-25 — the Dockside project's state changes from 'awaiting permits' to approved. Right answer: a project_update records the change, and the new date appears as a deadline.",
+  "checks": [
+    {
+      "id": "project-update-dockside",
+      "kind": "required_fixed",
+      "field": "project_updates",
+      "contains": [
+        "Dockside",
+        "permit"
+      ],
+      "couldnt_tell_allowed": false
+    },
+    {
+      "id": "deadline-inspection",
+      "kind": "required_fixed",
+      "field": "deadlines",
+      "contains": [
+        "2026-11-25"
+      ],
+      "couldnt_tell_allowed": false
+    },
+    {
+      "id": "coverage",
+      "kind": "coverage",
+      "status": {
+        "msg-301": "used"
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "case": "01_paid_testreel",
+  "summary": "A paid test-reel arrives while the baseline says all tryouts are closed. Right answer: it appears as needing him, with the contradiction asked as a question; the closed note must not stay a confirmed fact.",
+  "checks": [
+    {
+      "id": "needs-him-testreel",
+      "kind": "required_fixed",
+      "field": "needs_him",
+      "contains": [
+        "test-reel"
+      ],
+      "couldnt_tell_allowed": true,
+      "topic": "lighthouse keeper"
+    },
+    {
+      "id": "deadline-nov20",
+      "kind": "required_fixed",
+      "field": "deadlines",
+      "contains": [
+        "2026-11-20"
+      ],
+      "couldnt_tell_allowed": true,
+      "topic": "tape due"
+    },
+    {
+      "id": "money-850",
+      "kind": "required_fixed",
+      "field": "money",
+      "contains": [
+        "850"
+      ],
+      "couldnt_tell_allowed": true,
+      "topic": "test-reel rate"
+    },
+    {
+      "id": "contradiction-asked",
+      "kind": "required_question",
+      "contains": [
+        "tryouts closed"
+      ]
+    },
+    {
+      "id": "closed-not-a-fact",
+      "kind": "forbidden_as_fact",
+      "contains": [
+        "tryouts closed"
+      ]
+    },
+    {
+      "id": "coverage",
+      "kind": "coverage",
+      "status": {
+        "msg-101": "used"
+      }
+    }
+  ]
+}

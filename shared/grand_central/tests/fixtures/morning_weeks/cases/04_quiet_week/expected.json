@@ -1,0 +1,38 @@
+{
+  "case": "04_quiet_week",
+  "summary": "Nothing changed: the only new message is an automated Grammarly stats notification, triaged junk/notification. Right answer: the draft barely moves — What changed has at most 1 line (the sorted notification), no new fixed-form entries, and the picture carries the lease-renewal deadline forward.",
+  "checks": [
+    {
+      "id": "max-change",
+      "kind": "max_change",
+      "max_changed_lines": 1,
+      "empty_fields": [
+        "needs_him",
+        "deadlines",
+        "money",
+        "project_updates"
+      ]
+    },
+    {
+      "id": "junk-kept-out",
+      "kind": "not_in_markdown",
+      "contains": [
+        "Grammarly"
+      ]
+    },
+    {
+      "id": "picture-carried",
+      "kind": "required_in_markdown",
+      "contains": [
+        "lease renewal"
+      ]
+    },
+    {
+      "id": "coverage",
+      "kind": "coverage",
+      "status": {
+        "msg-401": "sorted_out_by_triage"
+      }
+    }
+  ]
+}

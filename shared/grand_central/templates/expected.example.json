@@ -1,0 +1,15 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/expected.json and replace every placeholder. Senders listed here are invented; patterns that still say TODO match nothing, on purpose.",
+  "_how_it_works": "routine = on autopay: logged as routine and kept out of the read; a trouble word in the subject makes it surface instead. not_autopay = always surfaces and always needs the owner. desk_routes = logged for that desk, not briefed. every_days (optional) = flag when no matching email has been seen in 1.5x that many days.",
+  "routine": [
+    {"name": "Example Card statement", "kind": "autopay", "sender_contains": ["examplecard", "excard.example"], "every_days": 35},
+    {"name": "Example loan", "kind": "autopay", "sender_contains": ["TODO-confirm-loan-sender"]},
+    {"name": "Example Coverage Plan", "kind": "autopay", "sender_contains": ["TODO-confirm-coverage-billing-sender"]}
+  ],
+  "not_autopay": [
+    {"name": "Example City utility", "sender_contains": ["examplecity", "example city"]}
+  ],
+  "desk_routes": [
+    {"name": "Example Insure renewal notice", "desk": "desk-c", "sender_contains": ["exampleinsure"], "subject_contains": ["example-renewal"]}
+  ]
+}

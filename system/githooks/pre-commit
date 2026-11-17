@@ -487,6 +487,13 @@ if ! python3 "$drift_checker"; then
 fi
 
 
+# ── Grand Central engine: no personal value in shared/grand_central/ (check_personal_values.py) ───
+# Runs only when the commit touches the engine. --precommit skips (exit 0) on a machine with no owner
+# setup folder (No Private Desks covers CI); with a setup it runs the full check and a finding blocks.
+if printf '%s\n' "$staged" | grep -q '^shared/grand_central/'; then
+	( cd "$repo" && python3 shared/grand_central/check_personal_values.py --precommit ) || exit 1
+fi
+
 # ── v2 Phase 3b "Close the known gaps": four checks on the STAGED state ─────────────────────────
 # connected (nothing calls the new thing), hides_failure (|| true, typed model names, /tmp ...),
 # is_copy (a second copy of a shared tool/rulebook), safe_to_ship (private material, missing exec

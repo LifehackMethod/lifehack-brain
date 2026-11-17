@@ -1,0 +1,9 @@
+{
+  "_status": "SYNTHETIC test fixture. Same shape as a real setup/alarm-settings.json.",
+  "pulse_job": "example-alarm",
+  "stale_after_s": 1500,
+  "writeup_max_chars": 400,
+  "triggers": [
+    {"id": "high-urgency", "kind": "urgency_level", "min": "high"}
+  ]
+}

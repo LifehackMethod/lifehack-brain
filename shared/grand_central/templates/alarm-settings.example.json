@@ -1,0 +1,9 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/alarm-settings.json and replace every placeholder. The fast clock only writes alarm CANDIDATES from these rules; the owner's rulings on the real triggers come before any alarm job runs.",
+  "pulse_job": "example-alarm",
+  "stale_after_s": 1500,
+  "writeup_max_chars": 400,
+  "triggers": [
+    {"id": "high-urgency", "kind": "urgency_level", "min": "high"}
+  ]
+}

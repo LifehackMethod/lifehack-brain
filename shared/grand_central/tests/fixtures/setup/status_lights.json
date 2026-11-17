@@ -1,0 +1,29 @@
+{
+  "_note": "SYNTHETIC test fixture: tmp-style paths for status_lights.py. Same shape as a real setup/status_lights.json.",
+  "desk": "example-desk",
+  "status_dir": "/tmp/gc-example/notes/state/status",
+  "pass_file": "/tmp/gc-example/drop/facts/_reader_pass.json",
+  "ingest_status": "/tmp/gc-example/data/front-room/ingest-status.json",
+  "morning_proof": "/tmp/gc-example/data/state/morning/last-proof.txt",
+  "mailroom_rhythm_s": 600,
+  "held_limit_s": 14400,
+  "backup": {
+    "local_dir": "/tmp/gc-example/data/backups",
+    "snapshot_dir": "/tmp/gc-example/notes/state/snapshots",
+    "archive_dir": "/tmp/gc-example/notes/state/backups"
+  },
+  "model_check": true,
+  "dated": true,
+  "login_from": "2026-11-18",
+  "mover_from": "2026-11-20T10:24:00",
+  "mailkey_from": "2026-11-22",
+  "login_state": "/tmp/gc-example/data/state/status-light-login.json",
+  "mover_cmd": ["python3", "/tmp/gc-example/mover/mac_edit.py", "verdict"],
+  "sentinel_drift": {
+    "pinned_dir": "/tmp/gc-example/install",
+    "plugin_repo": "/tmp/gc-example/plugin-repo",
+    "ref": "origin/main",
+    "state": "/tmp/gc-example/data/state/status-light-sentinel.json"
+  },
+  "mailroom_stale_s": 1200
+}

@@ -1,0 +1,36 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/labels.json and replace every placeholder. Same shape as a real labels.json: invented labels, people and parts only.",
+  "labels": {
+    "Example-Newsletter-Label": {
+      "read": true,
+      "alarm": false,
+      "life_part": "part-a",
+      "status": "example placeholder"
+    }
+  },
+  "people": {
+    "person-one": {
+      "life_part": "Everyday",
+      "status": "example placeholder"
+    }
+  },
+  "natural_first_read_label": {
+    "label": "Example-Label",
+    "note": "A pointer, not a rule: whether a label may be read is decided in the labels section above.",
+    "status": "example placeholder"
+  },
+  "gmail_names": {
+    "_note": "The label word in an answer -> the Gmail label name it means. null = no label.",
+    "Top": "Example-Top",
+    "Receipts": "Example-C-Inbox/Receipts",
+    "part-b": "Example-B-Inbox",
+    "Sub": "Example-D Inbox/Example-Sub",
+    "Updates": "Example-Updates",
+    "Code": "Example-Code",
+    "Kin": "Example-Kin",
+    "Trips": "Example-Trips",
+    "Offers": "Example-Offers",
+    "Gig Now": "Example-Current",
+    "person-one": null
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "case": "05_carried_guess_contradicted",
+  "summary": "Yesterday's draft carried the guess 'hotel confirmed for Dec 1' (unconfirmed). Today's evidence — the cancellation notice — contradicts it. Right answer: the guess does not survive as fact; it is dropped or turned into a question, and rebooking lands as needing him.",
+  "checks": [
+    {
+      "id": "guess-not-fact",
+      "kind": "forbidden_as_fact",
+      "contains": [
+        "confirmed for Dec 1"
+      ]
+    },
+    {
+      "id": "contradiction-asked",
+      "kind": "required_question",
+      "contains": [
+        "cancelled"
+      ]
+    },
+    {
+      "id": "needs-him-rebook",
+      "kind": "required_fixed",
+      "field": "needs_him",
+      "contains": [
+        "rebook"
+      ],
+      "couldnt_tell_allowed": true,
+      "topic": "hotel"
+    },
+    {
+      "id": "coverage",
+      "kind": "coverage",
+      "status": {
+        "msg-501": "used"
+      }
+    }
+  ]
+}

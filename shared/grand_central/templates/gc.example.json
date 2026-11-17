@@ -1,0 +1,42 @@
+{
+  "_status": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/gc.json (first_run.py does this) and replace every placeholder. Same shape as a real gc.json; every value here is an invented placeholder.",
+  "owner_name": "Owner One",
+  "owner_id": "owner-one",
+  "default_desk": "desk-a",
+  "notes_root": "/path/to/notes",
+  "drop_dir": "/path/to/gc-drop",
+  "mailroom_user": "example-mailroom",
+  "mailroom_install_dir": "/path/to/mailroom-install",
+  "domains": {
+    "part-b": {"label_prefix": "example-b", "plain": "part-time work", "project_words": ["gigs"]},
+    "part-c": {"label_prefix": "example-c", "plain": "finance & household", "project_words": ["finance", "household"]},
+    "part-d": {"label_prefix": "example-d", "plain": "advising", "project_words": ["advising", "guidance"]},
+    "part-a": {"plain": "everyday life", "project_words": ["everyday", "errands", "household"]}
+  },
+  "extra_research_domains": ["person-one"],
+  "needs_words_extra": ["tryout", "open-call", "example-keyword"],
+  "negative_fact_words": {
+    "tryouts": {"words": "tryout|test.?reel|sample.?reel", "projects": ["gigs"]}
+  },
+  "prompt_examples": {
+    "month_line": "gigs are heating up",
+    "contradiction_question": "Were the Example-Show / Example-Film test-reels handled or passed?"
+  },
+  "sanity": {
+    "projects": [
+      ["the Example trip", ["exampleland|exampleton|examplevale|trip"]],
+      ["gigs, with the right agents (Agency-One / Person-X and Agency-Two / Person-Y)",
+        ["gigs|tryout|booking|test.?reel", "agency.?one|person.?x", "agency.?two|person.?y"]],
+      ["Project-One", ["project-one"]],
+      ["everyday", ["everyday"]]
+    ],
+    "near": [
+      ["the dentist visit", ["dentist"]],
+      ["the car registration", ["car registration|registration"]],
+      ["the school forms", ["school forms|forms"]],
+      ["the pharmacy pickup", ["pharmacy"]],
+      ["the Example call", ["\\bexample call\\b", "videocall"]],
+      ["the Exampleton Airlines call", ["exampleton air"]]
+    ]
+  }
+}

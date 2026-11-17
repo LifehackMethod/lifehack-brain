@@ -1,0 +1,9 @@
+{
+  "_status": "SYNTHETIC test fixture. The real trigger rules are the owner's later decision; the first trigger is one simple one (a high urgency score from engine/scorecard.py).",
+  "pulse_job": "grand-central-alarm",
+  "stale_after_s": 1500,
+  "writeup_max_chars": 400,
+  "triggers": [
+    {"id": "high-urgency", "kind": "urgency_level", "min": "high"}
+  ]
+}

@@ -67,6 +67,75 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/cal_config.py` · the one place a calendar or task-list identifier is read from
 - `/shared/desk_list.py` · the ONE reader of YOUR desk list, kept in your notes folder next to your desks
 - `/shared/disk_preflight.py` · THE disk-low preflight: refuse to START a rig/exam run or the full test suite on a nearly full disk
+- `/shared/grand_central/alarm.py` · alarm.py: the alarm's path (Grand Central V2, plan B2 step 5)
+- `/shared/grand_central/backup.py` · Backups for rig.db. Always the sqlite3 backup API, never a file copy (safe under WAL)
+- `/shared/grand_central/batch_reader.py` · the "AI reads everything" lane (plan task 1.5b)
+- `/shared/grand_central/check_personal_values.py` · the LOCK: engine code must hold none of the owner's personal values
+- `/shared/grand_central/clock.py` · clock.py: the one place the rig reads the wall clock where liveness matters
+- `/shared/grand_central/common.py` · common.py: shared helpers for the engine steps
+- `/shared/grand_central/coverage.py` · the front room's checks on its own work
+- `/shared/grand_central/daily.py` · daily.py: Grand Central's daily engine (plan STEP 7 / Phase E1+E2)
+- `/shared/grand_central/db.py` · db.py: the one connect() for rig.db. Pragmas live here and nowhere else
+- `/shared/grand_central/delta.py` · delta.py: Grand Central V2 step 3. Compare what arrived in [since, now] against the baseline (everything before) and report three kinds of…
+- `/shared/grand_central/diary_keys.py` · Phase 4 step 4.3: keys in every diary entry (Vision 2.7 and 3.10)
+- `/shared/grand_central/diary_names.py` · diary_names.py: Phase 4 (ruling 4.1). A desk's diary is named by ONE pattern, '<Desk>-Diary'
+- `/shared/grand_central/encrypted_backup.py` · Encrypted backup of the front room's transcripts + catalogue (plan step 4b)
+- `/shared/grand_central/filter_drift.py` · filter_drift.py: read-only backstop for the Phase C hands (coordinator condition 2, 2026-11-12)
+- `/shared/grand_central/first_message_id.py` · Print the id of one recent message, read through the sanctioned email door with the rig login
+- `/shared/grand_central/first_run.py` · Grand Central step 4M.7(a): set up a person's own setup folder from the examples
+- `/shared/grand_central/gaps.py` · gaps.py: step 5. The code's plain observations with something missing
+- `/shared/grand_central/gather.py` · gather.py: step 1. Picks the items in the window and writes one kg_scores row each (signal 'window', value 1, reason = why it is in)
+- `/shared/grand_central/gc.py` · gc: Grand Central's one command. Read-only unless the subcommand says otherwise
+- `/shared/grand_central/gc_settings.py` · shared/grand_central/gc_settings.py: the ONE settings loader of the Grand Central engine
+- `/shared/grand_central/gcjobs.py` · gcjobs.py: the three scheduled jobs of Grand Central's Phase 1 (plan 1.3 and 1.4)
+- `/shared/grand_central/handoff/handoff.py` · Phase H, the hand-off folder. An .eml the owner downloads from Gmail and asks for by name
+- `/shared/grand_central/handoff/interpreter.py` · the TOOL-LESS interpreter for the hand-off folder (Phase H3)
+- `/shared/grand_central/handoff/worker.py` · the untrusted-content half of the hand-off reader
+- `/shared/grand_central/migrate.py` · migrate.py: apply the migrations to rig.db
+- `/shared/grand_central/model_check.py` · model_check.py: `gc rebuild` and `gc check` (Phase 2 step 2.6; Vision 3.7.4 rules 5 and 6, 3.17 health check)
+- `/shared/grand_central/morning.py` · the morning read (plan B1 "The stages" item 3; B2 step 4)
+- `/shared/grand_central/onboarding.py` · onboarding.py: Phase 3 step 3.10. The onboarding sitting, prepared from the model and recorded through the owner-answer door
+- `/shared/grand_central/org_moves.py` · org_moves.py: Phase 3 step 3.1. Move today's `company` things and `circle` things into organizations (Vision 3.7.3, plan 3.1)
+- `/shared/grand_central/pull.py` · the rig's puller (plan task 1.4). Envelopes, calendar events and tasks into rig.db
+- `/shared/grand_central/rank.py` · rank.py: step 4. One 'rank' score per window item with its reasons ("his word: example.com importance high · due in 3 days · your move")
+- `/shared/grand_central/reader/__init__.py` · (no header: add a docstring or header comment)
+- `/shared/grand_central/reader/fetch.py` · the mailroom's Gmail intake: only new messages, full email always
+- `/shared/grand_central/reader/flatten.py` · trim quoted replies and signatures, nothing a person wrote is cut
+- `/shared/grand_central/reader/readerd.py` · the mailroom's background job (replaces the earlier prototype daemon)
+- `/shared/grand_central/reader/review.py` · the person's review of the mailroom's quarantine (step 1.7 and 1.8)
+- `/shared/grand_central/reader/screen.py` · Sentinel at the door, in the mailroom: ONE tool-less AI call per email
+- `/shared/grand_central/retire_machine_guesses.py` · Phase 2 step 2.5: machine guesses out of the model (the owner's 2026-11-15 ruling: the database holds only indisputable facts and what he…
+- `/shared/grand_central/rig_env.py` · the one place the rig decides which Google login it uses
+- `/shared/grand_central/routing.py` · Phase 4 step 4.2 (Vision 2.7 and 3.10): which diary does a staged item go to
+- `/shared/grand_central/run.py` · run.py: the engine. Steps talk only through the memory (kg_*), in order gather -> score -> stitch -> rank -> gaps
+- `/shared/grand_central/run_tests.py` · the ONE test runner for the Grand Central engine (shared/grand_central)
+- `/shared/grand_central/score.py` · score.py: step 2. Discovers signals/*.py (NAME, VERSION, compute(con, item_ids)), clears each signal's old rows and writes kg_scores…
+- `/shared/grand_central/scorecard.py` · scorecard.py: Grand Central V2 step 3. Sender standing, the Path B attention score (outside only, no deadlines), and Path A importance and…
+- `/shared/grand_central/senders.py` · senders.py: every sender is tied to an organization, and is a person, a bot, or a question mark
+- `/shared/grand_central/signals/__init__.py` · (no header: add a docstring or header comment)
+- `/shared/grand_central/signals/first_seen_sender.py` · first_seen_sender: this is the first message ever from this address in the DB
+- `/shared/grand_central/signals/long_quiet_returns.py` · long_quiet_returns: the sender's previous message was more than 90 days before this one
+- `/shared/grand_central/signals/on_calendar_14d.py` · on_calendar_14d: the sender is an attendee of a calendar event starting in the next 14 days
+- `/shared/grand_central/signals/sender_history.py` · sender_history: how much this sender has written him and how much he wrote back (s_addr_signals)
+- `/shared/grand_central/signals/to_vs_cc.py` · to_vs_cc: he is in To (1.0), only in Cc (0.4), neither (0.0: list or bcc). 'Him' = the addresses in s_me
+- `/shared/grand_central/stamp_keys.py` · Phase 4 step 4.5 (closes 4.3's open join): the morning read stamps CODE-CERTAIN keys onto each staged item. - an email item -> its…
+- `/shared/grand_central/status_lights.py` · status_lights.py: the Grand Central status lights, written ONLY through the plugin's one writer (emit_status.py)
+- `/shared/grand_central/stitch.py` · stitch.py: step 3. Rule-based episodes. Certain joins first (same thread; same sender address within 14 days), then three triggers open an…
+- `/shared/grand_central/store.py` · store.py: the front door. The ONLY module other code should use to touch rig.db
+- `/shared/grand_central/store_diary.py` · store_diary.py: Phase 4 step 4.4. The diary index (table diary_index, migration 028)
+- `/shared/grand_central/store_events.py` · store_events.py: events built by code from the calendar mirror (Phase 3 step 3.2; Vision 3.7.3, 3.7.4 rules 1, 5, 7)
+- `/shared/grand_central/store_graph.py` · store_graph.py: the flexible memory (migration 005, kg_* tables)
+- `/shared/grand_central/store_items.py` · store_items.py: STEP 4 front-door functions for items, item_events and text pointers
+- `/shared/grand_central/store_levels.py` · store_levels.py: Phase 3 step 3.4. The one place later steps (3.5 relation to the person, 3.8 scoring) ask for a level
+- `/shared/grand_central/store_meaning.py` · store_meaning.py: Step 5 functions (projects, notes, overrides, urgency, score rollup, queue, model rebuild)
+- `/shared/grand_central/store_pages.py` · store_pages.py: Phase 3 step 3.7. The four read-only pages: a person, an organization's chart, what is coming up, who is due
+- `/shared/grand_central/store_relation.py` · store_relation.py: Phase 3 step 3.5. What a person, organization, project or event IS TO HIM (Vision 3.7.5 "relation to the person")
+- `/shared/grand_central/synthesize.py` · synthesize.py: STEP 6a. An AI writes his life in three layers
+- `/shared/grand_central/token_check.py` · read-only: what can be known LOCALLY about the rig login's 7-day testing-mode expiry
+- `/shared/grand_central/tools/lulu_rules_check.py` · Read-only look at LuLu's saved rules and settings (world-readable files in /Library/Objective-See/LuLu/)
+- `/shared/grand_central/transcripts.py` · the ONE access point to email text, and the catalogue
+- `/shared/grand_central/wall_test.py` · plan step 1.2, the part that can run from a guarded session
+- `/shared/grand_central/wall_test_terminal.sh` · plan step 1.2, the part the owner runs once in Terminal
 - `/shared/jobs_manifest.py` · the ONE reader that joins the shared job table with YOUR personal one
 - `/shared/paths.py` · every machine-shaped path in this system, answered in ONE place
 - `/shared/person_roots.py` · the ONLY way plugin code learns where a person's own folders are

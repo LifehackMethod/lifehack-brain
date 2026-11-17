@@ -1,0 +1,29 @@
+{
+  "_note": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/status_lights.json and replace every placeholder path with the person's own. The morning proof file does not exist until the morning job writes its proof line there.",
+  "desk": "example-desk",
+  "status_dir": "/path/to/notes/state/status",
+  "pass_file": "/path/to/gc-drop/facts/_reader_pass.json",
+  "ingest_status": "/path/to/data/front-room/ingest-status.json",
+  "morning_proof": "/path/to/data/state/morning/last-proof.txt",
+  "mailroom_rhythm_s": 600,
+  "held_limit_s": 14400,
+  "backup": {
+    "local_dir": "/path/to/data/backups",
+    "snapshot_dir": "/path/to/notes/state/snapshots",
+    "archive_dir": "/path/to/notes/state/backups"
+  },
+  "model_check": true,
+  "dated": true,
+  "login_from": "2027-01-01",
+  "mover_from": "2027-01-02T09:00:00",
+  "mailkey_from": "2027-01-03",
+  "login_state": "/path/to/data/state/status-light-login.json",
+  "mover_cmd": ["python3", "/path/to/mover/mac_edit.py", "verdict"],
+  "sentinel_drift": {
+    "pinned_dir": "/path/to/mailroom-install",
+    "plugin_repo": "/path/to/plugin-repo",
+    "ref": "origin/main",
+    "state": "/path/to/data/state/status-light-sentinel.json"
+  },
+  "mailroom_stale_s": 1200
+}
