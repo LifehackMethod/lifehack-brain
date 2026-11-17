@@ -259,11 +259,6 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/enforce_multiphase_contract.sh\"",
       "statusMessage": "Checking this phase declares what it must produce..."
-     },
-     {
-      "type": "command",
-      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_organism_map.sh\"",
-      "statusMessage": "Checking this would not overwrite the map of itself..."
      }
     ],
     "matcher": "Write"
@@ -299,6 +294,11 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_disable_model_invocation.sh\"",
       "statusMessage": "Checking for the retired disable-model-invocation flag..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_organism_map.sh\"",
+      "statusMessage": "Checking this would not overwrite the map of itself..."
      }
     ],
     "matcher": "Write|Edit|MultiEdit"
