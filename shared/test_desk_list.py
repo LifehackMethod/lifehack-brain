@@ -268,12 +268,25 @@ class DiaryCapture(Base):
         self.assertEqual(r.returncode, 0, r.stderr)
         return r.stdout.strip()
 
-    def test_no_list_only_root(self):
-        self.assertEqual(self.known(), "['root']")
+    def test_no_list_refuses_loudly_and_writes_nothing(self):
+        # Rewritten 2026-11-17 (CR-9, commit 905f13d). This used to prove "no list = only 'root'
+        # is known" -- i.e. the tool still loaded and fell back to a default folder. That fallback is
+        # deliberately gone: with no planning row the tool exits 2 with a named message and never
+        # falls back to desks/cal. So the test now asserts that contract.
+        r = self.run_py("-c", "import importlib.util;s=importlib.util.spec_from_file_location('pdc',%r);"
+                        "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)" % DIARY)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("no planning-desk row in the desk list", r.stderr)
+        self.assertIn("never falling back to desks/cal", r.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.notes, "desks", "cal")))
 
     def test_list_in_notes_is_read(self):
-        self.write("desks/desk-registry.yaml", GOOD)
-        self.assertEqual(self.known(), "['alpha', 'beta', 'root']")
+        # plant a planning row (the tool refuses without one) beside the two GOOD desks
+        self.write("desks/desk-registry.yaml", GOOD + (
+            "  - desk_id: cal\n"
+            "    open_loops_path: desks/cal/state/open-loops.md\n"
+            "    purpose_path: desks/cal/canon/purpose.md\n"))
+        self.assertEqual(self.known(), "['alpha', 'beta', 'cal', 'root']")
 
 
 class Scaffold(Base):
