@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test_read_harness.py -- Run: python3 shared/tools/test_read_harness.py (stdlib only; temp folder fixtures;
 a STUB model everywhere -- no test ever calls a real model). Prints one PASS/FAIL line per planted-failure
-test (a) to (g); exits 0 only if all pass. ALLOW cases first."""
+test (a) to (m); exits 0 only if all pass. ALLOW cases first."""
 import json
 import os
 import re
@@ -219,5 +219,133 @@ check("d", "cut-off results.tsv refused (exit 4)", test_d)
 check("e", "unreadable input exits 4", test_e)
 check("f", "final-read finding citing a missing row refused", test_f)
 check("g", "honest run exits 0 with every section answered", test_g)
+
+
+# ---- card 4.1: quote lists and the captain ----
+
+def req_rows(out_dir):
+    rows = results_rows(out_dir)
+    return [r for r in rows if r["req_id"]]
+
+def test_h():
+    # a list with one real quote and one made-up quote: the real one is kept as a row,
+    # the made-up one is dropped and counted, exit 0
+    d, docs, q = make_env()
+    out = os.path.join(d, "out")
+    real = "The quarterly review checks spending against plan values and refuses guesses."
+    def fake(prompt, model):
+        if "Produce findings" in prompt:
+            return "NO-FINDINGS", None
+        body = prompt.split("SECTION:\n", 1)[1]
+        m = re.search(r"[^.]*spending[^.]*\.", body, re.S)
+        if m:
+            return json.dumps({"verdict": "APPLIES",
+                               "quotes": [m.group(0).strip(), "this exact sentence never appears anywhere"]}), None
+        return json.dumps({"verdict": "DOES-NOT-APPLY", "quote": ""}), None
+    rh.call_model = fake
+    code, _ = run_main(["--docs", *docs, "--question", q, "--out", out, "--no-final"])
+    rows = req_rows(out)
+    assert len(rows) == 1, "expected exactly one kept-quote row, got %s" % rows
+    assert rows[0]["req_id"] == "R001" and rows[0]["verdict"] == "APPLIES", rows
+    assert rh.norm(real) in rows[0]["quote"], rows
+    assert rows[0]["quotes_dropped"] == "1", rows
+    cov = open(os.path.join(out, "coverage.md"), encoding="utf-8").read()
+    assert "quotes dropped: 1" in cov, cov
+    assert "total requirements: 1" in cov, cov
+    assert code == 0, "exit %d, expected 0" % code
+
+def test_i():
+    # a list where every quote is made up: retried once, then OFF-LIST, exit 1
+    d, docs, q = make_env()
+    out = os.path.join(d, "out")
+    calls = []
+    def fake(prompt, model):
+        calls.append(1)
+        if "Produce findings" in prompt:
+            return "NO-FINDINGS", None
+        return json.dumps({"verdict": "APPLIES",
+                           "quotes": ["made up one", "made up two"]}), None
+    rh.call_model = fake
+    code, _ = run_main(["--docs", *docs, "--question", q, "--out", out, "--no-final"])
+    rows = results_rows(out)
+    assert all(r["verdict"] == "OFF-LIST" and r["quote_ok"] == "false" for r in rows), rows
+    n_sections = len(rows)
+    assert len(calls) == 2 * n_sections, "expected one retry per section, calls=%d" % len(calls)
+    assert code == 1, "exit %d, expected 1" % code
+
+def captain_env():
+    """An honest run first (so results.tsv carries R001), then a plan file."""
+    d, docs, q = make_env()
+    out = os.path.join(d, "out")
+    rh.call_model = honest_stub()
+    code, _ = run_main(["--docs", *docs, "--question", q, "--out", out, "--no-final"])
+    assert code == 0, "honest run exit %d, expected 0" % code
+    plan = os.path.join(d, "planA.md")
+    open(plan, "w", encoding="utf-8").write("# Plan A\nThe quarterly review step checks spending.\n")
+    return d, docs, q, out, plan
+
+CAPTAIN_ALL_MET = "R001 | MET | the quarterly review step in plan A\n"
+
+def test_j():
+    # captain reply that skips a requirement: that requirement is UNANSWERED, exit 1
+    d, docs, q, out, plan = captain_env()
+    def fake(prompt, model, allow_read=False):
+        return "", None  # captain answers nothing
+    rh.call_model = fake
+    code, _ = run_main(["--captain", os.path.join(out, "results.tsv"), "--plans", plan,
+                        "--docs", *docs, "--out", os.path.join(d, "cap")])
+    with open(os.path.join(d, "cap", "captain.tsv"), encoding="utf-8") as fh:
+        cap = fh.read()
+    assert "R001\t" in cap and "UNANSWERED" in cap, cap
+    assert code == 1, "exit %d, expected 1" % code
+
+def test_k():
+    # captain reply that answers one requirement twice: UNANSWERED, exit 1
+    d, docs, q, out, plan = captain_env()
+    def fake(prompt, model, allow_read=False):
+        return CAPTAIN_ALL_MET + CAPTAIN_ALL_MET, None
+    rh.call_model = fake
+    code, _ = run_main(["--captain", os.path.join(out, "results.tsv"), "--plans", plan,
+                        "--docs", *docs, "--out", os.path.join(d, "cap")])
+    with open(os.path.join(d, "cap", "captain.tsv"), encoding="utf-8") as fh:
+        cap = fh.read()
+    assert "UNANSWERED" in cap, cap
+    assert code == 1, "exit %d, expected 1" % code
+
+def test_l():
+    # captain reply with an off-list verdict: UNANSWERED, exit 1
+    d, docs, q, out, plan = captain_env()
+    def fake(prompt, model, allow_read=False):
+        return "R001 | MAYBE | a verdict that is not on the list\n", None
+    rh.call_model = fake
+    code, _ = run_main(["--captain", os.path.join(out, "results.tsv"), "--plans", plan,
+                        "--docs", *docs, "--out", os.path.join(d, "cap")])
+    with open(os.path.join(d, "cap", "captain.tsv"), encoding="utf-8") as fh:
+        cap = fh.read()
+    assert "UNANSWERED" in cap, cap
+    assert code == 1, "exit %d, expected 1" % code
+
+def test_m():
+    # honest captain reply: every requirement answered, findings.md lists the UNMET one, exit 0
+    d, docs, q, out, plan = captain_env()
+    def fake(prompt, model, allow_read=False):
+        return "R001 | UNMET | nothing in plan A names the quarterly review\n", None
+    rh.call_model = fake
+    code, _ = run_main(["--captain", os.path.join(out, "results.tsv"), "--plans", plan,
+                        "--docs", *docs, "--out", os.path.join(d, "cap")])
+    with open(os.path.join(d, "cap", "captain.tsv"), encoding="utf-8") as fh:
+        cap = fh.read()
+    assert "UNMET\tnothing in plan A names the quarterly review" in cap, cap
+    find = open(os.path.join(d, "cap", "findings.md"), encoding="utf-8").read()
+    assert "R001" in find and "UNMET" in find and "quarterly review" in find, find
+    assert os.path.exists(os.path.join(d, "cap", "captain.raw.txt")), "raw reply missing"
+    assert code == 0, "exit %d, expected 0" % code
+
+check("h", "list with one real and one made-up quote: real kept, made-up dropped and counted, exit 0", test_h)
+check("i", "list where every quote is made up: retried once, then OFF-LIST, exit 1", test_i)
+check("j", "captain reply that skips a requirement: UNANSWERED, exit 1", test_j)
+check("k", "captain reply that answers one requirement twice: UNANSWERED, exit 1", test_k)
+check("l", "captain reply with an off-list verdict: UNANSWERED, exit 1", test_l)
+check("m", "honest captain reply: findings.md lists the UNMET one, exit 0", test_m)
 
 sys.exit(0 if all(RESULTS) else 1)
