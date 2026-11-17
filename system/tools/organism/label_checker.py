@@ -17,7 +17,12 @@ LABELS (computed, never asserted):
   PARTIAL — the guard EXISTS on disk but is not fully enforcing: not git-tracked, or not
             registered, or a violation slipped through (didn't block), or an allow-case was
             wrongly blocked. Built, but its label may not be trusted as LIVE.
-  TARGET  — the guard script does not exist yet (declared intent, not built).
+  TARGET — the guard script does not exist yet (declared intent, not built).
+  DORMANT — the manifest entry declares the part deliberately not in use
+        (`use: dormant`). Built, not in use (canon/status-health-proof-sop.md:
+        the label words are LIVE, PARTIAL and DORMANT). DORMANT stands OUTSIDE
+        the weakest-wins roll-up order — counted beside it, never ranked
+        against LIVE/PARTIAL/TARGET.
 
 DOWNGRADE: if the manifest CLAIMS `LIVE` but the computed label is lower, that is a
 label-integrity failure — the checker exits non-zero and names it.
@@ -134,6 +139,18 @@ DEFAULT_ELEMENTS_DIR = REPO / "system" / "organism" / "elements"
 
 # label ordering for downgrade detection (higher = more enforced)
 RANK = {"TARGET": 0, "PARTIAL": 1, "LIVE": 2}
+# DORMANT is deliberately NOT in RANK: canon (status-health-proof-sop.md) puts it
+# OUTSIDE the weakest-wins roll-up order — counted beside it, never ranked against
+# the others. Comparisons involving DORMANT go through is_downgrade() explicitly.
+
+def is_downgrade(label: str, claim: str) -> bool:
+    """Downgrade test that keeps DORMANT outside the weakest-wins order.
+    Within RANK's vocabulary the usual rank comparison applies; DORMANT only ever
+    matches itself — a DORMANT part computed against any other claim (or any other
+    computed label against a DORMANT claim) is a mismatch, not a ranked step."""
+    if claim == "DORMANT" or label == "DORMANT":
+        return claim != label
+    return RANK[label] < RANK[claim]
 
 
 def expand(s: str) -> str:
@@ -306,6 +323,18 @@ def evaluate(guard: dict) -> dict:
         "checks": {}, "label": None, "reasons": [],
     }
 
+    # DORMANT — the manifest entry declares this part deliberately not in use
+    # (canon/status-health-proof-sop.md: built, not in use). Checked before anything
+    # else: a deliberately-unused part is not "TARGET" (it is built) and not
+    # "PARTIAL" (nothing is failing) — it is simply not in use, by design.
+    if str(guard.get("use", "")).lower() == "dormant":
+        result["label"] = "DORMANT"
+        result["reasons"].append(
+            "declared deliberately not in use (manifest use: dormant) — built, not in use")
+        if script_rel and not script_abs.exists():
+            result["reasons"].append("note: script does not exist on disk")
+        return result
+
     # TARGET — not built yet
     if not script_rel or not script_abs.exists():
         result["label"] = "TARGET"
@@ -401,7 +430,7 @@ def cmd_check(args) -> int:
     results = [evaluate(g) for g in guards]
 
     # a downgrade = the manifest claims a HIGHER label than we could verify
-    downgrades = [r for r in results if RANK[r["label"]] < RANK[r["claim"]]]
+    downgrades = [r for r in results if is_downgrade(r["label"], r["claim"])]
 
     if args.json:
         print(json.dumps({"results": results,
@@ -414,7 +443,7 @@ def cmd_check(args) -> int:
         print("─" * 72)
         for r in results:
             flag = ""
-            if RANK[r["label"]] < RANK[r["claim"]]:
+            if is_downgrade(r["label"], r["claim"]):
                 flag = f"  ⚠ DOWNGRADE (claimed {r['claim']})"
             print(f"  {r['label']:8} {r['id']}{flag}")
             for reason in r["reasons"]:
@@ -455,7 +484,17 @@ def cmd_selftest(args) -> int:
         # so patch it to run against the absolute script directly.
         r = _evaluate_abs(guard, inert)
 
-        ok = (r["label"] == "PARTIAL")
+        # DORMANT case (CR-9 step 6a): the SAME inert script, declared `use: dormant`
+        # in its manifest entry, must read DORMANT (built, deliberately not in use) —
+        # while the control case above (no `use:` key) still reads PARTIAL, exactly as
+        # before. Old code ignored the `use:` key and read PARTIAL for both.
+        dguard = dict(guard)
+        dguard["id"] = "selftest-dormant-guard"
+        dguard["label_claim"] = "DORMANT"
+        dguard["use"] = "dormant"
+        d = _evaluate_abs(dguard, inert)
+        print(f" dormant variant computed label = {d['label']} (expected DORMANT)")
+        ok = (r["label"] == "PARTIAL") and (d["label"] == "DORMANT")
         print("SELF-TEST — plant an inert guard (always exit 0), claim LIVE:")
         print(f"  computed label = {r['label']}   (expected PARTIAL)")
         for reason in r["reasons"]:
@@ -473,6 +512,12 @@ def _evaluate_abs(guard: dict, script_abs: Path) -> dict:
     expect = int(guard.get("expect_block_exit", 2))
     result = {"id": guard["id"], "claim": guard["label_claim"],
               "script": str(script_abs), "checks": {}, "label": None, "reasons": []}
+    if str(guard.get("use", "")).lower() == "dormant":
+        result["label"] = "DORMANT"
+        result["reasons"].append(
+            "declared deliberately not in use (manifest use: dormant) — built, not in use")
+        return result
+
     if not script_abs.exists():
         result["label"] = "TARGET"
         result["reasons"].append("script does not exist")
@@ -534,26 +579,40 @@ def cmd_write_labels(args) -> int:
     # RULE 1 — fold every guard onto its element, weakest label wins
     per_element = {}   # slug -> {"label": str, "guards": [ids]}
     unmapped = []      # guards that are fire-proven but reach no element file
+    dormant_guards = {} # slug -> [guard ids]; DORMANT stands OUTSIDE weakest-wins
     for guard in manifest.get("guards", []):
         gid = guard.get("id")
         computed = evaluate(guard)["label"]
-        if gid not in by_slug:
+        slug = guard.get("element", gid)
+        if computed == "DORMANT":
+            # canon: DORMANT is counted beside the roll-up order — it never drags
+            # siblings down and is never outvoted by them. Only an element backed by
+            # NOTHING but dormant guards reads DORMANT (handled below).
+            dormant_guards.setdefault(slug, []).append(gid)
+            continue
+        if slug not in by_slug:
             unmapped.append(f"{gid} → {computed}")
             continue
-        cur = per_element.get(gid)
+        cur = per_element.get(slug)
         if cur is None or RANK[computed] < RANK[cur["label"]]:
-            per_element[gid] = {"label": computed, "guards": (cur or {}).get("guards", []) + [gid]}
+            per_element[slug] = {"label": computed, "guards": (cur or {}).get("guards", []) + [gid]}
         else:
             cur["guards"].append(gid)
+
+    # an element backed ONLY by dormant guards reads DORMANT (approved definition,
+    # component-page-definition.md: "a page whose parts are all DORMANT reads DORMANT")
+    for slug, ids in dormant_guards.items():
+        if slug not in per_element:
+            per_element[slug] = {"label": "DORMANT", "guards": list(ids)}
 
     changed, no_label = [], []
     for slug, info in sorted(per_element.items()):
         p, computed = by_slug[slug], info["label"]
         text = p.read_text()
-        new, na = re.subn(r"(?m)^(maturity_label:\s*)(LIVE|PARTIAL|TARGET)", rf"\g<1>{computed}", text)
-        new, nb = re.subn(r"(\*\*maturity_label:\*\*\s*)(LIVE|PARTIAL|TARGET)", rf"\g<1>{computed}", new)
+        new, na = re.subn(r"(?m)^(maturity_label:\s*)(LIVE|PARTIAL|TARGET|DORMANT)", rf"\g<1>{computed}", text)
+        new, nb = re.subn(r"(\*\*maturity_label:\*\*\s*)(LIVE|PARTIAL|TARGET|DORMANT)", rf"\g<1>{computed}", new)
         if na == 0 and nb == 0:
-            no_label.append(f"{slug} ({p.name}) — label is not LIVE/PARTIAL/TARGET-prefixed, so the "
+            no_label.append(f"{slug} ({p.name}) — label is not LIVE/PARTIAL/DORMANT/TARGET-prefixed, so the "
                             f"writer cannot govern it; it stays HAND-SET")
             continue
         if new != text:
@@ -562,7 +621,11 @@ def cmd_write_labels(args) -> int:
             changed.append(f"{slug} → {computed} ({p.name})")
 
     verb = "would write" if args.dry_run else "wrote"
-    print(f"label-writer → {elements_dir.relative_to(REPO)}/" + ("   [DRY RUN — nothing written]" if args.dry_run else ""))
+    try:
+        shown = str(elements_dir.relative_to(REPO)) + "/"
+    except ValueError:
+        shown = str(elements_dir) + "/"
+    print(f"label-writer → {shown}" + ("   [DRY RUN — nothing written]" if args.dry_run else ""))
     print("─" * 72)
     for c in changed:
         print(f"  {verb}: {c}")
