@@ -83,6 +83,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/diary_keys.py` · Phase 4 step 4.3: keys in every diary entry (Vision 2.7 and 3.10)
 - `/shared/grand_central/diary_names.py` · diary_names.py: Phase 4 (ruling 4.1). A desk's diary is named by ONE pattern, '<Desk>-Diary'
 - `/shared/grand_central/encrypted_backup.py` · Encrypted backup of the front room's transcripts + catalogue (plan step 4b)
+- `/shared/grand_central/feeds.py` · feeds.py (4P.0b): which of Grand Central's three feeds are set up, connected or failing, derived ONLY from what the engine already records
 - `/shared/grand_central/filter_drift.py` · filter_drift.py: read-only backstop for the Phase C hands (coordinator condition 2, 2026-11-12)
 - `/shared/grand_central/first_message_id.py` · Print the id of one recent message, read through the sanctioned email door with the rig login
 - `/shared/grand_central/first_run.py` · Grand Central step 4M.7(a): set up a person's own setup folder from the examples

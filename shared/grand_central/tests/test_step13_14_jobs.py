@@ -33,7 +33,7 @@ import test_step4_morning as t4  # noqa: E402  (its scratch front room, fake mod
 CHECKS = {
     "gc-fast-clock": r"^gc-fast-clock ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} waiting=([0-9]+) cleared=\1 filed=[0-9]+ duplicate=[0-9]+ refused=[0-9]+ calendar=[fs][kre][a-z]+ tasks=[fs][kre][a-z]+ db=[dh][a-z]+ considered=[0-9]+ candidates=[0-9]+ morning=[a-z-]+ at=[0-9]{4}-",
     "gc-morning": r"^gc-morning ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ new=([0-9]+) accounted=\1 examined=[0-9]+ draft=[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z-]+(-topup[0-9]+)?\.md sources=[a-z]+ at=[0-9]{4}-",
-    "gc-midnight": r"^gc-midnight ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ staged_days=([1-9][0-9]*) settled=\1 written=[0-9]+ existing=[0-9]+ newest=[0-9]{4}-[0-9]{2}-[0-9]{2} at=[0-9]{4}-",
+    "gc-midnight": r"^gc-midnight ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ staged_days=([0-9]+) settled=\1 written=[0-9]+ existing=[0-9]+ newest=[0-9-]+ at=[0-9]{4}-",
 }
 
 
@@ -390,16 +390,28 @@ class MidnightJob(Scratch):
         self.assertTrue(os.path.isfile(self.diary("2026-11-14")) and os.path.isfile(self.diary("2026-11-15")))
 
     def test_today_is_never_written_early(self):
+        # CHANGED by 4P.0b: today's write-up alone means nothing staged IN THE WINDOW, which is now a good
+        # run with nothing to write (receipt, exit 0), not a stand-down (rc 75 texts "paused"). Today's
+        # entry is still never written early.
         self.stage("2026-11-16")
-        self.assertEqual(self.run_job(), 75)
+        self.assertEqual(self.run_job(), 0)
         self.assertFalse(os.path.exists(self.diary("2026-11-16")))
+        self.assertIn("staged_days=0 settled=0 written=0 existing=0 newest=-", self.receipt("gc-midnight"))
+        self.assertTrue(check_passes("gc-midnight", self.receipt("gc-midnight")))
 
-    def test_PLANTED_nothing_staged_is_75_and_a_forged_zero_proof_fails_the_check(self):
-        self.assertEqual(self.run_job(), 75)
-        self.assertIsNone(self.receipt("gc-midnight"))
-        forged = "gc-midnight ok date=2026-11-16 desk=desk-a staged_days=0 settled=0 written=0 existing=0 newest=2026-11-15 at=2026-11-16T00:00:01Z"
-        self.assertFalse(check_passes("gc-midnight", forged))
-        self.assertFalse(check_passes("gc-midnight", forged.replace("staged_days=0 settled=0", "staged_days=2 settled=1")))
+    def test_nothing_staged_writes_an_honest_zero_receipt_exit_0_never_75(self):
+        # CHANGED by 4P.0b (was: 75 and no receipt): the quiet-night run must not count as a stand-down on a
+        # `yes` row, or the runner texts "paused" after 2x the interval (cron SOP section 4). The receipt
+        # carries real varying content (date, desk, counts, at=), not a presence check.
+        self.assertEqual(self.run_job(), 0)
+        line = self.receipt("gc-midnight")
+        self.assertRegex(line, r"^gc-midnight ok date=2026-11-16 desk=desk-a staged_days=0 settled=0 written=0 "
+                               r"existing=0 newest=- at=2026-")
+        self.assertTrue(check_passes("gc-midnight", line))            # the ONE row check reads the quiet night
+        # PLANTED (restored, build window review): forged proofs still fail the row's own check
+        self.assertFalse(check_passes("gc-midnight", line.replace("settled=0", "settled=1")))   # unsettled day
+        self.assertFalse(check_passes("gc-midnight", line.replace(" at=", " ")))                # no run time
+        self.assertFalse(check_passes("gc-midnight", line.replace("date=2026-11-16 ", "")))     # no date
 
 
 # ================================================================ coordinator conditions, 2026-11-16

@@ -8,6 +8,8 @@
   morning      daily. morning.py hand_run for the default desk's day (that desk's records).
   midnight     daily 00:00. morning.midnight_entry for every recent day that has a staged write-up and no diary
                entry yet (the main diary, named in setup/desks.json). Created exclusively: a second run changes nothing.
+        Nothing staged in the whole window is a good run with nothing to write (receipt staged_days=0,
+        exit 0), never a stand-down: rc 75 on a `yes` row texts "paused" after 2x the interval (4P.0b).
 
 This file does NO outside read of its own: no Gmail, no curl, no urllib. Mail text arrives by the one-way drop;
 calendar and tasks arrive only through pull.py. Each job ends by writing a one-line proof (receipt) AFTER it has
@@ -551,7 +553,8 @@ def _morning_locked(day, desk, state, hand_run, status_light, extra_argv, out, p
 def midnight_job(desk=None, today=None, lookback=LOOKBACK_DAYS, state=None, status_light=None, out=print, index_refresh=None):
     """For each of the last `lookback` days before today that has a staged write-up: write that day's diary entry if it
     has none (midnight_entry creates exclusively and never opens an earlier entry). Catching up means a night the Mac
-    slept through is written on wake. Nothing staged in the whole window = nothing to do = exit 75, never a success."""
+    slept through is written on wake. Nothing staged in the whole window = a good run with nothing to write (receipt staged_days=0, exit 0;
+a stand-down here would text "paused" every quiet night, 4P.0b)."""
     import morning
     desk = desk or gc_settings.default_desk()
     status_light = status_light or status_lights_call
@@ -590,8 +593,18 @@ def midnight_job(desk=None, today=None, lookback=LOOKBACK_DAYS, state=None, stat
         newest = newest or day
         out("[midnight] %s: %s" % (day, ", ".join("%s %s" % (n, r["status"]) for n, r in sorted(rs.items()))))
     if not staged_days and not problems:
-        out("[midnight] stood down: no morning write-up in the last %d days, nothing to write" % lookback)
-        return 75
+        # 4P.0b: nothing staged in the window is a GOOD RUN with nothing to write, not a stand-down.
+        # rc 75 on a `yes` row texts "paused" after 2x the interval (cron SOP section 4), and with no
+        # feeds the daily diary job ends here every night -- the very text the rulings forbid. The
+        # receipt is honest real content that varies (date, desk, counts, time), which the row's
+        # check reads as a good run; it is not a presence check.
+        # Build window review: the SAME shape as a working night (staged_days=N settled=N ... newest=...), so one
+        # row check (no `|` allowed in a check) reads both; newest=- marks the quiet night.
+        line = ("gc-midnight ok date=%s desk=%s staged_days=0 settled=0 written=0 existing=0 newest=- at=%s"
+                % (today.isoformat(), desk, now_iso()))
+        write_receipt("gc-midnight", line, state)
+        out("[midnight] no morning write-up in the last %d days: nothing to write (receipt written)" % lookback)
+        return 0
     if problems or written + existing != staged_days:
         out("[midnight] FAIL, no proof line written: " + ", ".join(problems or ["not_settled"]))
         return 1

@@ -39,6 +39,17 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 import store  # noqa: E402
 import gc_settings  # noqa: E402
+import feeds  # noqa: E402  (4P.0b: the named no-feed state)
+
+
+def _feed_gate(a):
+    """4P.0b: with no feed connected (or no database to read), the read commands return the named
+    state (exit 0) instead of data or an error. None means a feed is connected: answer as before."""
+    g = feeds.read_gate()
+    if g is None:
+        return None
+    _emit(a, g, feeds.text_line(g))
+    return 0
 
 
 def _age(p):
@@ -59,27 +70,52 @@ def _newest(d, pattern):
 def cmd_status(a):
     import backup
     path = Path(store.db_path())
-    print("db:           %s" % path)
-    if not path.exists():
-        print("  (no such file)")
-        return 1
-    print("user_version: %d" % store.user_version())
-    print("journal_mode: %s" % store.journal_mode())
-    print("rows:")
-    for t, n in store.table_counts().items():
-        print("  %-22s %d" % (t, n))
+    gate = feeds.read_gate()           # 4P.0b: the named no-feed state, exit 0, never "(no such file)" or a crash
+    if gate is not None:
+        gate["db"] = str(path)
+        gate["db_exists"] = path.exists()
+        if a.json:
+            print(json.dumps(gate, sort_keys=True, default=str))
+        else:
+            print("db: %s" % path)
+            if not path.exists():
+                print(" (no such file)")
+            print(feeds.text_line(gate))
+        return 0
+    if a.json:
+        payload = {"db": str(path), "db_exists": True}
+        try:
+            payload["user_version"] = store.user_version()
+            payload["journal_mode"] = store.journal_mode()
+            payload["rows"] = store.table_counts()
+        except Exception as e:  # noqa: BLE001 (an empty or unreadable file: say so, never crash)
+            payload["db_error"] = str(e)
+        payload["feeds"] = feeds.feed_states()
+        print(json.dumps(payload, sort_keys=True, default=str))
+        return 0
+    print("db: %s" % path)
+    try:
+        print("user_version: %d" % store.user_version())
+        print("journal_mode: %s" % store.journal_mode())
+        print("rows:")
+        for t, n in store.table_counts().items():
+            print(" %-22s %d" % (t, n))
+    except Exception as e:  # noqa: BLE001 (4P.0b: an empty database file is a state, not a crash)
+        print(" (database not readable yet: %s)" % e)
     for label, d, pat in (("last backup", backup.backup_dir(), r"rig-.*\.db"),
-                          ("last snapshot", backup.snapshot_dir(), r"rig-\d{8}\.db")):
+        ("last snapshot", backup.snapshot_dir(), r"rig-\d{8}\.db")):
         f = _newest(d, pat)
         print("%-13s %s" % (label + ":", "%s (%s)" % (f.name, _age(f)) if f else "none in %s" % d))
     print("last events:")
-    ev = store.recent_events(5)
+    try:
+        ev = store.recent_events(5)
+    except Exception:  # noqa: BLE001
+        ev = []
     for e in ev:
-        print("  %s  %s  %s" % (e["at"], e["kind"], (e["detail"] or "")[:80]))
+        print(" %s %s %s" % (e["at"], e["kind"], (e["detail"] or "")[:80]))
     if not ev:
-        print("  (none)")
+        print(" (none)")
     return 0
-
 
 def cmd_backup(a):
     """Local database backup, then checked. Fails loudly (stderr + exit 1) if it cannot write: a planning
@@ -350,6 +386,9 @@ def cmd_approve(a):
 
 
 def cmd_urgent(a):
+    g = _feed_gate(a)
+    if g is not None:
+        return g
     us = _with_relation(store.urgent_items(limit=a.limit))
     text = "\n".join("%.2f  #%d  %s  due %s%s" % (u["urgency"], u["item_id"], (u["title"] or "")[:70], (u["due_at"] or "-")[:10],
                                                     "  PINNED" if u["pinned"] else "") for u in us)
@@ -390,6 +429,9 @@ def _rel(x):
 
 def cmd_person(a):
     import clock
+    g = _feed_gate(a)
+    if g is not None:
+        return g
     p = _pages("person_page", a.key, clock.today())
     if p is None:
         _emit(a, {"key": a.key, "found": False}, "%s: unknown" % a.key)
@@ -434,6 +476,9 @@ def _org_text(n, depth=0):
 
 def cmd_org(a):
     import clock
+    g = _feed_gate(a)
+    if g is not None:
+        return g
     o = _pages("org_chart", a.key, clock.today())
     if o is None:
         _emit(a, {"key": a.key, "found": False}, "%s: unknown" % a.key)
@@ -452,6 +497,9 @@ def cmd_org(a):
 
 def cmd_upcoming(a):
     import clock
+    g = _feed_gate(a)
+    if g is not None:
+        return g
     start = a.start or clock.today().isoformat()
     u = _pages("upcoming", start, a.days)
     t = "\n".join("%s  %s%s\n%s" % ((e["starts_at"] or "?")[:16], e["name"], _rel(e),
@@ -464,6 +512,9 @@ def cmd_upcoming(a):
 
 def cmd_due(a):
     import clock
+    g = _feed_gate(a)
+    if g is not None:
+        return g
     d = _pages("due", clock.today())
     t = "\n".join("%s  every %d day(s); last contact %s%s" % (x["name"], x["keep_in_touch_days"], x["last_contact"] or "unknown",
                                                                   (" (%d days ago)" % x["days_since"]) if x["days_since"] is not None else "") for x in d["due"])
@@ -473,6 +524,9 @@ def cmd_due(a):
 
 def cmd_week(a):
     import clock
+    g = _feed_gate(a)
+    if g is not None:
+        return g
     start = dt.date.fromisoformat(a.start) if a.start else clock.today()
     d = store.week_digest(start, start + dt.timedelta(days=7))
     _with_relation(d["top_urgent"])
@@ -487,7 +541,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="gc", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=None, help="use another database file (default: the live rig.db)")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("status").set_defaults(f=cmd_status)
+    st_ = sub.add_parser("status")
+    st_.add_argument("--json", action="store_true")
+    st_.set_defaults(f=cmd_status)
     sub.add_parser("backup").set_defaults(f=cmd_backup)
     sub.add_parser("snapshot").set_defaults(f=cmd_snapshot)
     m = sub.add_parser("migrate")

@@ -161,6 +161,13 @@ class T(unittest.TestCase):
         store.set_path(hp)
         self.path = hp
         store.append_event("hello", "x")
+        # CHANGED by 4P.0b: on an empty DB with a setup present, gc status now returns the named
+        # no-feed state (feed_failing) instead of user_version. Seed connected pulls so this test
+        # keeps checking the classic status output it was written for.
+        import clock as _clock
+        _st = _clock.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        for _src in ("gmail", "calendar", "tasks"):
+            store.set_source_state(_src, _st, 0)
         env = dict(os.environ, AGE_BACKUP_DIR=os.path.join(self.tmp.name, "b"), AGE_NOTES_ROOT=os.path.join(self.tmp.name, "n"))
         for args, want in ((["status"], "user_version: %d" % head), (["events", "3"], "hello"), (["migrate"], "up to date")):
             p = subprocess.run([sys.executable, str(ROOT / "gc.py"), "--db", self.path] + args,
