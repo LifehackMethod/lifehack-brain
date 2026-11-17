@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cal diary PERIODIC tee-up — weekly / monthly / quarterly / yearly roll-up (P2).
+"""Planning-Diary PERIODIC tee-up — weekly / monthly / quarterly / yearly roll-up (P2).
 
 Runs AHEAD of a check-in (cron, at the period boundary) and pre-computes the LOOK-BACK so the
 human check-in is a short gray-matter session, not a recount. Mechanical, NO LLM:

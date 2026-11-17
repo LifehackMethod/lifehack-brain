@@ -156,7 +156,7 @@ the skill prose. (INFERRED from absence of a hook registration for telos writes 
 #### /throughline — Plot Tension-Surfacer (read-only, hook-enforced)
 
 **Role:** a read-only, context-blind investigator. Given a plot (pre-assembled or assembled live from
-the Cal diary) and a `--context` string, it runs four beats and writes findings to a scratchpad ONLY.
+the Planning-Diary) and a `--context` string, it runs four beats and writes findings to a scratchpad ONLY.
 Never writes back to source files, never concludes, never produces a task list. Surfaces; human disposes.
 
 **Trigger:** `/throughline` · `/throughline --context "..."` · "evaluate this" · "run the throughline on"
@@ -193,7 +193,7 @@ i.e. `<notes>/records/insights/throughline/`, not this path.
 ```
 `--context` is required (orientation, not a filter). `<plot-path>` is optional — if omitted AND caller
 names a **target** (slug / desk / `whole-system`) + **grain** (week/month/quarter/year), the skill
-assembles the plot from the Cal diary.
+assembles the plot from the Planning-Diary.
 
 **Staleness handling:** never refuse on age. A stale/cold/dormant plot is a FINDING, not a stop.
 Surface it in REFLECT. If the producer looks dead (newest rollup's `generated_at` far past cadence):
@@ -204,7 +204,7 @@ fall back to the single read-only sonnet sub-agent (the only place `/throughline
 Thin-plot degradation (no `dead_ends`): PROVOKE degrades from "X was tried and failed" to "you don't
 have evidence this is working" — name the degradation when it occurs. (SKILL.md lines 86-112)
 
-**Assembling the plot from the Cal diary (when no plot-path given):**
+**Assembling the plot from the Planning-Diary (when no plot-path given):**
 - `intended` by scope: project slug → brief `## DESIRED OUTCOME`; desk → `desks/{desk}/canon/purpose.md`;
   whole-system → `records/canon/purpose.md` + `state/telos.md`.
 - `origin → now` (the dots): last 2–3 diary rollups at the chosen grain
@@ -265,7 +265,7 @@ responsibility to arm; no hook pre-arms it automatically. (INFERRED from hook co
 line 16, guard_throughline_write_scope.sh lines 28-30)
 
 **Stores touched:**
-- READ: plot file (or Cal diary rollups + brief + journal for assembly) · `state/telos.md`
+- READ: plot file (or Planning-Diary rollups + brief + journal for assembly) · `state/telos.md`
   (whole-system scope) · `desks/cal/diary/…`.
 - WRITE: `$DRIVE/state/projects/infrastructure/evaluator/scratchpads/{slug}-{date}.md` ONLY. ⚠ **See 2026-08-27 correction above.**
 
@@ -285,10 +285,10 @@ year-long desired-state brief that `/checkin` (memory-read element) uses as the 
 outcome" when scope is root-level. `/telos` updates it; the memory-read element reads it.
 
 **`/throughline` → `project-manager` / `memory-read` (READS):** `/throughline` reads the brief's
-`## DESIRED OUTCOME` + `## DEAD ENDS` blocks when assembling the plot from the Cal diary (single-project
+`## DESIRED OUTCOME` + `## DEAD ENDS` blocks when assembling the plot from the Planning-Diary (single-project
 scope). It reads; it never writes the brief.
 
-**`/throughline` → Cal diary (READS):** `desks/cal/diary/…` rollups are the primary `origin→now` data
+**`/throughline` → Planning-Diary (READS):** `desks/cal/diary/…` rollups are the primary `origin→now` data
 source for diary-assembled plots. The diary is written by the `planning-weekly` / pulse-cron pipeline;
 `/throughline` reads it read-only. ⚠ **`desks/cal/` is DELIBERATE** — the planning desk's code, jobs
 and tiles were renamed from `cal`; its records directory was NOT, because moving the operator's live
@@ -313,7 +313,7 @@ consuming task notes. (security-canon.md; ingestion-reader-contract.md)
 |-------|-------|--------|------|
 | `/first-principles` | user input only | nothing | nothing |
 | `/telos` | `$DRIVE/state/telos.md` · Google Tasks (Life Map) | `$DRIVE/state/telos.md` (on approval) | nothing |
-| `/throughline` | plot file or Cal diary rollups · brief (dead_ends/desired outcome) · `state/telos.md` | scratchpad ONLY (`…/evaluator/scratchpads/` — ⚠ see 2026-08-27 correction: live DEST is `<notes>/records/insights/throughline/`) | `throughline_flag.sh` (self-clears) |
+| `/throughline` | plot file or Planning-Diary rollups · brief (dead_ends/desired outcome) · `state/telos.md` | scratchpad ONLY (`…/evaluator/scratchpads/` — ⚠ see 2026-08-27 correction: live DEST is `<notes>/records/insights/throughline/`) | `throughline_flag.sh` (self-clears) |
 | `/checkin` | → see memory-read element (`elements/read.md`) | | |
 
 ---

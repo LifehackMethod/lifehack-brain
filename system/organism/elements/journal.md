@@ -302,7 +302,7 @@ final path. Idempotent: regenerates the machine portion but PRESERVES any `## Hu
 verified` section verbatim (never overwrites human gray-matter).
 
 **The Cal pipeline prohibition (save SKILL.md "Hard Prohibitions"):** `/save` must NEVER write
-directly to a Cal diary file. The journal is the ONLY transit point for the Cal pipeline. An agent
+directly to a Planning-Diary file. The journal is the ONLY transit point for the Cal pipeline. An agent
 writing directly to Cal would bypass the append-only backstop and violate the single-writer
 invariant. `[honor]` — no hook blocks a rogue direct-Cal write.
 
@@ -386,7 +386,7 @@ This is the same signal the archivist uses during drift detection. Read-only.
 | Cal daily diary | `$DRIVE/desks/cal/diary/YYYY/MM/DD.md` | WRITE (atomic, machine sections only) | planning-diary-capture.py |
 | Cal period review draft | `$DRIVE/desks/cal/diary/YYYY/[MM/]review-{cadence}-{label}.md` (MM present for weekly/monthly; absent for quarterly/yearly) | WRITE | planning-diary-rollup.py |
 | Session transcript | `~/.claude/projects/*/$CLAUDE_CODE_SESSION_ID.jsonl` | READ | /save SC-1 (resolves the session to extract) |
-| Cal diary status tile | `$DRIVE/state/status/planning-diary.json` | WRITE | planning-diary-run.sh (inline Python after capture) |
+| Planning-Diary status tile | `$DRIVE/state/status/planning-diary.json` | WRITE | planning-diary-run.sh (inline Python after capture) |
 
 ---
 
@@ -522,7 +522,7 @@ This is the same signal the archivist uses during drift detection. Read-only.
 What the journal element never does (from the file header + skill hard rules):
 
 - No edits or deletions to existing entries in `## Log` — the journal is append-only by definition.
-- No direct write to a Cal diary file as a substitute for the journal → Cal path (`[honor]`).
+- No direct write to a Planning-Diary file as a substitute for the journal → Cal path (`[honor]`).
 - No write of a journal entry that lacks the slug in `system/project-registry.md` — except
   `{desk}-general`, which is always valid (`[honor]`).
 - No write to the clone-side copy of journal.md (`~/lifehack-brain/system/journal.md`) — this is

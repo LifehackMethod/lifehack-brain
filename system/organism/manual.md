@@ -872,7 +872,7 @@ Three orienting skills — diagnose → year-anchor → tension-surface — none
 
 INTEROP:
   FEEDS        memory-read      · /telos updates state/telos.md; the memory-read element (/checkin) reads it as the whole-system desired-outcome anchor at root scope
-  READS        project-manager  · /throughline reads the brief's ## DESIRED OUTCOME + ## DEAD ENDS when assembling the plot from the Cal diary (single-project scope) — reads only, never writes the brief
+  READS        project-manager  · /throughline reads the brief's ## DESIRED OUTCOME + ## DEAD ENDS when assembling the plot from the Planning-Diary (single-project scope) — reads only, never writes the brief
   READS        planning-diary   · /throughline reads desks/cal/diary/… rollups as the primary origin→now data source for diary-assembled plots (⚠ desks/cal/ is DELIBERATE — code/jobs/tiles renamed to planning, the records directory was NOT)
   FEEDS        execution-layer  · /first-principles produces a sharpened question / "build this first" / advisory structure the user carries into any execution skill; no runtime handoff — the artifact is verbal
   CHAINS       safe-reader-plane · /telos Life Map free-text is reader-actor isolated; /telos chains through safe_tasks.py (structured fields) → ingest-reader subagent (free-text) before consuming task notes
