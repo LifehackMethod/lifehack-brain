@@ -19,6 +19,9 @@ checks:
   - {id: planning-desk-guard-tests, watches: "the guards the desk's sessions rely on hold — the desk's glasses, its scope boundary, No Private Desks, the one tile home, the compute-mechanically gate"}
   - {id: planning-desk-data-path, watches: "the person's desks sit where canon/data-layout.md says, read through the ONE desk list reader (shared/desk_list.py) — never a literal desk name"}
   - {id: planning-desk-weekly-receipt, watches: "the weekly run's receipt CONTENT — the staged validated picture plus the engine's snapshot-check result — read through ONE command Grand Central names (canon/status-health-proof-sop.md: freshness is not proof of work)"}
+  - {id: planning-desk-weekly-prime-row, watches: "the planning-weekly-prime job row: LEGACY, replaced by Grand Central's engine; built, deliberately not in use; deleting it is the owner's separate yes", dormant: true}
+  - {id: planning-desk-diary-row, watches: "the planning-diary job row: stays OFF by canon (canon/data-layout.md:242; canon/circulatory-system-sop.md:251); built, deliberately not in use", dormant: true}
+  - {id: planning-desk-job-sim-rig, watches: "the job-sim rig that proves the job door bites", not_run: "the rig is benched on this machine this stage; it rewrote real state (2026-11-17)"}
 receipts:
   - <brain>/status/component-planning-desk-door-rows.json
   - <brain>/status/component-planning-desk-guard-tests.json
@@ -128,7 +131,8 @@ Suffix (human-owned): ·gap
 
 **No run on record (untested).** No check on this page has written a receipt into `<brain>/status/` yet — the checks exist and their planted-fault self-tests pass (system/tools/tests/test_planning_desk_checks.sh, ALL PASS), but canon says a label is earned by a dated check that watched the part work, and nothing has earned one here yet. The page gets its first stamp after his real week and any fixes (the plan's step 7; his decision 6).
 
-- job-sim rig: **not run here** — the rig is barred from this machine (it rewrote real state on this machine, 2026-11-17); a rig never shown failing is not trusted (canon/cron-jobs-sop.md §10), so this row stays "not run" and is recorded as such, by design.
+- The planning-weekly-prime row (LEGACY) and the planning-diary row (OFF by canon) are declared in the frontmatter as `dormant: true` checks: the stamper reads them DORMANT, counted beside the roll-up, never inside it; check (i) keeps verifying they never run.
+- job-sim rig (declared `not_run:` in the frontmatter): **not run here** — the rig is barred from this machine (it rewrote real state on this machine, 2026-11-17); a rig never shown failing is not trusted (canon/cron-jobs-sop.md §10), so this row stays "not run" and is recorded as such, by design.
 
 <!-- STATUS:BEGIN stamper=system/tools/organism/component_page.py stamped=<time> sha256=<hash> -->
 <!-- STATUS:END -->
