@@ -169,6 +169,11 @@ if m and m.upper() != "TBD" and m not in ("none", "small", "medium", "large"):
 b = budget.strip()
 if b and b.upper() != "TBD" and m != "none" and not (b.isdigit() and int(b) > 0):
     reasons.append(f"bad budget '{b}': must be an integer > 0 unless model=none")
+# (a1) source is a CLOSED list (ledger L123; BUILD-ORDER Q9): the shared reader that feeds the job (canon cron-jobs-sop §5).
+SOURCES = ("gmail", "web", "gsheet", "git", "none")   # git: mirror-fetch reads the origin remote
+s = source.strip()
+if s and s.upper() != "TBD" and s not in SOURCES:
+    reasons.append(f"bad source '{s}': must be " + "|".join(SOURCES))
 
 # (a2) 5.9(a): a check must match REAL CONTENT. Refused: a regex that only tests an exit code written to a file ("rc":0), that the
 # file is non-empty (^.+$, .*), or -- being a bare class/anchor -- that the file merely exists / is fresh. Content = at least one
@@ -260,13 +265,14 @@ def vendor_exempt(f):
     return any(f.endswith("/tools/%s/%s" % (name.strip(), rel)) for rel in vendor)
 VENDOR_KINDS = ("requests", "urllib")
 G = r'(?:\bgws\b|\bGWS\w*\b|\$\{?GWS\w*\}?)["\'\]]*[\s,]+["\']?'
-# Reads of outside content (Gmail messages/attachments, web) go ONLY through the shared fetch; WRITES to Enver's own Google account are
-# allowed from a desk runner (2026-10-28 ruling): gmail messages modify/batchModify/send + labels + getProfile (a harmless preflight),
+# Reads of outside content (Gmail messages/attachments, web) go ONLY through the shared fetch; WRITES to the owner's own Google account are
+# allowed from a desk runner (2026-10-28 ruling): gmail messages modify/batchModify + labels + getProfile (a harmless preflight),
+# NEVER send: a scheduled job does not send mail, and no drafts path is added (the owner's no-send ruling, COMPASS P-184; ledger L360),
 # calendar events insert/patch; sheets values update/append/batchUpdate; tasks, docs and drive are not scanned. A raw gmail or calendar
 # call is refused unless its verb is on the write list (fail closed: an unreadable verb is refused). Own-account sheet and calendar READS
 # have shared safe readers (system/tools/safe_sheets.py, safe_calendar.py): the raw read stays refused and the message points there.
 GWS_SVC = re.compile(G + r"(gmail|calendar)\b")
-GWS_WRITE = {"gmail": re.compile(r"\s*users (?:messages (?:modify|batchModify|send)|labels|getProfile)\b"),
+GWS_WRITE = {"gmail": re.compile(r"\s*users (?:messages (?:modify|batchModify)|labels|getProfile)\b"),
              "calendar": re.compile(r"\s*events (?:insert|patch)\b")}
 GWS_TAIL = {"gmail": "go through the shared fetch", "calendar": "read through system/tools/safe_calendar.py"}
 def gws_refusal(ln):
@@ -276,6 +282,8 @@ def gws_refusal(ln):
         rest = ln[m.end(): ms[i + 1].start() if i + 1 < len(ms) else len(ln)]
         rest = " " + " ".join(t for t in re.split(r"[\s,\"'\[\]()]+", rest) if t)
         if not GWS_WRITE[m.group(1)].match(rest):
+            if m.group(1) == "gmail" and re.match(r"\s*users (?:messages|drafts) send\b", rest):
+                return "gws gmail send", "a scheduled job never sends mail (the owner's no-send ruling)"
             return f"gws {m.group(1)} read", GWS_TAIL[m.group(1)]
     return None
 RAW = [("gws sheets values get", re.compile(r"\bsheets\b.*\bvalues\b.*\b(?:get|batchGet)\b|\bvalues\s*(\(\s*\))?\.(?:get|batchGet)\b"), "read through system/tools/safe_sheets.py"),

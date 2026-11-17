@@ -4,7 +4,7 @@
 #   good row runs (0) · row failing the check refused (78, not 75, command never ran) · `|| true` in a runner refused · `|| true` on the row's command
 #   refused · presence-grade / missing check refused · F7: a status tile named for another job refused at the door AND at run time (and the run-time
 #   tile marker refuses a wrongly named tile) · OFF row stands down 75 · each refusal leaves one fire-journal line (hook job-run:check-row, event job-run)
-#   · the live email-summary-write row passes --check-row.
+#   · the live email-summary-write row passes --check-row · CR-9: gmail send refused, gmail modify passes, an off-list source word refused.
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
@@ -31,8 +31,15 @@ tj-notrow | yes | 3600 | does a thing | | none | 0 | none | $G
 tj-tile | yes | 3600 | does a thing | $CK | none | 0 | none | bash $T/desk/tools/tile/r.sh
 tj-tilevar | yes | 3600 | does a thing | $CK | none | 0 | none | bash $T/desk/tools/tilevar/r.sh
 tj-off | no | 3600 | does a thing | $CK | none | 0 | none | bash $T/desk/tools/swallow/r.sh
+tj-send | yes | 3600 | does a thing | $CK | none | 0 | none | bash $T/desk/tools/send/r.sh
+tj-modify | yes | 3600 | does a thing | $CK | none | 0 | none | bash $T/desk/tools/modify/r.sh
+tj-badsrc | yes | 3600 | does a thing | $CK | none | 0 | bogus | $G
 \`\`\`
 ROWS
+# CR-9 step 0(b), ledger L360 + L123: the door refuses a gmail SEND (no drafts path is added) and a source word off the closed list.
+mkdir -p "$T/desk/tools/send" "$T/desk/tools/modify"
+printf '#!/usr/bin/env bash\n"$GWS" gmail users messages send --params "{}"\necho "ran n=1" > "$JOB_SIM_DIR/out"\n' > "$T/desk/tools/send/r.sh"
+printf '#!/usr/bin/env bash\n"$GWS" gmail users messages modify --params "{}"\necho "ran n=1" > "$JOB_SIM_DIR/out"\n' > "$T/desk/tools/modify/r.sh"
 export LIFEHACK_JOBS_FILE="$ROOT/system/jobs.md"
 printf '#!/usr/bin/env bash\necho pushed >> "%s/notified"\n' "$T" > "$T/notify.sh"; export JOB_RUN_NOTIFY="$T/notify.sh"
 fails=0; ck() { if [ "$2" = "$3" ]; then echo "ok   $1"; else echo "FAIL $1: got '$2' wanted '$3'"; fails=$((fails+1)); fi; }
@@ -91,6 +98,9 @@ ck "tile-name variable job runs (rc 0)"           "$(run tj-tilevar)" 0
 ck "run-time marker refuses a wrongly named tile" "$(LIFEHACK_JOB_RUN_ID=tj-a CODE_ROOT="$ROOT" bash -c 'source "$CODE_ROOT/system/tools/status-tile.lib.sh"; write_status_tile tj-b 0 60 ok err' 2>&1 >/dev/null | grep -c 'REFUSED status tile')" 1
 ck "refusal left an errors/ file"                 "$([ -n "$(ls "$LIFEHACK_STATE_DIR/jobs/tj-bad/errors")" ] && echo yes || echo no)" yes
 ck "OFF row (bad runner) still stands down 75"   "$(run tj-off)" 75
+ck "gmail SEND in a runner is refused by name"     "$(bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-send | grep -c 'gws gmail send')" 1
+ck "gmail modify (an own-account write) still passes" "$(bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-modify)" PASS
+ck "a source word off the closed list is refused by name" "$(bash "$ROOT/system/tools/install-schedulers.sh" --check-row tj-badsrc | grep -c "bad source 'bogus': must be gmail|web|gsheet|git|none")" 1
 ck "live email-summary-write row passes --check-row" "$(LIFEHACK_JOBS_FILE= LIFEHACK_DESK_REPO= bash "$REAL_ROOT/system/tools/install-schedulers.sh" --check-row email-summary-write)" PASS
 # $LIFEHACK_PERSONAL_CODE in a row: the door expands it to the personal folder (DOOR_DESK); job-run.sh exports it (pointer file -> the scratch desk).
 mkdir -p "$T/wtdesk/tools/pv" "$T/maindesk/tools/pv" "$T/desk/tools/pv" "$HOME/.config/lifehack"
