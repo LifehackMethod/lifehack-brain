@@ -76,7 +76,9 @@ find a project you have half-forgotten, by name, without searching the whole fol
 # a line here, and what a cold session reads before it reads anything else. ⛔ NO line count, NO size
 # threshold, anywhere in this text — the bound the system enforces is ALTITUDE (does this fact hold
 # for every conversation, on any subject?), never a number of lines. That was weighed and rejected:
-# `knowledge-altitude.md` §7 bars "NO numeric scoring, NO thresholds" for exactly this kind of file.
+# `knowledge-altitude.md` §7 bars "numeric scoring, thresholds or 'preponderance equations'" —
+# this exclusion is about filing (where a piece of knowledge sits); evidence points stay a judged
+# weight, never a computed score.
 ROOT_CANON_BODY = """# Canon
 
 **intent:** only what must be true for EVERY conversation, on ANY subject — your name, how you want
