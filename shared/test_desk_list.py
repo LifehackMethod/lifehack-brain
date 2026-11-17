@@ -234,6 +234,65 @@ class DeskIdsNoYaml(Base):
         self.assertEqual(self.ids(), "['alpha']")
 
 
+class PlanningDeskFolder(Base):
+    """planning_desk_folder(): the ONE resolver (CR-9) — the planning desk's folder from its
+    desk-list row, found by desk_id 'planning' then 'cal' (the row keeps desk_id 'cal' after the
+    folder moves to desks/planning; the folder comes from the row's paths, never the id)."""
+    CAL_ROW = ("schema_version: 2\ndesks:\n  - desk_id: alpha\n    open_loops_path: desks/alpha/state/open-loops.md\n"
+               "    backlog_mode: queue\n  - desk_id: cal\n    purpose_path: desks/planning/canon/purpose.md\n"
+               "    open_loops_path: desks/planning/state/open-loops.md\n    backlog_mode: register\n")
+    PLANNING_ROW = CAL_ROW.replace("- desk_id: cal", "- desk_id: planning")
+
+    def resolve(self):
+        code = ("import sys; sys.path.insert(0, %r); import desk_list; f, e = desk_list.planning_desk_folder(); "
+                "print('%%s|%%s' %% (f, e))" % (HERE,))
+        r = self.run_py("-c", code)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def cli(self):
+        return self.run_py(DESK_LIST, "planning-folder")
+
+    def test_row_planning_found(self):
+        self.write("desks/desk-registry.yaml", self.PLANNING_ROW)
+        self.assertEqual(self.resolve(), "planning|None")
+
+    def test_row_cal_found_but_folder_from_its_paths(self):
+        self.write("desks/desk-registry.yaml", self.CAL_ROW)
+        self.assertEqual(self.resolve(), "planning|None")
+
+    def test_no_row_is_a_named_error_never_desks_cal(self):
+        self.write("desks/desk-registry.yaml", GOOD)          # rows, but no planning row
+        out = self.resolve()
+        self.assertTrue(out.startswith("None|"), out)
+        self.assertIn("no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal')", out)
+        self.assertIn("never falling back to desks/cal", out)
+        self.assertNotIn("cal|", out)
+
+    def test_no_list_is_the_named_error_too(self):
+        out = self.resolve()
+        self.assertTrue(out.startswith("None|") and "no planning-desk row" in out, out)
+
+    def test_broken_list_names_the_real_reason(self):
+        self.write("desks/desk-registry.yaml", BROKEN)
+        out = self.resolve()
+        self.assertTrue(out.startswith("None|") and "cannot be read" in out, out)
+        self.assertIn("planning desk's folder is unknown", out)
+
+    def test_cli_prints_the_folder(self):
+        self.need_mode()
+        self.write("desks/desk-registry.yaml", self.PLANNING_ROW)
+        r = self.cli()
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "planning"), r.stderr)
+
+    def test_cli_exits_2_with_the_named_message_when_no_row(self):
+        self.write("desks/desk-registry.yaml", GOOD)
+        r = self.cli()
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("ERROR: no planning-desk row in the desk list", r.stderr)
+        self.assertIn("never falling back to desks/cal", r.stderr)
+
+
 class BacklogGroom(Base):
     def test_no_list_no_desks_no_crash(self):
         rep, err = self.groom()

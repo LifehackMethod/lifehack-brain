@@ -60,22 +60,7 @@ LENS_DIR="$CODE_ROOT/system/tools/planning-analysis"   # CODE (lens prompt files
 # moves to desks/planning later, and the registry row's own paths are the truth. The row is
 # found by desk_id (the stable identity), under either id the desk has carried; neither id is
 # ever used as a path. Loud failure below — never a fallback to desks/cal.
-PDESK="$(python3 - "$CODE_ROOT" <<'PYDESK'
-import sys
-sys.path.insert(0, sys.argv[1] + "/shared")
-import desk_list
-for want in ("planning", "cal"):
-    name, err = desk_list.desk_folder(want)
-    if err:
-        sys.exit("the desk list cannot be read, so the planning desk's folder is unknown: %s" % err)
-    if name:
-        print(name)
-        sys.exit(0)
-sys.exit("no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
-         "update the row in <notes>/desks/desk-registry.yaml; refusing to guess the planning "
-         "desk's folder (never falling back to desks/cal)")
-PYDESK
-)" || { echo "[planning-analyze] could not resolve the planning desk's folder from the desk list (message above)"; exit 2; }
+PDESK="$(python3 "$CODE_ROOT/shared/desk_list.py" planning-folder)" || { echo "[planning-analyze] could not resolve the planning desk's folder from the desk list (message above)"; exit 2; }
 VAULT_ROOT="$DRIVE/desks/$PDESK/state/raw-vault"       # CONTENT (the day's vault; folder from the desk list)
 WATCHDOG=900                     # 15-min ceiling per wave
 LENSES="big-rocks logistics cracks"

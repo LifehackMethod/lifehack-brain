@@ -54,23 +54,10 @@ JOURNAL = os.path.join(DRIVE, "system/journal.md")
 import desk_list                                                            # noqa: E402
 
 
-def _planning_desk_folder():
-    """The planning desk's folder name, from its desk-list row. Exit loudly (never guess)."""
-    for want in ("planning", "cal"):
-        name, err = desk_list.desk_folder(want)
-        if err:
-            sys.stderr.write(
-                "the desk list cannot be read, so the planning desk's folder is unknown: %s\n" % err)
-            sys.exit(2)
-        if name:
-            return name
-    sys.stderr.write(
-        "no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
-        "update the row in <notes>/desks/desk-registry.yaml with its purpose_path / open_loops_path "
-        "under desks/<folder>/; refusing to guess the planning desk's folder (never falling back "
-        "to desks/cal)\n")
+_PLANNING_DESK, _pdesk_err = desk_list.planning_desk_folder()
+if not _PLANNING_DESK:
+    sys.stderr.write(_pdesk_err + "\n")
     sys.exit(2)
-_PLANNING_DESK = _planning_desk_folder()
 DIARY_ROOT = os.path.join(DRIVE, "desks", _PLANNING_DESK, "diary")
 PROJECT_REGISTRY = os.path.join(DRIVE, "system/project-registry.md")  # the watchlist (active/paused slugs)
 

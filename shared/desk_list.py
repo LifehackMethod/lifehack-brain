@@ -30,6 +30,8 @@ Which list (in order):
 CLI:
     python3 shared/desk_list.py --path     # prints the list's path, or nothing
     python3 shared/desk_list.py --check    # prints how many desks, or the real error (exit 1)
+    python3 shared/desk_list.py planning-folder   # the planning desk's folder name (exit 2 + the
+                                                  # named error if there is no planning row)
 """
 import os
 import re
@@ -230,6 +232,33 @@ def desk_folder(desk_id, env=None):
     return None, None
 
 
+def planning_desk_folder(env=None):
+    """-> (folder, error). The planning desk's folder name under <notes>/desks/, read from the ONE
+    desk-list row that owns the planning desk, found by desk_id 'planning' first, then 'cal' (the
+    owner's row keeps desk_id 'cal' after his folder moves to desks/planning; the folder comes from
+    the row's own purpose_path / open_loops_path, NEVER from the id). No row -> (None, a named error
+    that says the resolver is never falling back to desks/cal); a broken list -> (None, the real
+    error, wrapped so a caller knows the planning folder is what it blocked). Never raises; needs
+    no PyYAML. The ONE resolver — planning-vault-pull.py, planning-diary-rollup.py,
+    planning-diary-capture.py, planning-light-sweep.py, planning-window-to-vault.py and the shell
+    runners (via `desk_list.py planning-folder`) call this; nobody keeps a private copy."""
+    entries, err = load_desks(env)
+    if err:
+        return None, ("the desk list cannot be read, so the planning desk's folder is unknown: %s" % err)
+    for want in ("planning", "cal"):
+        for d in entries:
+            if str(d.get("desk_id") or "").strip() != want:
+                continue
+            for key in ("purpose_path", "open_loops_path"):
+                parts = str(d.get(key) or "").replace("\\", "/").split("/")
+                if len(parts) > 2 and parts[0] == "desks" and parts[1] not in ("", ".", ".."):
+                    return parts[1], None
+    return None, ("no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
+                  "update the row in <notes>/desks/desk-registry.yaml with its purpose_path / "
+                  "open_loops_path under desks/<folder>/; refusing to guess the planning desk's "
+                  "folder (never falling back to desks/cal)")
+
+
 def _render(v):
     """One entry value as the simple shape writes it: bare when safe, double-quoted when it carries
     spaces or anything the reader would otherwise misread. The reader's _scalar() reads both back."""
@@ -318,7 +347,14 @@ def main(argv=None):
         p = resolve_desk_list()
         print("%d desk(s) in %s" % (len(desks), p) if p else "no desk list (no desks)")
         return 0
-    print("usage: desk_list.py --path | --check", file=sys.stderr)
+    if argv == ["planning-folder"]:
+        name, err = planning_desk_folder()
+        if not name:
+            print("ERROR: " + err, file=sys.stderr)
+            return 2
+        print(name)
+        return 0
+    print("usage: desk_list.py --path | --check | planning-folder", file=sys.stderr)
     return 2
 
 

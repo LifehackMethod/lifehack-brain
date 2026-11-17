@@ -71,25 +71,12 @@ _ROOT_SOURCE, DRIVE = brain_root.resolve_brain_root()
 import desk_list                                                            # noqa: E402
 
 
-def _planning_desk_folder():
-    """The planning desk's folder name, from its desk-list row. Exit loudly (never guess)."""
-    for want in ("planning", "cal"):
-        name, err = desk_list.desk_folder(want)
-        if err:
-            sys.stderr.write(
-                "the desk list cannot be read, so the planning desk's folder is unknown: %s\n" % err)
-            sys.exit(2)
-        if name:
-            return name
-    sys.stderr.write(
-        "no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
-        "update the row in <notes>/desks/desk-registry.yaml with its purpose_path / open_loops_path "
-        "under desks/<folder>/; refusing to guess the planning desk's folder (never falling back "
-        "to desks/cal)\n")
-    sys.exit(2)
 # DRIVE unset is a real answer here ("nothing to build"), so the desk-list resolution only runs
 # when there is somewhere to resolve FOR.
-_PLANNING_DESK = _planning_desk_folder() if DRIVE else None
+_PLANNING_DESK, _pdesk_err = desk_list.planning_desk_folder() if DRIVE else (None, None)
+if DRIVE and not _PLANNING_DESK:
+    sys.stderr.write(_pdesk_err + "\n")
+    sys.exit(2)
 VAULT_ROOT = os.path.join(DRIVE, "desks", _PLANNING_DESK, "state", "weekly-vault") if DRIVE else None
 
 # Known free-text keys the adapters render into read_item's `content` blob (as "key: value" lines).
