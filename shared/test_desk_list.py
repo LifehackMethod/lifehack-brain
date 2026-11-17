@@ -288,19 +288,29 @@ class Scaffold(Base):
         self.assertFalse(os.path.exists(os.path.join(self.notes, "x")))
 
     def test_valid_name_passes_and_registry_lists_all_six(self):
+        # rewritten 2026-11-17 (CR-9 step 2a, ledger L34/D11): the scaffold now builds the
+        # desk-building SOP §2 shape — no state/, canon/canon.md, no _registry.md — and WRITES the
+        # desk-list row through append_desk_entry instead of printing it for hand-pasting.
         r = self.scaffold("new-desk_2")
         self.assertEqual(r.returncode, 0, r.stderr)
         base = os.path.join(self.notes, "desks", "new-desk_2")
-        with open(os.path.join(base, "_registry.md"), encoding="utf-8") as f:
-            reg = f.read()
-        starters = ("CLAUDE.md", "_registry.md", "canon/current.md", "canon/purpose.md",
-                    "state/current.md", "state/open-loops.md")
+        starters = ("CLAUDE.md", "canon/canon.md", "canon/purpose.md", "open-loops.md",
+                    "desk.yaml", "diary/README.md")
         for rel in starters:
             self.assertTrue(os.path.isfile(os.path.join(base, rel)), rel)
-            self.assertIn("`%s`" % rel, reg)
+        for gone in ("_registry.md", "canon/current.md", "state/current.md", "state/open-loops.md"):
+            self.assertFalse(os.path.exists(os.path.join(base, gone)), gone)
+        self.assertFalse(os.path.exists(os.path.join(base, "state")))
         for dead in ("health_producer", "pulse_slot", "status_tile_path", "Pulse"):
             self.assertNotIn(dead, r.stdout)
-        self.assertIn(os.path.join(self.notes, "desks", "desk-registry.yaml"), r.stdout)
+        # the row was WRITTEN to the one desk list, not printed for hand-pasting
+        list_path = os.path.join(self.notes, "desks", "desk-registry.yaml")
+        self.assertTrue(os.path.isfile(list_path))
+        import desk_list as _dl
+        sys.path.insert(0, HERE)
+        desks, err = _dl.load_desks({"LIFEHACK_DESK_LIST": list_path})
+        self.assertIsNone(err)
+        self.assertEqual([d["desk_id"] for d in desks], ["new-desk_2"])
         with open(os.path.join(base, "CLAUDE.md"), encoding="utf-8") as f:
             claude = f.read()
         self.assertNotIn("guard_canon_write protects it", claude)

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""desk_list.py -- the ONE reader of YOUR desk list, kept in your notes folder next to your desks.
+"""desk_list.py -- the ONE reader of YOUR desk list, kept in your notes folder next to your desks
+(and, since CR-9 step 2a, the ONE writer of a new desk's row into it: append_desk_entry, used by
+desk_scaffold.py — never a second desk list).
 
 The plugin ships no desk list and no example of one. Desks belong to one person, so the list of them lives in
 that person's notes folder, beside the desks it names:
@@ -226,6 +228,79 @@ def desk_folder(desk_id, env=None):
             if len(parts) > 2 and parts[0] == "desks" and parts[1] not in ("", ".", ".."):
                 return parts[1], None
     return None, None
+
+
+def _render(v):
+    """One entry value as the simple shape writes it: bare when safe, double-quoted when it carries
+    spaces or anything the reader would otherwise misread. The reader's _scalar() reads both back."""
+    s = str(v)
+    if s == "" or re.search(r"[\s#\"':{}\[\],&*!|>%@`]", s) or s.lower() in ("true", "false", "null", "~"):
+        return '"%s"' % s.replace("\\", "\\\\").replace('"', '\\"')
+    return s
+
+
+def append_desk_entry(notes_root, entry):
+    """Add one desk to the person's ONE desk list, at <notes_root>/desks/desk-registry.yaml — the same
+    list every reader here reads; there is never a second list. Creates the list with its two-line
+    header (`schema_version: 2` + `desks:`) when the person has none yet. -> (path, None) on success,
+    or (None, reason) — a duplicate desk_id, an unreadable existing list, or a bad entry — and writes
+    NOTHING in any failure case. Never raises."""
+    if not isinstance(entry, dict) or not str(entry.get("desk_id") or "").strip():
+        return None, "the entry has no desk_id"
+    desk_id = str(entry["desk_id"]).strip()
+    path = os.path.join(notes_root, LIST_REL)
+    text = ""
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+        except (OSError, UnicodeDecodeError) as e:
+            return None, "the desk list %s cannot be read: %s: %s" % (path, type(e).__name__, " ".join(str(e).split()))
+        existing, err = _parse_or_yaml(text, path)
+        if err:
+            return None, err
+        if any(str(d.get("desk_id") or "").strip() == desk_id for d in existing):
+            return None, "desk '%s' already has a row in %s — one desk, one row; nothing written" % (desk_id, path)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+            if text and not text.endswith("\n"):
+                f.write("\n")
+            if not text.strip():
+                f.write("schema_version: 2\ndesks:\n")
+            for k, v in entry.items():
+                f.write("  - %s: %s\n" % (k, _render(v)) if k == "desk_id"
+                        else "    %s: %s\n" % (k, _render(v)))
+    except OSError as e:
+        return None, "the desk list %s cannot be written: %s: %s" % (path, type(e).__name__, " ".join(str(e).split()))
+    return path, None
+
+
+def _parse_or_yaml(text, path):
+    """The same read load_desks() does, for one list file chosen by path -> (entries, None) or
+    (None, reason). Used by append_desk_entry so a broken list is never appended to."""
+    try:
+        import yaml
+    except ImportError:
+        yaml = None
+    if yaml is not None:
+        try:
+            data = yaml.safe_load(text)
+        except Exception as e:
+            return None, "the desk list %s cannot be read: %s: %s" % (path, type(e).__name__, " ".join(str(e).split()))
+    else:
+        data, err = _parse_simple(text)
+        if err:
+            return None, "the desk list %s cannot be read: %s" % (path, err)
+    if data is None or data == {}:
+        return [], None
+    if not isinstance(data, dict):
+        return None, "the desk list %s is not a mapping; expected `desks:` at the top" % path
+    entries = data.get("desks") or []
+    if not isinstance(entries, list):
+        return None, "the desk list %s: `desks:` is %s, not a list" % (path, type(entries).__name__)
+    return entries, None
 
 
 def main(argv=None):
