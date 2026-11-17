@@ -77,7 +77,7 @@ nowhere else.
 # REL = the project folder, relative to $DATA (from the registry's path field)
 p="$REL"
 while [ -n "$p" ] && [ "$p" != "." ]; do
-  [ -f "$DATA/$p/canon/current.md" ] && echo "CANON: $p/canon/current.md"
+  [ -f "$DATA/$p/canon/canon.md" ] && echo "CANON: $p/canon/canon.md"
   case "$p" in */*) p="${p%/*}";; *) p="";; esac
 done
 ```
@@ -88,7 +88,7 @@ frontmatter, if it has one.
 **Hard limits — minimalism is the gate:**
 
 - **Only canon on the branch.** Skip every off-branch project and subject.
-- **Skip every `desks/*/canon/current.md`.** The session loader already put all of them in context at
+- **Skip every `desks/*/canon/canon.md`.** The session loader already put all of them in context at
   SessionStart. Re-reading them double-stuffs the window with a copy of what is already there. The one
   exception is when the loader hit its size ceiling and said so — it names what it dropped; those you
   may pull.
