@@ -1,3 +1,5 @@
+> **`<planning desk folder>`** = the planning desk's folder from the desk list (`shared/desk_list.py`, desk-registry.yaml); never assume `desks/cal`.
+
 # PASS L1 — LOOK BACK (local only — no account needed)
 
 TRIPWIRE: everything in this pass comes from files already on this machine. No calendar, no email, no
@@ -10,7 +12,7 @@ correct it. Never open with a blank page, never open with "so, what happened yes
 
 ## Do this (read silently first)
 
-1. **Read yesterday's diary, if it exists.** Path: `<notes>/desks/cal/diary/{YYYY}/{MM}/{DD}.md` for
+1. **Read yesterday's diary, if it exists.** Path: `<notes>/<planning desk folder>/diary/{YYYY}/{MM}/{DD}.md` for
    yesterday's date. **If the file doesn't exist, that is a normal, expected state — say so plainly**
    ("nothing on file for yesterday — either the first day, or a day this wasn't run") and move on. It
    is not an error and not a gap to apologize for.

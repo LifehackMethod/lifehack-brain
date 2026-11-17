@@ -873,7 +873,7 @@ Three orienting skills — diagnose → year-anchor → tension-surface — none
 INTEROP:
   FEEDS        memory-read      · /telos updates state/telos.md; the memory-read element (/checkin) reads it as the whole-system desired-outcome anchor at root scope
   READS        project-manager  · /throughline reads the brief's ## DESIRED OUTCOME + ## DEAD ENDS when assembling the plot from the Planning-Diary (single-project scope) — reads only, never writes the brief
-  READS        planning-diary   · /throughline reads desks/cal/diary/… rollups as the primary origin→now data source for diary-assembled plots (⚠ desks/cal/ is DELIBERATE — code/jobs/tiles renamed to planning, the records directory was NOT)
+  READS        planning-diary   · /throughline reads <planning desk folder>/diary/… rollups as the primary origin→now data source for diary-assembled plots (⚠ the planning desk folder is moving desks/cal → desks/planning, CR-9 — resolve from the desk list, never assume desks/cal)
   FEEDS        execution-layer  · /first-principles produces a sharpened question / "build this first" / advisory structure the user carries into any execution skill; no runtime handoff — the artifact is verbal
   CHAINS       safe-reader-plane · /telos Life Map free-text is reader-actor isolated; /telos chains through safe_tasks.py (structured fields) → ingest-reader subagent (free-text) before consuming task notes
   GUARDED-BY   guard_throughline_write_scope   · PreToolUse Write|Edit: fires only while throughline_flag.sh is armed; hard-blocks any write outside the scratchpad dir during a /throughline run
@@ -946,7 +946,7 @@ Two interrogative cadence skills — a daily trust-fall and a weekly helmsman �
 
 INTEROP:
   CHAINS       council-engine        · planning-weekly Phase 4 IS the advisory-council engine — six member briefs dispatched as the advisor roster (blind-diverge → argue → converge); the ONLY top-tier subagents in this element
-  FEEDS        item-store            · planning-weekly reads the faithful library via shared/tools/item_store_window.py (--mode bundle); planning-daily works from its own vault, `<notes>/desks/cal/state/raw-vault/<today>/`, plus a light sweep; metadata-only and index-only reads are REJECTED — the store is the query layer, not Google
+  FEEDS        item-store            · planning-weekly reads the faithful library via shared/tools/item_store_window.py (--mode bundle); planning-daily works from its own vault, `<notes>/<planning desk folder>/state/raw-vault/<today>/`, plus a light sweep; metadata-only and index-only reads are REJECTED — the store is the query layer, not Google
   KEYS-OFF     gws-plane             · every calendar and task read/write exits through the gws CLI; the four identifiers come from the reader's own `<notes>/config/cal.md` via shared/cal_config.py, never a constant in a tool (`cal` there means CALENDAR, not the renamed desk)
   GUARDED-BY   hook-plane            · guard_calendar_writes.sh (agent calendar only, default-deny) + guard_tasks_writes.sh with lib/tasks_guard.py (goals list read-only, one carve-out, delete/clear never); both registered PreToolUse/Bash and both fire-tested LIVE
   TRIGGERS-BY  cron                  · each scheduled from its row in a jobs.md (launchd → job-run.sh on a Mac): planning-weekly-prime (daily tick, weekly work), planning-diary (one row driving five cadences); planning-vault / planning-vault-weekly / planning-analyze have NO row — the daily compensates by pulling live

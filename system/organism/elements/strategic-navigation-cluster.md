@@ -208,8 +208,9 @@ have evidence this is working" — name the degradation when it occurs. (SKILL.m
 - `intended` by scope: project slug → brief `## DESIRED OUTCOME`; desk → `desks/{desk}/canon/purpose.md`;
   whole-system → `records/canon/purpose.md` + `state/telos.md`.
 - `origin → now` (the dots): last 2–3 diary rollups at the chosen grain
-  (`desks/cal/diary/{YYYY}/{MM}/review-{week|month}-{period}.md` — ⚠ `desks/cal/` is DELIBERATE:
-  the planning desk's code/jobs/tiles were renamed, its records directory was NOT).
+  (`<planning desk folder>/diary/{YYYY}/{MM}/review-{week|month}-{period}.md` — ⚠ the planning desk
+  folder is moving `desks/cal` → `desks/planning` (CR-9); resolve it from the desk list, never assume
+  `desks/cal`).
   Whole-system → each rollup's `## What happened` + `## Activity by desk`.
   Single-project → each rollup's `## Activity by project → ### {slug}` block.
   Oldest rollup seeds `origin`; newest is `now` (fed last).
@@ -266,7 +267,7 @@ line 16, guard_throughline_write_scope.sh lines 28-30)
 
 **Stores touched:**
 - READ: plot file (or Planning-Diary rollups + brief + journal for assembly) · `state/telos.md`
-  (whole-system scope) · `desks/cal/diary/…`.
+  (whole-system scope) · `<planning desk folder>/diary/…`.
 - WRITE: `$DRIVE/state/projects/infrastructure/evaluator/scratchpads/{slug}-{date}.md` ONLY. ⚠ **See 2026-08-27 correction above.**
 
 **Known debt:**
@@ -288,11 +289,10 @@ outcome" when scope is root-level. `/telos` updates it; the memory-read element 
 `## DESIRED OUTCOME` + `## DEAD ENDS` blocks when assembling the plot from the Planning-Diary (single-project
 scope). It reads; it never writes the brief.
 
-**`/throughline` → Planning-Diary (READS):** `desks/cal/diary/…` rollups are the primary `origin→now` data
-source for diary-assembled plots. The diary is written by the `planning-weekly` / pulse-cron pipeline;
-`/throughline` reads it read-only. ⚠ **`desks/cal/` is DELIBERATE** — the planning desk's code, jobs
-and tiles were renamed from `cal`; its records directory was NOT, because moving the operator's live
-records is his decision and has not been taken.
+**`/throughline` → Planning-Diary (READS):** `<planning desk folder>/diary/…` rollups are the primary
+`origin→now` data source for diary-assembled plots. The diary is written by the `planning-weekly` /
+pulse-cron pipeline; `/throughline` reads it read-only. ⚠ **The planning desk folder is moving
+`desks/cal` → `desks/planning` (CR-9)** — resolve it from the desk list, never assume `desks/cal`.
 
 **`/first-principles` → (any execution skill) (FEEDS):** `/first-principles` produces a sharpened
 question / "build this first" / advisory structure that the user then carries into the execution layer.

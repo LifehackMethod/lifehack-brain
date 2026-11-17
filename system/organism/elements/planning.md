@@ -100,14 +100,15 @@ the twelve tool files, their test, and the four-file `cal-analysis/` lens direct
 runtime-generated, never committed (see the citation banner above). **What still says `cal`, and
 correctly so:**
 
-- ⚠ **THE DATA PATH — `<notes>/desks/cal/…` — IS DELIBERATELY NOT RENAMED.** The desk's code, tools,
-  jobs and tiles are `planning`; **the records directory is NOT**, because moving the operator's live
-  records is *his* decision and **has not been taken**. Every tool in `system/tools/planning-*`
-  constructs `desks/cal/…` and every `.claude/skills/planning-*` prompt reads `desks/cal/…` — they
-  **agree**. This is a **KNOWN, INTENTIONAL SPLIT — do not "complete" it without his word.** A
-  session that "finishes the rename" in the tools silently forks the store: the tools would create a
-  fresh empty `desks/planning/` and write there while every skill kept reading `desks/cal/` and saw
-  nothing new. That exact over-rename happened once and was reverted on 2026-08-15.
+- ⚠ **THE DATA PATH — `<planning desk folder>/…` — IS MOVING WITH THE DESK.** The planning desk's
+  folder moves from `<planning desk folder>/` to `desks/planning/` in ONE SITTING (CR-9). The
+  `.claude/skills/planning-*` prompts and this page now say `<planning desk folder>` — resolved from
+  the desk list (`shared/desk_list.py`, desk-registry.yaml), never assumed to be `desks/cal`. The
+  tools in `system/tools/planning-*` still construct the old literal `<planning desk folder>/…`; that mismatch is
+  recorded for the tools pass in the same sitting, not worked around here. ⚠ *History: an earlier
+  over-rename (2026-08-15, since reverted) pushed `desks/planning/` into the tools while the skills
+  still read `<planning desk folder>/` — silent data divergence, and the reason the move is one sitting, all
+  sides together.*
 - **`shared/cal_config.py` and `<notes>/config/cal.md`** — these are NOT the desk. They are the
   **CALENDAR-identifier** config, and `cal` there is short for *calendar*. They stay whatever the
   desk is called, and a sweep that renames them is a bug, not a tidy-up.
@@ -275,21 +276,22 @@ and task write refused, with a redirect naming the file to fill in.
 | Store | Path | Access | By |
 |---|---|---|---|
 | the reader's identifiers | `<notes>/config/cal.md` | READ only, via `shared/cal_config.py` | both skills; both guards, at fire time |
-| the daily raw vault | `<notes>/desks/cal/state/raw-vault/<today>/` | WRITE by the pull · READ by the daily | `system/tools/planning-vault-pull.py`; the daily |
-| the daily scratchpad | `<notes>/desks/cal/state/raw-vault/<today>/session-scratchpad.md` | living world model — pruned/updated every turn, persisted at pass boundaries, **deleted in Pass 5** | the scribe; the clerk |
-| the weekly scratch dir | `<notes>/desks/cal/state/checkin-scratch/weekly-<YYYY-Www>/` | `map.md` written by priming or P0 · `window.json` the corpus · `session-scratchpad.md` the run | `system/tools/planning-weekly-prime-run.sh`; the weekly |
-| the diary | `<notes>/desks/cal/diary/{YYYY}/{MM}/{DD}.md` | WRITE (mechanical, fail-soft, zero credentials) | `system/tools/planning-diary-capture.py` |
-| the weekly review record | `<notes>/desks/cal/records/weekly-reviews/<YYYY-Www>.md` | plain append | the P5 clerk |
-| the goals list / life map | Google Tasks + `<notes>/desks/cal/life-map.md` | READ-ONLY with **one** sanctioned write | `system/tools/planning-lifemap-write.py`; the clerk |
-| the reader's lanes, rails, voice | `<notes>/desks/cal/skill-refs/user-canon.md` | READ | both skills |
+| the daily raw vault | `<notes>/<planning desk folder>/state/raw-vault/<today>/` | WRITE by the pull · READ by the daily | `system/tools/planning-vault-pull.py`; the daily |
+| the daily scratchpad | `<notes>/<planning desk folder>/state/raw-vault/<today>/session-scratchpad.md` | living world model — pruned/updated every turn, persisted at pass boundaries, **deleted in Pass 5** | the scribe; the clerk |
+| the weekly scratch dir | `<notes>/<planning desk folder>/state/checkin-scratch/weekly-<YYYY-Www>/` | `map.md` written by priming or P0 · `window.json` the corpus · `session-scratchpad.md` the run | `system/tools/planning-weekly-prime-run.sh`; the weekly |
+| the diary | `<notes>/<planning desk folder>/diary/{YYYY}/{MM}/{DD}.md` | WRITE (mechanical, fail-soft, zero credentials) | `system/tools/planning-diary-capture.py` |
+| the weekly review record | `<notes>/<planning desk folder>/records/weekly-reviews/<YYYY-Www>.md` | plain append | the P5 clerk |
+| the goals list / life map | Google Tasks + `<notes>/<planning desk folder>/life-map.md` | READ-ONLY with **one** sanctioned write | `system/tools/planning-lifemap-write.py`; the clerk |
+| the reader's lanes, rails, voice | `<notes>/<planning desk folder>/skill-refs/user-canon.md` | READ | both skills |
 | the corpus window | the item store, via `shared/tools/item_store_window.py` | READ | P0; the priming cron |
 | the status tile | `state/status/planning-weekly-prime.json` | WRITE on every branch | the priming cron, via `system/tools/emit_status.py` |
 
-⚠ **Every path in this table says `desks/cal/` ON PURPOSE** — the desk is named `planning`
-everywhere in code, jobs and tiles; **the records directory is not, and moving it is the operator's
-decision, untaken.** See the rename note near the top of this file before "fixing" any row.
+⚠ **Every path in this table says `<planning desk folder>/`** — the planning desk folder is moving
+from `<planning desk folder>/` to `desks/planning/` (CR-9); resolve it from the desk list, never assume `desks/cal`.
+The tools still construct the old literal path — noted for the tools pass. See the rename note near
+the top of this file before "fixing" any row.
 
-⚠ **`<notes>/desks/cal/skill-refs/user-canon.md` never ships, and the reason is stated in the skill
+⚠ **`<notes>/<planning desk folder>/skill-refs/user-canon.md` never ships, and the reason is stated in the skill
 rather than left to inference:** those are the reader's own life lanes, *"and ten of someone else's
 would be worse than none."*
 
@@ -459,7 +461,7 @@ PROPOSES     backlog-authority     · the weekly's ranked output and the daily's
 5. ⚠ **A TENSION, RECORDED NOT RESOLVED — where the calendar id lives.**
    `.claude/skills/planning-daily/SKILL.md` and both guards read the id from `<notes>/config/cal.md`
    via `shared/cal_config.py`. `.claude/skills/planning-weekly/SKILL.md` still tells its run the id is
-   in `<notes>/desks/cal/skill-refs/user-canon.md`. Both files ship; they disagree. This is a
+   in `<notes>/<planning desk folder>/skill-refs/user-canon.md`. Both files ship; they disagree. This is a
    **finding** — do not quietly edit one to match the other, and do not stack a new rule on top of it.
 6. ✅ **RESOLVED 2026-08-15 — the manual now carries a `## planning` entry, and it takes NO number.**
    ~~This element has no `## planning` entry in `system/organism/manual.md`.~~ The manual's ranked index
@@ -523,14 +525,12 @@ runners have no scheduler row. `·gap` for the MCP bypass in GAPS #3. `(honor)` 
    checklist (`.claude/skills/planning-weekly/BUILD-CHECKLIST.md`); neither substitutes for a real run.
 3. **Prove the email surface** against a real mailbox, or say plainly that the surface is two of
    three and stop describing a third.
-4. ⛔ **DO NOT "close out the rename" on the data path — there is nothing left to close.** Skills,
-   tools, scheduler rows and the status tile all carry `planning` as of 2026-08-15; **the store path
-   is `desks/cal/` on BOTH sides — the tools construct it and the `.claude/skills/planning-*` prompts
-   read it — and that agreement is CORRECT, not lag.** ⚠ *An earlier version of this entry called it
-   "a live mismatch" and asked for a sweep. That was written during an over-rename that had pushed
-   `desks/planning/` into the tools while the skills still read `desks/cal/`; the tools were reverted
-   on 2026-08-15 and the claim is now false.* **Renaming the records directory is the operator's
-   decision and has not been taken** — a session that does it anyway forks the store in silence.
+4. ⛔ **THE DATA-PATH MOVE IS PLANNED, NOT PIECEMEAL.** The planning desk folder moves from
+   `<planning desk folder>/` to `desks/planning/` in ONE SITTING (CR-9). The skills and element text now say
+   `<planning desk folder>`; the tools still construct the old literal `<planning desk folder>/…` and are handled
+   in that same sitting, not before it. ⚠ *History: an over-rename (2026-08-15, since reverted) had
+   pushed `desks/planning/` into the tools while the skills still read `<planning desk folder>/` — a session that
+   does only one side forks the store in silence, which is why the move is one sitting.*
    ⚠ **`shared/cal_config.py` and `<notes>/config/cal.md` are separate again — they mean CALENDAR,
    not the desk, and no rename touches them either way.**
 5. **Give the map its door** (GAP #7 — the manual entry, GAP #6, is now paid).

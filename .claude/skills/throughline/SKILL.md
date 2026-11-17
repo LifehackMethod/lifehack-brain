@@ -11,6 +11,8 @@ status: active
 authority: user
 ---
 
+> **`<planning desk folder>`** = the planning desk's folder from the desk list (`shared/desk_list.py`, desk-registry.yaml); never assume `desks/cal`.
+
 ## Intent (§0.5)
 **User outcome:** Every project has a gap between what it set out to do and what it's actually doing — throughline makes that gap visible before it compounds. Drop in a project slug and a grain (week/month/quarter) and four beats later the divergence is named, cited, and written down ready for review — nothing asserted, nothing concluded. **Bar:** "I can see the gap — I didn't know that's what I was looking at until now."
 **Role:** the read-only investigator, context-blind by design (it judges the plot on its own terms, not what the caller hopes to find). It arms a write-scope guard hook before reading (hard-blocking every write but its own findings file), assembles the plot from what has accreted if none is given, and runs REFLECT → PROVOKE → IDEATE → DIVERGE in exact sequence. It produces only a draft-status finding; a person must set `status: human-reviewed` before any downstream consumer can act. It surfaces; the human disposes.
@@ -127,7 +129,7 @@ need three inputs; pick the **grain** (the caller's altitude) and the **scope** 
 - whole-system → `<notes>/canon.md` — the few things true across everything.
 
 **2 — `origin → now` (the dots): read the last 2–3 diary rollups at the chosen grain**, if a diary
-exists — `<notes>/desks/cal/diary/{YYYY}/{MM}/review-{week|month}-{period}.md` (quarter/year live one
+exists — `<notes>/<planning desk folder>/diary/{YYYY}/{MM}/review-{week|month}-{period}.md` (quarter/year live one
 folder up). **The diary is written by `planning-daily` / `planning-weekly`** (renamed from `cal-daily` /
 `cal-weekly`, 2026-08-14) **and by the scheduled `planning-diary` job** — all three have now landed, so
 this branch can genuinely find something. *(Corrected 2026-08-15: this line used to say they "land later
