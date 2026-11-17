@@ -191,26 +191,37 @@ def check_jobs_through_door(desk):
     return reasons
 
 
+CODE_EXTS = (".py", ".sh", ".mjs", ".js")
+
+
 def check_no_copied_tools(desk):
-    """Check 6: no file in the desk folder is a byte-for-byte copy of a shared tool."""
+    """Check 6: no code file in the desk folder is a byte-for-byte copy of a shared tool.
+    Empty files are never a copied tool; only code files (.py .sh .mjs .js) are compared."""
     shared_files = {}
     for base, _dirs, files in os.walk(os.path.join(ROOT, "shared")):
         for fn in files:
             p = os.path.join(base, fn)
             try:
                 with open(p, "rb") as f:
-                    shared_files.setdefault(hashlib.sha256(f.read()).hexdigest(), p)
+                    data = f.read()
+                if data:
+                    shared_files.setdefault(hashlib.sha256(data).hexdigest(), p)
             except OSError:
                 continue
     reasons = []
     for base, _dirs, files in os.walk(desk):
         for fn in files:
+            if os.path.splitext(fn)[1] not in CODE_EXTS:
+                continue
             p = os.path.join(base, fn)
             try:
                 with open(p, "rb") as f:
-                    h = hashlib.sha256(f.read()).hexdigest()
+                    data = f.read()
             except OSError:
                 continue
+            if not data:
+                continue
+            h = hashlib.sha256(data).hexdigest()
             if h in shared_files:
                 reasons.append("check 6 (no copied shared tools): copied shared tool: %s duplicates %s "
                                "(a desk uses the platform's tools, it never carries a copy)"

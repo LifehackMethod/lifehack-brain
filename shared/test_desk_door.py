@@ -137,6 +137,11 @@ class DeskDoorTests(unittest.TestCase):
         self.assertIn("copied shared tool", r.stdout)
         self.assertIn("desk_list.py", r.stdout)
 
+    def test_empty_files_are_not_copied_tools(self):
+        r = run_door(self.desk(extra={"records/insights/.gitkeep": "", "some.err": ""}))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("check 6", r.stdout)
+
     def test_desk_id_resolved_through_desk_list(self):
         d = self.desk()
         # the real layout: <notes>/desks/<folder> with the registry beside the desks
