@@ -283,7 +283,7 @@ Four elements read journal.md directly. None of them write to it.
 
 #### READ 1 — planning-diary-capture.py (primary Cal pipeline consumer)
 
-`planning-diary-run.sh (Pulse interval ~86400s, any machine) → python3 planning-diary-capture.py → open($DRIVE/system/journal.md, "r") → parse pipe rows + SESSION CONTEXT blocks matching the target date → compose → atomic write (tmp + os.replace) → $DRIVE/desks/cal/diary/YYYY/MM/DD.md [tool · outside Claude tool plane]`
+`planning-diary-run.sh (Pulse interval ~86400s, any machine) → python3 planning-diary-capture.py → open($DRIVE/system/journal.md, "r") → parse pipe rows + SESSION CONTEXT blocks matching the target date → compose → atomic write (tmp + os.replace) → $DRIVE/<planning desk folder>/diary/YYYY/MM/DD.md [tool · outside Claude tool plane]`
 
 **Parsing logic (from `read_journal()` in planning-diary-capture.py):**
 - Ledger rows: match lines where `line.startswith(f"| {date_str} |")`. Split on `|`, extract
@@ -317,13 +317,14 @@ but spans a date range (weekly / monthly / quarterly / yearly). Aggregates `{des
 **Fail-soft:** same as planning-diary-capture.py — source failure marks the section unavailable, exits 0.
 
 **Output:** period review draft — path varies by cadence: weekly/monthly use
-`desks/cal/diary/YYYY/MM/review-{cadence}-{label}.md`; quarterly/yearly omit the `MM` subdirectory
-and write to `desks/cal/diary/YYYY/review-{cadence}-{label}.md`. The
+`<planning desk folder>/diary/YYYY/MM/review-{cadence}-{label}.md`; quarterly/yearly omit the `MM` subdirectory
+and write to `<planning desk folder>/diary/YYYY/review-{cadence}-{label}.md`. The
 `## Human Delta — verified` section is preserved across re-runs.
 
-⚠ **`desks/cal/` is deliberate, not stale.** The desk was renamed `cal` → `planning` on 2026-08-15 in
-code, jobs and tiles; **the records directory was NOT** — moving the operator's live records is his
-decision and has not been taken. Known, intentional split — do not "complete" it without his word.
+⚠ **The diary path moves with the desk.** The planning desk folder moves from `<planning desk folder>/` to
+`desks/planning/` in one sitting (CR-9); say `<planning desk folder>`, resolved from the desk list —
+never assume `desks/cal`. The capture/rollup tools still construct the old literal path; noted for
+the tools pass in the same sitting, not worked around here.
 
 #### READ 3 — /read skill (Step 0 journal slice + gap signal)
 
@@ -383,8 +384,8 @@ This is the same signal the archivist uses during drift detection. Read-only.
 |---|---|---|---|
 | Journal (the store itself) | `$DRIVE/system/journal.md` | APPEND (## Log only) | /save, /checkin, project-manager, marc-sensor.py, marc-pulse-journal.py |
 | Journal (read) | `$DRIVE/system/journal.md` | READ | planning-diary-capture.py, planning-diary-rollup.py, /read, /distill, /throughline, /marc-checkin, archivist-audit |
-| Cal daily diary | `$DRIVE/desks/cal/diary/YYYY/MM/DD.md` | WRITE (atomic, machine sections only) | planning-diary-capture.py |
-| Cal period review draft | `$DRIVE/desks/cal/diary/YYYY/[MM/]review-{cadence}-{label}.md` (MM present for weekly/monthly; absent for quarterly/yearly) | WRITE | planning-diary-rollup.py |
+| Cal daily diary | `$DRIVE/<planning desk folder>/diary/YYYY/MM/DD.md` | WRITE (atomic, machine sections only) | planning-diary-capture.py |
+| Cal period review draft | `$DRIVE/<planning desk folder>/diary/YYYY/[MM/]review-{cadence}-{label}.md` (MM present for weekly/monthly; absent for quarterly/yearly) | WRITE | planning-diary-rollup.py |
 | Session transcript | `~/.claude/projects/*/$CLAUDE_CODE_SESSION_ID.jsonl` | READ | /save SC-1 (resolves the session to extract) |
 | Planning-Diary status tile | `$DRIVE/state/status/planning-diary.json` | WRITE | planning-diary-run.sh (inline Python after capture) |
 

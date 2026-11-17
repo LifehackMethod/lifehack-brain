@@ -18,6 +18,8 @@ triggers:
   - "is this fact stale / time-bound / belongs in the diary"
 ---
 
+> **`<planning desk folder>`** = the planning desk's folder from the desk list (`shared/desk_list.py`, desk-registry.yaml); never assume `desks/cal`.
+
 ## Intent (§0.5)
 **User outcome:** A desk's canon tree drifts — facts at the wrong altitude, time-bound snapshots sitting as if permanent, files fusing disjoint topics, figures frozen stale. canon-audit does the thorough desk-by-desk pass the weekly structural audit defers: it grades the full canon tree on seven dimensions and emits a prioritized, actionable change-list for the supervised review session. **Bar:** "I know exactly what's wrong with this desk's canon and where each thing belongs — not a vague 'it needs cleanup'."
 **Role:** the rigorous on-demand inspector — judgment-heavy, calibration-driven (a living version + calibration log that grows each run). It fills the gap between archivist-audit (weekly structural) and archivist-declutter (line-level, always-loaded): folder/file depth across one desk's whole canon tree, judged against the authored intent bars. It fans out sonnet agents (waves of 2–3, never 6+), forces a structured schema, merges + grades, and stops at the proposal — never loops into execution.
@@ -87,7 +89,7 @@ through the human-vetting gate (`vetted: true`), not corroboration count (confid
    Corroboration finding format: `corroboration: corroborated | lone_signal` + a one-line note on the source count.
    - **durable** — true for any session on this desk → **stays in canon** (this is canon's job).
    - **live** — a current-state number (net worth now, a balance) → **should be a pointer to the live source**, never a frozen value. Flag if frozen (the verify-don't-guess rule).
-   - **time-bound / half-life** — true for a moment, then historical (a figure that was true in one year, a valuation "as of" a date, "represented by X in 2023") → **propose routing it to its dated home**, where staleness is structural (the date is in the path). **The dated home is the desk's OWN dated record/diary when the fact is desk-local** (e.g. `desks/<subject>/records/diary/2026-04-snapshot.md`), **OR the shared diary's period summary when it's a cross-desk/life fact** (e.g. `desks/cal/diary/2024/review-year-2024.md`) — choose by judgment, don't default to Cal. Each time-bound proposal carries a **confidence (H/L)**.
+   - **time-bound / half-life** — true for a moment, then historical (a figure that was true in one year, a valuation "as of" a date, "represented by X in 2023") → **propose routing it to its dated home**, where staleness is structural (the date is in the path). **The dated home is the desk's OWN dated record/diary when the fact is desk-local** (e.g. `desks/<subject>/records/diary/2026-04-snapshot.md`), **OR the shared diary's period summary when it's a cross-desk/life fact** (e.g. `<planning desk folder>/diary/2024/review-year-2024.md`) — choose by judgment, don't default to the planning desk. Each time-bound proposal carries a **confidence (H/L)**.
 
 > Routing today is by type + altitude only. Temporal-home is the missing axis — durable→canon, live→sheet-pointer, time-bound→a **dated home** (desk-local record/diary, or the Planning-Diary for cross-desk/life facts).
 

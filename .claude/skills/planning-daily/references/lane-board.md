@@ -1,3 +1,5 @@
+> **`<planning desk folder>`** = the planning desk's folder from the desk list (`shared/desk_list.py`, desk-registry.yaml); never assume `desks/cal`.
+
 # The 10-Lane Board (the visibility gate)
 
 A **rendered scoreboard** of all 10 life-lanes, laid on the table ONCE at the Pass 0→1 boundary —
@@ -11,7 +13,7 @@ and the run never showed all 10, so the hole stayed invisible until they noticed
   data; **ranking (Pass 4) still respects anchor/triggered.**
 - **NOT a preview of the dominoes.** It's the *input* picture, not the output plan.
 
-## The lanes (yours, at `<notes>/desks/cal/skill-refs/user-canon.md`)
+## The lanes (yours, at `<notes>/<planning desk folder>/skill-refs/user-canon.md`)
 
 A lane is one standing area of your life that the day can move. Write them there once, each marked
 as one of two kinds — that distinction is what the board runs on:
@@ -31,7 +33,7 @@ lists get renamed):
 life — their work, their family, the property they own, the standing commitment they are in. Ten of
 somebody else's would be worse than none, because a lane you did not choose still gets asked about
 every morning. **Your lanes and the lists that feed each one live in
-`<notes>/desks/cal/skill-refs/user-canon.md`** — write them there once, in your own words, and this
+`<notes>/<planning desk folder>/skill-refs/user-canon.md`** — write them there once, in your own words, and this
 file is the shape they are rendered in. With no lanes on file, say so and ask for them; do not invent
 a set.
 

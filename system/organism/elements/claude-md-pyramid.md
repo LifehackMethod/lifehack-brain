@@ -11,7 +11,7 @@ topic: [system-architecture]
 generated_from:
   # - system/reference/global-CLAUDE.md  # absent here (checked 2026-10-30)
   # - lifehack-brain/CLAUDE.md  # absent here (checked 2026-10-30)
-  # - desks/cal/CLAUDE.md  # absent here (checked 2026-10-30)
+  # - <planning desk folder>/CLAUDE.md  # absent here (checked 2026-10-30; the planning desk folder is moving to desks/planning, CR-9)
   # - desks/clair/CLAUDE.md  # absent here (checked 2026-10-30)
   # - desks/deryl/CLAUDE.md  # absent here (checked 2026-10-30)
   # - desks/dobby/CLAUDE.md  # absent here (checked 2026-10-30)

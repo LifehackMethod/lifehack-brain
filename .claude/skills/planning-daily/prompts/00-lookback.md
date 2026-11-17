@@ -1,3 +1,5 @@
+> **`<planning desk folder>`** = the planning desk's folder from the desk list (`shared/desk_list.py`, desk-registry.yaml); never assume `desks/cal`.
+
 # PASS 0 — LOOK BACK (close yesterday)
 
 > **Content root (Drive).** Every relative `desks/…`, `system/…`, `records/…`, `state/…` path in
@@ -20,7 +22,7 @@ YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask t
 ## Do this (read silently first)
 
 1. **Open the session scratchpad.** First, **check whether today's vault actually exists**:
-   `<notes>/desks/cal/state/raw-vault/<today>/_manifest.json`.
+   `<notes>/<planning desk folder>/state/raw-vault/<today>/_manifest.json`.
    - **It exists** (a cron, or an earlier run today, already pulled it) → create the scratchpad **seeded
      from the overnight ingest** (`dominoes-draft.md` + the vault picture), as below.
    - **It does not exist** — say so plainly ("no vault for today yet — pulling it now, this can take a
@@ -39,9 +41,9 @@ YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask t
      reads.
 
 2. **Roam yesterday** (Cal reads freely): yesterday's calendar (vault `calendar.json` holds the prior 7d), the unified
-   journal slice for yesterday (`<notes>/system/journal.md`), any desk `<notes>/desks/cal/records/logs/<yesterday>.md`, and what the cron ingested.
+   journal slice for yesterday (`<notes>/system/journal.md`), any desk `<notes>/<planning desk folder>/records/logs/<yesterday>.md`, and what the cron ingested.
 
-3. **Apply the calendar signal rules** (`<notes>/desks/cal/skill-refs/user-canon.md`): `busy` = happened/real; **`free` = a SUGGESTION — do NOT
+3. **Apply the calendar signal rules** (`<notes>/<planning desk folder>/skill-refs/user-canon.md`): `busy` = happened/real; **`free` = a SUGGESTION — do NOT
    assume it happened** (a free workout may have been skipped → ask, don't assert); `cancelled`/`declined` = ignore.
 
 4. **Render a tight committed read of yesterday** (readable, not a wall): the shape · what you did (busy/confirmed) ·
@@ -50,10 +52,10 @@ YOU ARE THE **DETECTIVE**, doing a postmortem. Commit a read of yesterday; ask t
 
 5. **Record + close — via the SCRIBE (background, don't block).** Fold the backfill into the in-context model, then
    **fire the gear-2 scribe** (sonnet, content embedded in its prompt) to (a) persist the scratchpad and (b) **stamp
-   yesterday's DIARY entry** — `<notes>/desks/cal/diary/YYYY/MM/DD.md`, in the cron-protected `## Human Delta — verified
+   yesterday's DIARY entry** — `<notes>/<planning desk folder>/diary/YYYY/MM/DD.md`, in the cron-protected `## Human Delta — verified
    <date>` slot (the diary is the ONE home for the day; the rollup reads it; `planning-diary-capture.py` never overwrites that
-   block). NOT a separate `<notes>/desks/cal/records/logs` file. Keep talking while the scribe writes. If something is
-   BIGGER than the day (strategic/career), route it UP (pointer + durable home in `<notes>/desks/cal/brief.md`; flag
+   block). NOT a separate `<notes>/<planning desk folder>/records/logs` file. Keep talking while the scribe writes. If something is
+   BIGGER than the day (strategic/career), route it UP (pointer + durable home in `<notes>/<planning desk folder>/brief.md`; flag
    TELOS) — don't cram big context into one day. (Cross-desk diary design: `…/calendar-diary/scope-and-questions.md`.)
 
 6. **Render the 10-LANE BOARD** (the Pass 0→1 boundary — read `references/lane-board.md`). Lay ALL 10

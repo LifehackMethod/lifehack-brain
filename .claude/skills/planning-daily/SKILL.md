@@ -16,6 +16,8 @@ summary: >
   "let's do the day".
 ---
 
+> **`<planning desk folder>`** = the planning desk's folder from the desk list (`shared/desk_list.py`, desk-registry.yaml); never assume `desks/cal`.
+
 > ⚠ **Renamed `cal-daily` → `planning-daily`, 2026-08-14 (F8.11).** The skill's own name, triggers and
 > heading are updated below.
 >
@@ -26,15 +28,15 @@ summary: >
 > true and the claim has been removed rather than left to mislead.)*
 >
 > **What is still NOT renamed, on purpose — two distinct reasons:**
-> - **The data paths** this skill reads/writes, `<notes>/desks/cal/...`. The renamed tools still
->   construct them literally (verified: `system/tools/planning-diary-capture.py:54` sets
->   `DIARY_ROOT = .../desks/cal/diary`, and `planning-vault-pull.py` / `planning-light-sweep.py` do
->   the same for `desks/cal/state/raw-vault`). ⚠ **This is a KNOWN, INTENTIONAL split, not lag:**
->   moving the operator's live records directory is *his* decision and has not been taken, so the
->   desk is `planning` in code, jobs and tiles while the store stays `desks/cal/`. **Do not
->   "complete" the rename without his word** — a session that renamed only the tools (2026-08-15,
->   since reverted) pointed them at an empty `desks/planning/` while this skill kept reading
->   `desks/cal/`, which is silent data divergence.
+> - **The data paths** this skill reads/writes, `<planning desk folder>/...` (see the line above:
+>   resolve it from the desk list, never assume `desks/cal`). ⚠ **The planning desk folder is
+>   moving from `<planning desk folder>/` to `desks/planning/`** (one sitting, CR-9). The renamed tools still
+>   construct the old literal path (verified: `system/tools/planning-diary-capture.py:54` sets
+>   `DIARY_ROOT = .../<planning desk folder>/diary`, and `planning-vault-pull.py` / `planning-light-sweep.py` do
+>   the same for `<planning desk folder>/state/raw-vault`) — that mismatch is noted for the tools pass, not
+>   worked around here. An earlier partial rename (2026-08-15, since reverted) pointed the tools at
+>   an empty `desks/planning/` while the skills kept reading `<planning desk folder>/` — silent data divergence,
+>   and the reason the move is one sitting, all sides together.
 > - **`cal_config.py` and `<notes>/config/cal.md`.** These are NOT the planning desk at all — they
 >   are the **calendar-identifier** config (calendar + task-list ids), shared with the calendar and
 >   tasks write guards. `cal` there means *calendar*, and it stays.
@@ -74,13 +76,13 @@ verdicts. When you feel the urge to wrap it up with a recommendation, ask anothe
 
 ## Anchor your intent (read, do not recite)
 - `references/purpose.md` — WHAT the run is for. Don't recite it, don't let it set pace, don't chase "complete" literally.
-- `<notes>/desks/cal/skill-refs/user-canon.md` — the life lanes, the rails, the voice. The body is generic; their specifics live there.
+- `<notes>/<planning desk folder>/skill-refs/user-canon.md` — the life lanes, the rails, the voice. The body is generic; their specifics live there.
 - `references/question-style.md` — HOW to ask (TL;DR + bold-lead-in numbered Qs + real refreshers). Read before Pass 1.
-- `<notes>/desks/cal/skill-refs/closing-voice.md` — OPTIONAL: your own closing-voice persona, if you've set
+- `<notes>/<planning desk folder>/skill-refs/closing-voice.md` — OPTIONAL: your own closing-voice persona, if you've set
   one (used in Pass 3). Not present → the close renders plain and neutral instead, in Cal's own voice.
 
 ## The session scratchpad (your working world model)
-The day's working memory is an **ephemeral scratchpad** at `<notes>/desks/cal/state/raw-vault/<today>/session-scratchpad.md`,
+The day's working memory is an **ephemeral scratchpad** at `<notes>/<planning desk folder>/state/raw-vault/<today>/session-scratchpad.md`,
 **seeded from the overnight cron ingest** and maintained as a LIVING WORLD MODEL: **every turn** you **prune stale ·
 update what changed · add the new** — it is NOT append-only. **You hold this live IN CONTEXT each turn; you do NOT
 rewrite the file every turn** (that synchronous write is what froze the old run) — **the scribe persists it to disk
@@ -106,7 +108,7 @@ The interrogation must never freeze while a write happens. So the work runs in t
 ## Hard rails (non-negotiable)
 - **ONE DATASET — never RE-PULL EVERYTHING; light sweeps are fine.** The ban is on the **heavy verbatim re-ingest**
   (the full `planning-vault-pull.py` email/calendar rebuild — that's the 600-second freeze). Work from the vault at
-  `<notes>/desks/cal/state/raw-vault/<today>/` + the scratchpad. But a **quick, targeted, metadata-only sweep is
+  `<notes>/<planning desk folder>/state/raw-vault/<today>/` + the scratchpad. But a **quick, targeted, metadata-only sweep is
   ALLOWED and encouraged on demand** — "check if anything popped in since the 4am pull." The distinction:
   - **Re-reading for something that was ALREADY there at 4am = the morning capture FAILED** (the scratchpad missed a
     fact it should have folded in Pass 1). Don't paper over it with a re-read — fix the scratchpad.
@@ -190,7 +192,7 @@ inbox by eye until the mail plane lands, and do not let the run tell you it is c
 |---|---|---|
 | the notes-root resolver | `shared/brain_root.py` | ✅ here — refuses rather than guessing if unset |
 | the diary writer (mechanical, fail-soft, works with zero credentials) | `system/tools/planning-diary-capture.py` | ✅ here — proven to complete with `gws` entirely absent from PATH, writing an honest `source-unavailable` scaffold |
-| your diary | `<notes>/desks/cal/diary/{YYYY}/{MM}/{DD}.md` | ⛔ never ships — created the first time this runs |
+| your diary | `<notes>/<planning desk folder>/diary/{YYYY}/{MM}/{DD}.md` | ⛔ never ships — created the first time this runs |
 | your open loops | `<notes>/state/open-loops.md` | ⛔ never ships — created the first time something needs to go in it |
 
 **Layer 2 (only when Google is connected — `prompts/00-preflight.md` decides which, every run):**
@@ -204,4 +206,4 @@ inbox by eye until the mail plane lands, and do not let the run tell you it is c
 | your calendar and task-list identifiers | `<notes>/config/cal.md`, read by `shared/cal_config.py` | ✅ the reader is here; the ids are yours |
 | the wall around which calendar gets written | `system/hooks/guard_calendar_writes.sh` | ✅ here — refuses outright if you have configured none |
 | the scratchpad indicator on the status bar | `system/hooks/scratch_flag.sh` | ✅ here |
-| your lanes, rails and voice | `<notes>/desks/cal/skill-refs/user-canon.md` | ⛔ never ships — they are your life, and ten of someone else's would be worse than none. `references/lane-board.md` already asks for these rather than inventing a set when the file is missing. |
+| your lanes, rails and voice | `<notes>/<planning desk folder>/skill-refs/user-canon.md` | ⛔ never ships — they are your life, and ten of someone else's would be worse than none. `references/lane-board.md` already asks for these rather than inventing a set when the file is missing. |
