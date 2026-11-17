@@ -179,12 +179,12 @@ That severity difference is real, so the loop stays with its callers.
 # calendar-store-sync: refreshes the calendar item store via calendar_store_sync.py --sync. It calls the
 # intake reader (claude -p, small tier) on every item carrying free text. Daily (the runner's
 # STALE_AFTER_HOURS=30).
-calendar-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
+calendar-store-sync | off | 86400 | The calendar item store is refreshed from Google Calendar and the run's log records the sync's counts with errors=0. | $HOME/.local/share/lifehack/calendar-store-sync/last-write.log ~ \[calendar-store-sync\] sync DONE — calendars=[0-9]+ written=[0-9]+ unchanged=[0-9]+ cold=[0-9]+ errors=0 | none | 0 | gmail | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
 # tasks-store-sync: refreshes the tasks item store via tasks_store_sync.py --sync. It calls the intake
 # reader (claude -p, small tier) on every task carrying free text. Daily (the runner's
 # STALE_AFTER_HOURS=30).
-tasks-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
+tasks-store-sync | off | 86400 | The tasks item store is refreshed from Google Tasks and the run's log records the sync's counts with errors=0. | $HOME/.local/share/lifehack/tasks-store-sync/last-write.log ~ \[tasks-store-sync\] sync DONE — lists=[0-9]+ manifests=[0-9]+ written=[0-9]+ unchanged=[0-9]+ cold=[0-9]+ errors=0 | none | 0 | gmail | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
 # email-summary-write: refreshes the email thread store via email_summary_sync.py --write-v2. It calls
 # the intake reader only on spans the injection scan flagged — the Sentinel pipeline as defined. Every 3h
