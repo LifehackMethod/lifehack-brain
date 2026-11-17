@@ -219,6 +219,9 @@ planning-diary | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_
 archivist-audit | off | 604800 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
 archivist-deepmine | off | 345600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
 #
+# LEGACY (2026-11-17, CR-9 step 3; the owner's Fable answer 6): planning-weekly-prime is the old
+# plumbing, replaced by Grand Central's engine. The row stays off and its contract stays unfilled;
+# deleting the row and its runner is the owner's separate yes.
 # planning-weekly-prime: the mid-week map-warming cron for the planning-weekly skill's Phase 0,
 # cited by name (with a line number) at .claude/skills/planning-weekly/prompts/
 # 00-system-layer.md:68 — a dangling promise until this row + its runner landed. Ticked daily
