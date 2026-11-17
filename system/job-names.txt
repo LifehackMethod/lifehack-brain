@@ -9,6 +9,5 @@ archivist-audit = weekly notes tidy-up check
 archivist-deepmine = monthly notes review
 planning-weekly-prime = weekly planning prep
 guard-fire-test = safety-guard self-test
-token-burn-mine = usage cost report
 obsidian-reindex = notes search index
 mirror-fetch = code backup check

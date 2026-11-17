@@ -84,7 +84,7 @@ MAX_ATTEMPTS=3
 LENSES="conflicts lanes audit-biological delta-vs-monthly"
 AGENT_DIR="$CODE_ROOT/.claude/skills/planning-weekly/prompts/map-agents"
 STALE_AFTER_S=$((216 * 3600))   # 9d = (7d cadence + 2d Thu..Sat spread) × 24h — same derivation
-                                 # as the donor's marc-wednesday-style windows; 2-day spread here too.
+                                 # as the donor's mid-week cadence windows; 2-day spread here too.
 
 DATE=""; FORCE=0
 while [ $# -gt 0 ]; do

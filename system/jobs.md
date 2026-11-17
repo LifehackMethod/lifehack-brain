@@ -179,12 +179,12 @@ That severity difference is real, so the loop stays with its callers.
 # calendar-store-sync: refreshes the calendar item store via calendar_store_sync.py --sync. It calls the
 # intake reader (claude -p, small tier) on every item carrying free text. Daily (the runner's
 # STALE_AFTER_HOURS=30).
-calendar-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
+calendar-store-sync | off | 86400 | The calendar item store is refreshed from Google Calendar and the run's log records the sync's counts with errors=0. | $HOME/.local/share/lifehack/calendar-store-sync/last-write.log ~ \[calendar-store-sync\] sync DONE — calendars=[0-9]+ written=[0-9]+ unchanged=[0-9]+ cold=[0-9]+ errors=0 | none | 0 | gmail | bash "$LIFEHACK_CODE_ROOT/system/tools/calendar-store-sync-run.sh"
 #
 # tasks-store-sync: refreshes the tasks item store via tasks_store_sync.py --sync. It calls the intake
 # reader (claude -p, small tier) on every task carrying free text. Daily (the runner's
 # STALE_AFTER_HOURS=30).
-tasks-store-sync | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
+tasks-store-sync | off | 86400 | The tasks item store is refreshed from Google Tasks and the run's log records the sync's counts with errors=0. | $HOME/.local/share/lifehack/tasks-store-sync/last-write.log ~ \[tasks-store-sync\] sync DONE — lists=[0-9]+ manifests=[0-9]+ written=[0-9]+ unchanged=[0-9]+ cold=[0-9]+ errors=0 | none | 0 | gmail | bash "$LIFEHACK_CODE_ROOT/system/tools/tasks-store-sync-run.sh"
 #
 # email-summary-write: refreshes the email thread store via email_summary_sync.py --write-v2. It calls
 # the intake reader only on spans the injection scan flagged — the Sentinel pipeline as defined. Every 3h
@@ -201,6 +201,8 @@ email-summary-write | off | 10800 | Keeps the v2 email thread store current: the
 #    OS-agnostic: they only ever run because THIS row exists. On a Mac launchd runs each yes row through
 #    job-run.sh; on Linux and Windows pulse.sh dispatches it — see "How it works" above.
 #
+# 2026-11-17 (CR-9 step 3): this row stays OFF by canon — canon/data-layout.md:242 and
+# canon/circulatory-system-sop.md:251 both say the plugin's planning-diary job row stays off.
 # planning-diary: planning-diary-capture.py (daily) + planning-diary-rollup.py (weekly/monthly/
 # quarterly/yearly, each period-idempotently self-gated — see planning-diary-run.sh's own header)
 # were ported without a row in this manifest, missed by the pass that wired seven other orphaned
@@ -219,6 +221,9 @@ planning-diary | off | 86400 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_
 archivist-audit | off | 604800 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-audit-run.sh"
 archivist-deepmine | off | 345600 | TBD | TBD | TBD | 0 | TBD | bash "$LIFEHACK_CODE_ROOT/system/tools/archivist-deepmine-run.sh"
 #
+# LEGACY (2026-11-17, CR-9 step 3; the owner's Fable answer 6): planning-weekly-prime is the old
+# plumbing, replaced by Grand Central's engine. The row stays off and its contract stays unfilled;
+# deleting the row and its runner is the owner's separate yes.
 # planning-weekly-prime: the mid-week map-warming cron for the planning-weekly skill's Phase 0,
 # cited by name (with a line number) at .claude/skills/planning-weekly/prompts/
 # 00-system-layer.md:68 — a dangling promise until this row + its runner landed. Ticked daily
