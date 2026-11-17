@@ -1,0 +1,2 @@
+origin: 92a9739:mover/{Code.gs,appsscript.json}, copied byte-identical (no header: Google holds these files and push.sh compares them byte for byte).
+.manifest.ours.json is not copied (untracked at 92a9739; push.sh regenerates it). .clasp.json is the owner's, in the owner's setup.

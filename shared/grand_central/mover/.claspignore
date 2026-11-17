@@ -1,0 +1,4 @@
+# origin: 92a9739:mover/.claspignore
+**/**
+!appsscript.json
+!Code.gs

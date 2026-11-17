@@ -94,6 +94,11 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/migrate.py` · migrate.py: apply the migrations to rig.db
 - `/shared/grand_central/model_check.py` · model_check.py: `gc rebuild` and `gc check` (Phase 2 step 2.6; Vision 3.7.4 rules 5 and 6, 3.17 health check)
 - `/shared/grand_central/morning.py` · the morning read (plan B1 "The stages" item 3; B2 step 4)
+- `/shared/grand_central/mover/limits.py` · Google's ceilings for a consumer Apps Script account
+- `/shared/grand_central/mover/mover_request.py` · build a mover request from a JSON list of actions and (optionally) write it
+- `/shared/grand_central/mover/mover_schema.py` · the strict request schema + refusal rules, in Python
+- `/shared/grand_central/mover/mover_usage.py` · total the script's logged usage per day, compare to Google's ceilings (limits.py), write a status tile
+- `/shared/grand_central/mover/push.sh` · origin: 92a9739:mover/push.sh This script must stay beside the mover code it pushes
 - `/shared/grand_central/onboarding.py` · onboarding.py: Phase 3 step 3.10. The onboarding sitting, prepared from the model and recorded through the owner-answer door
 - `/shared/grand_central/org_moves.py` · org_moves.py: Phase 3 step 3.1. Move today's `company` things and `circle` things into organizations (Vision 3.7.3, plan 3.1)
 - `/shared/grand_central/pull.py` · the rig's puller (plan task 1.4). Envelopes, calendar events and tasks into rig.db

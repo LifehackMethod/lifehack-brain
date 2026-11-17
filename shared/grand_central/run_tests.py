@@ -98,11 +98,15 @@ MANIFEST = [
     ("tests/test_step2_door.py", "unittest", False),  # step 2 attack fixes: ingest and catalogue
     ("handoff/tests/test_handoff.py", "script", False),
     ("tests/test_data_root_loud.py", "unittest", False),   # data_root fails loudly when an expected owner setup is unreadable
+    ("mover/tests/test_static.py", "unittest", False),  # mover: Code.gs static wall (exact scopes, no forbidden API); origin 92a9739
+    ("mover/tests/test_gs.py", "unittest", False),      # mover: Code.gs under node with pretend Gmail + Drive (needs node)
+    ("mover/tests/test_schema.py", "unittest", False),  # mover: request validation
+    ("mover/tests/test_mac.py", "unittest", False),     # mover: request writer, usage tile, limits; paths from setup gc.json
     ("test_check_personal_values.py", "unittest", False),  # the personal-values lock (sits beside the lock, outside TEST_DIRS)
 ]
 # Suites run by their own command: (name, cwd, argv, test dir, files expected in it). None ship with the engine.
 SUITES = []
-TEST_DIRS = ["tests", "handoff/tests"]
+TEST_DIRS = ["tests", "handoff/tests", "mover/tests"]
 
 
 def parse_unittest(out):

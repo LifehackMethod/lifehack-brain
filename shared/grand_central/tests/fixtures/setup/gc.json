@@ -4,6 +4,7 @@
   "owner_id": "owner",
   "default_desk": "desk-a",
   "notes_root": "/tmp/gc-example/notes",
+  "mover_dir": "/tmp/gc-example/drive/mover",
   "drop_dir": "/tmp/gc-example/drop",
   "mailroom_user": "example-mailroom",
   "mailroom_install_dir": "/tmp/gc-example/install",
