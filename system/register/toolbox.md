@@ -57,6 +57,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/tools/item_store_window.py` · the TIME-WINDOW sweep reader over the central library (cadence linchpin)
 - `/shared/tools/own_list_add.py` · your OWN list of your OWN tools (Round B piece 2, "your own list")
 - `/shared/tools/personal_jobs_scaffold.py` · make the places YOUR scheduled jobs are saved, in your own folder, never overwriting
+- `/shared/tools/read_harness.py` · the Code+ reading harness (plan standalone-code-plus-reading-harness, card 2.1)
 - `/shared/tools/store_date_index.py` · sidecar DATE INDEX for the three item stores (Phase 8 Lane C / S8.4)
 - `/shared/tools/tasks_store_sync.py` · mechanical writer for the durable Tasks item store (Phase G-2)
 - `/shared/tools/team_skills.py` · share personal skills with a team through a Google Drive folder (approved design 2026-11-01, SIMPLE build)
