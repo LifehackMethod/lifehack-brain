@@ -510,6 +510,21 @@ def main():
 
     out_dir = os.path.join(DIARY_ROOT, day.strftime("%Y"), day.strftime("%m"))
     out_path = os.path.join(out_dir, day.strftime("%d") + ".md")
+    # One writer per day (contract §4.7): another writer may have created this day's entry —
+    # the engine's midnight job creates exclusively and never overwrites. If the file exists
+    # and is NOT ours (no `type: planning-diary-daily` front matter), stand aside — never
+    # regenerate another writer's day. Our own days stay idempotent (regenerate, preserving
+    # the Human Delta).
+    if os.path.exists(out_path):
+        try:
+            with open(out_path, encoding="utf-8") as f:
+                _head = f.read(2000)
+        except Exception:
+            _head = ""
+        if "type: planning-diary-daily" not in _head:
+            sys.stderr.write(f"[planning-diary] {out_path} was written by another writer "
+                f"(no planning-diary-daily front matter) — standing aside (one writer per day)\n")
+            return 0
     try:
         os.makedirs(out_dir, exist_ok=True)
         tmp = out_path + ".tmp"
