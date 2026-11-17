@@ -201,6 +201,8 @@ email-summary-write | off | 10800 | Keeps the v2 email thread store current: the
 #    OS-agnostic: they only ever run because THIS row exists. On a Mac launchd runs each yes row through
 #    job-run.sh; on Linux and Windows pulse.sh dispatches it — see "How it works" above.
 #
+# 2026-11-17 (CR-9 step 3): this row stays OFF by canon — canon/data-layout.md:242 and
+# canon/circulatory-system-sop.md:251 both say the plugin's planning-diary job row stays off.
 # planning-diary: planning-diary-capture.py (daily) + planning-diary-rollup.py (weekly/monthly/
 # quarterly/yearly, each period-idempotently self-gated — see planning-diary-run.sh's own header)
 # were ported without a row in this manifest, missed by the pass that wired seven other orphaned
