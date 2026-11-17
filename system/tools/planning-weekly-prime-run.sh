@@ -107,9 +107,31 @@ else
   DOW="$(date -d "$DATE" +%u 2>/dev/null || date -j -f '%Y-%m-%d' "$DATE" +%u 2>/dev/null)"
 fi
 
-# ⚠ The DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-# the records directory is NOT (the operator's call, untaken). Do not "complete" it without their word.
-SCRATCH="$DATA/desks/cal/state/checkin-scratch/weekly-$WEEK"       # <- the citation at
+# The planning desk's folder comes from the desk list, NEVER a literal desks/cal —
+# the registry row's own paths are the truth (the owner has ruled the folder moves to
+# desks/planning later). Loud failure in the resolver below — never a fallback to desks/cal.
+# The planning desk's folder, through the desk list (shared/desk_list.py — the ONE reader of
+# <notes>/desks/desk-registry.yaml) — NEVER a literal desks/cal: the owner has ruled the folder
+# moves to desks/planning later, and the registry row's own paths are the truth. The row is
+# found by desk_id (the stable identity), under either id the desk has carried; neither id is
+# ever used as a path. Loud failure below — never a fallback to desks/cal.
+PDESK="$(python3 - "$CODE_ROOT" <<'PYDESK'
+import sys
+sys.path.insert(0, sys.argv[1] + "/shared")
+import desk_list
+for want in ("planning", "cal"):
+    name, err = desk_list.desk_folder(want)
+    if err:
+        sys.exit("the desk list cannot be read, so the planning desk's folder is unknown: %s" % err)
+    if name:
+        print(name)
+        sys.exit(0)
+sys.exit("no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
+         "update the row in <notes>/desks/desk-registry.yaml; refusing to guess the planning "
+         "desk's folder (never falling back to desks/cal)")
+PYDESK
+)" || { echo "[planning-weekly-prime] could not resolve the planning desk's folder from the desk list (message above)"; exit 2; }
+SCRATCH="$DATA/desks/$PDESK/state/checkin-scratch/weekly-$WEEK"     # <- the citation at
 mkdir -p "$SCRATCH" 2>/dev/null || true                            #    00-system-layer.md:68
 
 _emit_tile() {  # $1=status $2=summary $3=skip_reason(optional)

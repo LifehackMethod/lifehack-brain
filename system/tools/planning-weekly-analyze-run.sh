@@ -19,10 +19,11 @@
 # works all three analytical angles and writes the output directly — one pass rather than a
 # multi-call blind panel, on the theory that the human review IS the quality check.
 # GUARDS: read-only against Google; writes ONLY weekly-mine-draft.md inside the weekly vault.
-# REDIRECT: vault → desks/cal/state/weekly-vault/<YYYY-Www>/weekly-mine-draft.md
+# REDIRECT: vault → desks/<planning-desk folder, from the desk list>/state/weekly-vault/<YYYY-Www>/weekly-mine-draft.md
 #           status → $OUT_DIR/last-run.json.
-# ⚠ That DATA PATH is deliberately still `desks/cal/` — code/jobs/tiles are renamed to `planning`,
-#   the records directory is NOT (the operator's call, untaken). Do not "complete" it without their word.
+# The planning desk's folder comes from the desk list, NEVER a literal desks/cal —
+# the registry row's own paths are the truth (the owner has ruled the folder moves to
+# desks/planning later). Loud failure in the resolver below — never a fallback to desks/cal.
 #
 # ⚖ PORT NOTE: donor's LEAD-MACHINE gate (state/primary-machine marker election between two machines)
 # is DELETED, not translated — a student has one computer. The "life lanes" list below is generic
@@ -72,8 +73,29 @@ fi
 CLAUDE="${CLAUDE:-claude}"
 
 MODEL="claude-sonnet-4-6"            # this repo's subagent rail — sonnet for all spawned agents
-VAULT_ROOT="$DRIVE/desks/cal/state/weekly-vault"               # CONTENT (the week's vault)
-DIARY_ROOT="$DRIVE/desks/cal/diary"                            # CONTENT (weekly rollup files for trajectory arc)
+# The planning desk's folder, through the desk list (shared/desk_list.py — the ONE reader of
+# <notes>/desks/desk-registry.yaml) — NEVER a literal desks/cal: the owner has ruled the folder
+# moves to desks/planning later, and the registry row's own paths are the truth. The row is
+# found by desk_id (the stable identity), under either id the desk has carried; neither id is
+# ever used as a path. Loud failure below — never a fallback to desks/cal.
+PDESK="$(python3 - "$CODE_ROOT" <<'PYDESK'
+import sys
+sys.path.insert(0, sys.argv[1] + "/shared")
+import desk_list
+for want in ("planning", "cal"):
+    name, err = desk_list.desk_folder(want)
+    if err:
+        sys.exit("the desk list cannot be read, so the planning desk's folder is unknown: %s" % err)
+    if name:
+        print(name)
+        sys.exit(0)
+sys.exit("no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
+         "update the row in <notes>/desks/desk-registry.yaml; refusing to guess the planning "
+         "desk's folder (never falling back to desks/cal)")
+PYDESK
+)" || { echo "[planning-weekly-analyze] could not resolve the planning desk's folder from the desk list (message above)"; exit 2; }
+VAULT_ROOT="$DRIVE/desks/$PDESK/state/weekly-vault"            # CONTENT (the week's vault; folder from the desk list)
+DIARY_ROOT="$DRIVE/desks/$PDESK/diary"                         # CONTENT (weekly rollup files; folder from the desk list)
 WATCHDOG=900                         # 15-min ceiling for the single call
 
 # ── args: --date YYYY-MM-DD · --force (rebuild even if this week's draft already exists) ──

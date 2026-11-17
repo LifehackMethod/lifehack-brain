@@ -2,7 +2,8 @@
 """planning-window-to-vault.py — fill the weekly deep-mine's VAULT from the CENTRAL LIBRARY (F.2.p).
 
 The weekly deep-mine (`planning-weekly-analyze-run.sh`) reads a vault directory
-`desks/cal/state/weekly-vault/YYYY-Www/` (calendar.json, tasks.json, _manifest.json, per-thread
+`desks/<planning-desk folder, from the desk list>/state/weekly-vault/YYYY-Www/` (calendar.json,
+tasks.json, _manifest.json, per-thread
 inbox|sent/{tid}_first.txt/_last.txt). This producer fills that vault contract from the library —
 `item_store_window.read_window` (windowing), `item_store_read.read_item` (task/calendar secure
 payload), `email_service_read.thread_messages` (first/last email bodies) — never a bespoke
@@ -59,10 +60,37 @@ import brain_root                        # noqa: E402
 # real answer (None, None); every caller below treats a missing root as "nothing to build", not a
 # guess at where to write.
 _ROOT_SOURCE, DRIVE = brain_root.resolve_brain_root()
-# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
-# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
-# their decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without their word.
-VAULT_ROOT = os.path.join(DRIVE, "desks", "cal", "state", "weekly-vault") if DRIVE else None
+# The planning desk's folder comes from the desk list (shared/desk_list.py — the ONE reader of
+# <notes>/desks/desk-registry.yaml), NEVER a literal `desks/cal`: the owner has ruled the planning
+# desk's folder will move (desks/cal → desks/planning, one sitting, later), and the registry row's
+# own purpose_path / open_loops_path are the truth. The row is found by desk_id — the stable
+# identity the desk list documents ("stable slug, the identity other tools match a desk by") —
+# under either id the desk has carried: `planning` (preferred) or `cal`. Neither id is ever used
+# as a path. No desk list, no planning row, or an unreadable list → loud named exit below; a tool
+# NEVER falls back to desks/cal.
+import desk_list                                                            # noqa: E402
+
+
+def _planning_desk_folder():
+    """The planning desk's folder name, from its desk-list row. Exit loudly (never guess)."""
+    for want in ("planning", "cal"):
+        name, err = desk_list.desk_folder(want)
+        if err:
+            sys.stderr.write(
+                "the desk list cannot be read, so the planning desk's folder is unknown: %s\n" % err)
+            sys.exit(2)
+        if name:
+            return name
+    sys.stderr.write(
+        "no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
+        "update the row in <notes>/desks/desk-registry.yaml with its purpose_path / open_loops_path "
+        "under desks/<folder>/; refusing to guess the planning desk's folder (never falling back "
+        "to desks/cal)\n")
+    sys.exit(2)
+# DRIVE unset is a real answer here ("nothing to build"), so the desk-list resolution only runs
+# when there is somewhere to resolve FOR.
+_PLANNING_DESK = _planning_desk_folder() if DRIVE else None
+VAULT_ROOT = os.path.join(DRIVE, "desks", _PLANNING_DESK, "state", "weekly-vault") if DRIVE else None
 
 # Known free-text keys the adapters render into read_item's `content` blob (as "key: value" lines).
 # Splitting ONLY at these known key-starts preserves multi-line values (a description with newlines).

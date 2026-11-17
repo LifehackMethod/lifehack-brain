@@ -8,7 +8,7 @@ pull time. Built ONLY on the safe-ingest primitives (never raw bodies):
   - Calendar: system/tools/safe_calendar.py --redact  (L0 + injection scan; flagged spans neutralized)
   - Tasks   : system/tools/safe_tasks.py --redact      (L0 + injection scan; flagged spans neutralized)
 
-Vault layout:  desks/cal/state/raw-vault/YYYY-MM-DD/
+Vault layout:  desks/<planning-desk folder, from the desk list>/state/raw-vault/YYYY-MM-DD/
   inbox/ sent/ snoozed/   email_convert per-thread *_full.txt + its manifest.json/skipped.json
   calendar.json           prior 7d + next 7d, sanitized
   tasks.json              Win lists (full) + Inbox catch-all (full) + top-N (DOMAIN_TOP_N) of each other
@@ -74,10 +74,35 @@ GWS = __import__("shutil").which("gws") or "gws"  # resolve via PATH; survives b
 EMAIL_CONVERT = os.path.join(CODE_ROOT, "shared/tools/email_convert.py")  # present since 2026-08-14
 SAFE_CALENDAR = os.path.join(CODE_ROOT, "system/tools/safe_calendar.py")  # CODE
 SAFE_TASKS    = os.path.join(CODE_ROOT, "system/tools/safe_tasks.py")      # CODE
-# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
-# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
-# their decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without their word.
-VAULT_ROOT = os.path.join(DRIVE, "desks/cal/state/raw-vault")                 # CONTENT (on Drive)
+# The planning desk's folder comes from the desk list (shared/desk_list.py — the ONE reader of
+# <notes>/desks/desk-registry.yaml), NEVER a literal `desks/cal`: the owner has ruled the planning
+# desk's folder will move (desks/cal → desks/planning, one sitting, later), and the registry row's
+# own purpose_path / open_loops_path are the truth. The row is found by desk_id — the stable
+# identity the desk list documents ("stable slug, the identity other tools match a desk by") —
+# under either id the desk has carried: `planning` (preferred) or `cal`. Neither id is ever used
+# as a path. No desk list, no planning row, or an unreadable list → loud named exit below; a tool
+# NEVER falls back to desks/cal.
+import desk_list                                                            # noqa: E402
+
+
+def _planning_desk_folder():
+    """The planning desk's folder name, from its desk-list row. Exit loudly (never guess)."""
+    for want in ("planning", "cal"):
+        name, err = desk_list.desk_folder(want)
+        if err:
+            sys.stderr.write(
+                "the desk list cannot be read, so the planning desk's folder is unknown: %s\n" % err)
+            sys.exit(2)
+        if name:
+            return name
+    sys.stderr.write(
+        "no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
+        "update the row in <notes>/desks/desk-registry.yaml with its purpose_path / open_loops_path "
+        "under desks/<folder>/; refusing to guess the planning desk's folder (never falling back "
+        "to desks/cal)\n")
+    sys.exit(2)
+_PLANNING_DESK = _planning_desk_folder()
+VAULT_ROOT = os.path.join(DRIVE, "desks", _PLANNING_DESK, "state", "raw-vault")  # CONTENT (on Drive)
 
 # ⛔ THESE WERE HARDCODED, AND THAT IS THE WORST KIND OF HARDCODING. A calendar id baked into a
 # tool means an agent reads — or writes — SOMEBODY ELSE'S CALENDAR, and the person running it sees

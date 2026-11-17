@@ -30,10 +30,35 @@ if not DRIVE:
         "no notes folder is set, so there is nowhere to put what this reads.\n"
         "Set it once:  python3 shared/brain_root.py --set \"<the folder your notes live in>\"\n")
     sys.exit(2)
-# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
-# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
-# their decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without their word.
-VAULT_ROOT = os.path.join(DRIVE, "desks/cal/state/raw-vault")
+# The planning desk's folder comes from the desk list (shared/desk_list.py — the ONE reader of
+# <notes>/desks/desk-registry.yaml), NEVER a literal `desks/cal`: the owner has ruled the planning
+# desk's folder will move (desks/cal → desks/planning, one sitting, later), and the registry row's
+# own purpose_path / open_loops_path are the truth. The row is found by desk_id — the stable
+# identity the desk list documents ("stable slug, the identity other tools match a desk by") —
+# under either id the desk has carried: `planning` (preferred) or `cal`. Neither id is ever used
+# as a path. No desk list, no planning row, or an unreadable list → loud named exit below; a tool
+# NEVER falls back to desks/cal.
+import desk_list                                                            # noqa: E402
+
+
+def _planning_desk_folder():
+    """The planning desk's folder name, from its desk-list row. Exit loudly (never guess)."""
+    for want in ("planning", "cal"):
+        name, err = desk_list.desk_folder(want)
+        if err:
+            sys.stderr.write(
+                "the desk list cannot be read, so the planning desk's folder is unknown: %s\n" % err)
+            sys.exit(2)
+        if name:
+            return name
+    sys.stderr.write(
+        "no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
+        "update the row in <notes>/desks/desk-registry.yaml with its purpose_path / open_loops_path "
+        "under desks/<folder>/; refusing to guess the planning desk's folder (never falling back "
+        "to desks/cal)\n")
+    sys.exit(2)
+_PLANNING_DESK = _planning_desk_folder()
+VAULT_ROOT = os.path.join(DRIVE, "desks", _PLANNING_DESK, "state", "raw-vault")
 GWS = __import__("shutil").which("gws") or "gws"
 
 # L0 sanitize for adversarial metadata (same core email_convert/planning-vault-pull use)

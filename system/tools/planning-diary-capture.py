@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Planning-Diary daily auto-capture — PULL emitter (look-back: what happened on a date).
 
-Writes desks/cal/diary/YYYY/MM/DD.md from sources that ALREADY EXIST — no new emit jobs,
+Writes the planning desk's diary day file desks/<planning-desk folder, from the desk
+list>/diary/YYYY/MM/DD.md, from sources that ALREADY EXIST — no new emit jobs,
 NO LLM (mechanical + ported only):
   - system/journal.md   : entry rows + session blocks for the date, grouped by desk
                           (this is "what got built/debugged/decided", cross-desk incl. Lifehack)
@@ -14,7 +15,7 @@ NO LLM (mechanical + ported only):
 
 Composes per-desk sections + a mechanical "## Machine Recap (unverified)" (the committed read
 a check-in later reacts to). Part of the calendar-diary system
-(desks/cal/projects/calendar-diary/ — see checkin-method.md + brief.md).
+(the planning desk's projects/calendar-diary/ — see checkin-method.md + brief.md).
 
 SAFETY / CONTRACT:
   - Fail-soft: any gws/source failure → that section marked `source-unavailable`, exit 0
@@ -48,10 +49,35 @@ if not DRIVE:
     sys.exit(2)
 JOURNAL = os.path.join(DRIVE, "system/journal.md")
 STATUS_DIR = os.path.join(DRIVE, "state/status")
-# ⚠ The DATA PATH is deliberately still `desks/cal/`. This desk's code, tools, jobs and tiles are
-# renamed to `planning`; the records directory is NOT, because moving the operator's live records is
-# their decision and has not been taken. KNOWN, INTENTIONAL split — do not "complete" it without their word.
-DIARY_ROOT = os.path.join(DRIVE, "desks/cal/diary")
+# The planning desk's folder comes from the desk list (shared/desk_list.py — the ONE reader of
+# <notes>/desks/desk-registry.yaml), NEVER a literal `desks/cal`: the owner has ruled the planning
+# desk's folder will move (desks/cal → desks/planning, one sitting, later), and the registry row's
+# own purpose_path / open_loops_path are the truth. The row is found by desk_id — the stable
+# identity the desk list documents ("stable slug, the identity other tools match a desk by") —
+# under either id the desk has carried: `planning` (preferred) or `cal`. Neither id is ever used
+# as a path. No desk list, no planning row, or an unreadable list → loud named exit below; a tool
+# NEVER falls back to desks/cal.
+import desk_list                                                            # noqa: E402
+
+
+def _planning_desk_folder():
+    """The planning desk's folder name, from its desk-list row. Exit loudly (never guess)."""
+    for want in ("planning", "cal"):
+        name, err = desk_list.desk_folder(want)
+        if err:
+            sys.stderr.write(
+                "the desk list cannot be read, so the planning desk's folder is unknown: %s\n" % err)
+            sys.exit(2)
+        if name:
+            return name
+    sys.stderr.write(
+        "no planning-desk row in the desk list (looked for desk_id 'planning' or 'cal') — add or "
+        "update the row in <notes>/desks/desk-registry.yaml with its purpose_path / open_loops_path "
+        "under desks/<folder>/; refusing to guess the planning desk's folder (never falling back "
+        "to desks/cal)\n")
+    sys.exit(2)
+_PLANNING_DESK = _planning_desk_folder()
+DIARY_ROOT = os.path.join(DRIVE, "desks", _PLANNING_DESK, "diary")
 
 # ⛔ THESE WERE HARDCODED, AND THAT IS THE WORST KIND OF HARDCODING. A calendar id baked into a
 # tool means an agent reads — or writes — SOMEBODY ELSE'S CALENDAR, and the person running it sees

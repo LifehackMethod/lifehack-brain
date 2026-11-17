@@ -66,6 +66,20 @@ _SANDBOX_ROOT = tempfile.mkdtemp(prefix="planning-diary-test-root.")
 os.environ["LIFEHACK_ROOT"] = _SANDBOX_ROOT
 atexit.register(shutil.rmtree, _SANDBOX_ROOT, ignore_errors=True)
 
+# CR-9 2(b) part 1a: the capture tool now resolves the planning desk's folder through the desk
+# list (shared/desk_list.py) and exits loudly when the list has no planning row — so the sandbox
+# plants one, pointing at desks/planning. This doubles as the planted check below: the tool's
+# data root must follow the desk-list ROW (desks/planning here), never a literal desks/cal.
+os.makedirs(os.path.join(_SANDBOX_ROOT, "desks"), exist_ok=True)
+with open(os.path.join(_SANDBOX_ROOT, "desks", "desk-registry.yaml"), "w", encoding="utf-8") as _f:
+    _f.write(
+        "schema_version: 2\n"
+        "desks:\n"
+        "  - desk_id: planning\n"
+        "    open_loops_path: desks/planning/state/open-loops.md\n"
+        "    purpose_path: desks/planning/canon/purpose.md\n"
+    )
+
 _spec = importlib.util.spec_from_file_location("planning_diary_capture", SCRIPT)
 cdc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cdc)
@@ -76,6 +90,10 @@ results = []
 def check(name, ok, detail=""):
     results.append((name, bool(ok), detail))
 
+
+check("CR9 planted: DIARY_ROOT follows the desk-list row (desks/planning), never a literal desks/cal",
+      os.path.join(_SANDBOX_ROOT, "desks", "planning", "diary") == cdc.DIARY_ROOT,
+      cdc.DIARY_ROOT)
 
 def parse(text, date_str):
     """Run read_journal() against an in-memory journal fixture."""
