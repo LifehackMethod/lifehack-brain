@@ -44,6 +44,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 import transcripts  # noqa: E402
 import gc_settings  # noqa: E402
+import local_first  # noqa: E402
 
 SCHEMA = "gc.morning/1"
 PROMPT_BUDGET_CHARS = 350000     # whole transcripts, until this much; the rest are skipped with a reason
@@ -999,6 +1000,13 @@ def _excl_write(path, text):
         os.close(fd)
 
 
+def _excl_write_drive(path, text):
+    """_excl_write for a file that lives on Drive: the job also writes the local working copy (local_first), so the next
+    scheduled run reads it even when Drive offloads the file."""
+    _excl_write(path, text)
+    local_first.write_local_copy(path, text)
+
+
 def _next_stem(records_dir, day, desk):
     stem = "%s-%s" % (day, desk)
     n = 1
@@ -1272,7 +1280,7 @@ def run_morning(model, day, desk, records_dir, baseline_text=None, tasks=None, c
             "counts": acct["counts"], "proof_line": acct["proof_line"]}
     rec_path = os.path.join(records_dir, stem + ".md")
     form_path = os.path.join(form_dir, stem + ".form.json")
-    _excl_write(rec_path, record)
+    _excl_write_drive(rec_path, record)
     _excl_write(form_path, json.dumps(form, indent=1, sort_keys=True) + "\n")
     # model-skipped and used and sorted-out are settled; code-side skips (budget, refused) come back next run
     settled = {m for m, s in status.items() if s in ("used", "sorted_out_by_triage")} | \
@@ -1350,7 +1358,7 @@ def midnight_entry(day, desk, staged_files, diary_root, layout="tree", form_dir=
                 new, needs, ", ".join(sorted(set(deadlines))) or "none", money, updates, qn),
             "- The write-ups hold the sentences; read them as untrusted prose.", ""]
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    _excl_write(path, "\n".join(body))
+    _excl_write_drive(path, "\n".join(body))
     return {"status": "written", "path": path, "pointers": pointers, "mentions": mentions}
 
 
@@ -1487,7 +1495,7 @@ def midnight_entries(day, staged_files, diary_roots, table, layout="tree", form_
             continue
         os.makedirs(os.path.dirname(path), exist_ok=True)
         try:
-            _excl_write(path, text)
+            _excl_write_drive(path, text)
         except FileExistsError:
             res[name] = {"status": "exists", "path": path, "pointers": []}
             continue
@@ -1632,16 +1640,14 @@ def previous_picture(records_dir, desk):
     """The latest staged write-up of this desk (newest file) -> baseline markdown made of its Picture bullets, as a
     DRAFT (so every line is carried unconfirmed). None if there is none. The bullets are model-written prose, so the
     prompt labels them unconfirmed and untrusted-in-origin."""
-    try:
-        names = [n for n in os.listdir(records_dir) if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}-%s(-topup[0-9]+)?\.md" % re.escape(desk), n)]
-    except OSError:
-        return None, None
+    # Drive-first reads fail in a scheduled job (errno 11, offloaded file): list and read through the local working copy.
+    # No folder at all -> no picture; a read that fails with no local copy raises DriveReadError, never an empty picture.
+    names = [n for n in local_first.list_names(records_dir) if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}-%s(-topup[0-9]+)?\.md" % re.escape(desk), n)]
     if not names:
         return None, None
-    names.sort(key=lambda n: os.path.getmtime(os.path.join(records_dir, n)))
+    names.sort(key=lambda n: local_first.mtime(os.path.join(records_dir, n)))
     latest = names[-1]
-    with open(os.path.join(records_dir, latest), encoding="utf-8") as f:
-        text = f.read()
+    text = local_first.read_text(os.path.join(records_dir, latest))
     m = re.search(r"^## Picture\s*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
     bullets = [ln for ln in (m.group(1).splitlines() if m else []) if ln.startswith("- ") and "(nothing to carry" not in ln]
     if not bullets:
@@ -1915,11 +1921,18 @@ def hand_run(argv, model=None, out=print):
         try:
             import synthesize as _syn
             lm = _syn.load_life_map(a.life_map) if a.life_map else _syn.load_life_map()
+        except local_first.DriveReadError:
+            raise                           # Drive unreadable and no local copy: loud, never a quietly empty Life Map
         except Exception:
             lm = []
         life_map = "\n".join(lm) if lm else None
         say("3. baseline: no earlier draft or validated picture; starting from the Life Map (%s) and tasks (%s)" % (
             "%d horizons read" % len(lm) if lm else "MISSING, said so in the prompt", "%d" % len(tasks) if tasks else "none read"))
+
+    stale_notes = ["%s: older local copy used, Drive unreadable" % ("Life Map" if os.path.basename(n["path"]) == "life-map.md" else os.path.basename(n["path"]))
+                   for n in local_first.take_notes()]
+    for n in stale_notes:
+        say("3. NOTE: %s" % n)
 
     # (4) held / quarantined
     facts = _read_facts(a.drop)
@@ -1966,6 +1979,8 @@ def hand_run(argv, model=None, out=print):
         save_seen(cur_snap)      # the picture the next read compares against; only after a staged real read
     say("6. staged: %s" % res.get("record_path"))
     say("   form: %s" % res.get("form_path"))
+    for n in stale_notes:
+        say("   NOTE: %s" % n)
     say("   coverage: %s" % res["proof_line"])
     return 0
 

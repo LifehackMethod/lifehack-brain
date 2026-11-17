@@ -31,6 +31,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 import clock  # noqa: E402
 import gc_settings  # noqa: E402
+import local_first  # noqa: E402
 import store  # noqa: E402
 import store_items  # noqa: E402
 
@@ -70,14 +71,15 @@ LIFE_MAP_HEADINGS = (
 def load_life_map(path=None):
     """The current Win of every horizon, his own words, from the canonical Life Map markdown. Read-only.
     Parses by heading; stops a section at its first 'Previous ...' record paragraph (everything after that is
-    superseded record, not current); the transient Daily section is never read. Returns ['(horizon) text', ...],
-    or [] when the file is missing or unreadable (the run continues without it)."""
+    superseded record, not current); the transient Daily section is never read. Returns ['(horizon) text', ...].
+    Reads through local_first (local working copy first, Drive when newer). A file that is truly missing -> [] (the run
+    continues without it). Drive unreadable with no local copy -> local_first.DriveReadError, loud, NOT []. Drive
+    unreadable with an older local copy -> that copy, and a stale note for the caller (local_first.take_notes())."""
     p = path or life_map_path()
     try:
-        with open(p, "r", encoding="utf-8") as f:
-            text = f.read()
-    except OSError:
-        return []
+        text = local_first.read_text(p)     # local working copy first (a scheduled job cannot fetch an offloaded Drive file)
+    except FileNotFoundError:
+        return []                           # truly missing: the run continues without it; any other failure is loud (DriveReadError)
     hits = sorted((m.start(), name) for name, rx in LIFE_MAP_HEADINGS for m in [rx.search(text)] if m)
     out = []
     for i, (start, name) in enumerate(hits):

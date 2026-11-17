@@ -24,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import gc_settings  # noqa: E402
+import local_first  # noqa: E402
 
 MAILROOM_RHYTHM_S = 600
 DAILY_S = 86400
@@ -248,7 +249,15 @@ def backup_light(cfg, now, rhythm_s=DAILY_S, check_db=True, db_check=None):
         size = os.path.getsize(f)
         ok = size > 0
         if ok and check_db and key != "archive_dir":
-            ok = (db_check or _db_ok)(f)
+            chk = f
+            if key == "snapshot_dir":      # the snapshot lives on Drive: check its local working copy (a scheduled job cannot fetch an offloaded file)
+                try:
+                    chk = local_first.local_file(f)
+                except (local_first.DriveReadError, OSError) as e:
+                    chk, ok = None, False
+                    errs.append("newest snapshot unreadable: %s" % str(e)[:200])
+            if chk is not None:
+                ok = (db_check or _db_ok)(chk)
         payload[key.replace("_dir", "")] = {"age_s": int(age), "bytes": size, "verified": bool(ok)}
         if not ok:
             errs.append("newest %s failed its check" % label)

@@ -12,6 +12,7 @@ import limits as L  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # shared/grand_central: the one settings loader
 import gc_settings  # noqa: E402
+import local_first  # noqa: E402
 
 
 def mover_dir():
@@ -95,17 +96,20 @@ def allow_materialize():
         pass
 
 
+def read_result_ex(path, tries=4, wait=3.0):
+    """Read result.json -> (dict, stale_note or None). local_first retries a Drive-busy error (EDEADLK/EAGAIN) `tries` times
+    (`wait` seconds apart) even when a local copy exists; if Drive still fails the local copy is returned WITH a stale note;
+    with no local copy it fails loudly (OSError naming both paths)."""
+    import errno
+    try:
+        data, stale = local_first.read_ex(path, retries=tries, backoff=wait)
+    except local_first.DriveReadError as e:
+        raise OSError(errno.EDEADLK, str(e)) from e
+    return json.loads(data.decode("utf-8")), stale
+
+
 def read_result(path, tries=4, wait=3.0):
-    """Read result.json, retrying a few times when Drive says the file is busy (EDEADLK/EAGAIN)."""
-    import errno, time
-    for i in range(tries):
-        try:
-            with open(path, encoding="utf-8") as f:
-                return json.load(f)
-        except OSError as e:
-            if e.errno not in (errno.EDEADLK, errno.EAGAIN) or i == tries - 1:
-                raise
-            time.sleep(wait)
+    return read_result_ex(path, tries, wait)[0]
 
 
 def main(argv=None):
@@ -117,9 +121,14 @@ def main(argv=None):
     a.tile = a.tile or tile_path()
     allow_materialize()
     try:
-        result = read_result(a.result)
-        tile = build_tile(result, result_mtime=os.path.getmtime(a.result))
-    except (OSError, ValueError, KeyError) as e:
+        result, stale = read_result_ex(a.result)
+        # a stale result must not be paired with Drive's newer mtime: the age is the age of the copy we actually read
+        tile = build_tile(result, result_mtime=(local_first.local_mtime(a.result) if stale else local_first.mtime(a.result)))
+        if stale:
+            tile["items"] = [{"title": "result.json is stale", "detail": stale}] + list(tile.get("items") or [])
+            tile["status"] = "WARN"
+            tile["summary"] = "WARN (STALE result.json, Drive unreadable; older local copy used): " + tile["summary"].split(": ", 1)[-1]
+    except (OSError, ValueError, KeyError, local_first.DriveReadError) as e:
         now = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
         tile = {"desk": gc_settings.pulse_desk(), "schema_version": 2, "pulse_job": "mover-usage", "emit_mode": "pulse",
                 "stale_after_s": 43200, "last_run": now, "rc": 1, "status": "ERROR",

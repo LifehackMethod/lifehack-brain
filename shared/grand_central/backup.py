@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gc_settings  # noqa: E402
+import local_first  # noqa: E402
 
 KEEP_LOCAL = 30
 KEEP_SNAPSHOTS = 14
@@ -212,6 +213,15 @@ def snapshot(src=None):
         raise SystemExit("snapshot failed verification: " + "; ".join(probs))
     os.replace(tmp, final)  # same-day snapshot replaced
     _prune(d, r"rig-\d{8}\.db", KEEP_SNAPSHOTS)
+    # the local working copy the backup light reads (a scheduled job cannot fetch an offloaded Drive file); the newest only
+    local_first.write_local_copy(final, Path(local).read_bytes())
+    cd = Path(local_first.cache_path(final)).parent
+    for old in cd.glob("rig-*.db"):
+        if old.name != final.name:
+            try:
+                old.unlink()
+            except OSError as e:     # the Drive snapshot has landed: a stale cache file is said loudly, never a failed job
+                print("backup: could not remove the older local snapshot copy %s: %s" % (old, e), file=sys.stderr)
     return final
 
 

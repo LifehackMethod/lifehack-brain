@@ -9,6 +9,34 @@ import limits as L, mover_request as R, mover_usage as U  # noqa: E402
 import gc_settings  # noqa: E402
 import gsrun  # noqa: E402
 
+def _cache_listing(root):
+    base = os.path.join(root, "drive-cache")
+    return sorted(os.path.join(dp, n) for dp, _d, fns in os.walk(base) for n in fns) if root else []
+
+
+class Isolated(unittest.TestCase):
+    """Every test gets its OWN GC_DATA_ROOT (local_first writes drive-cache/ under it), and the data root that was in effect
+    before (the real one on a standalone run) must end the test with the same drive-cache file list it started with."""
+    def setUp(self):
+        try:
+            self._real_root = gc_settings.data_root()
+        except Exception:
+            self._real_root = None
+        self._before = _cache_listing(self._real_root)
+        self._old_env = os.environ.get("GC_DATA_ROOT")
+        self._own = tempfile.TemporaryDirectory()
+        os.environ["GC_DATA_ROOT"] = self._own.name
+        self.addCleanup(self._unisolate)
+
+    def _unisolate(self):
+        if self._old_env is None:
+            os.environ.pop("GC_DATA_ROOT", None)
+        else:
+            os.environ["GC_DATA_ROOT"] = self._old_env
+        self._own.cleanup()
+        self.assertEqual(_cache_listing(self._real_root), self._before, "the test changed the real data root's drive-cache")
+
+
 NOW = datetime.datetime(2026, 11, 12, 20, 0, tzinfo=datetime.timezone.utc)   # 12:00 PT
 
 
@@ -28,7 +56,7 @@ class Limits(unittest.TestCase):
         self.assertIn("confirmed 2026-11-12", Path(L.__file__).read_text())
 
 
-class Usage(unittest.TestCase):
+class Usage(Isolated):
     def tile(self, us):
         return U.build_tile({"usage": us}, now=NOW)
 
@@ -138,7 +166,7 @@ class Request(unittest.TestCase):
 
 
 
-class ReadRetry(unittest.TestCase):
+class ReadRetry(Isolated):
     def test_read_result_retries_edeadlk_then_succeeds(self):
         import errno
         from unittest import mock
@@ -154,9 +182,10 @@ class ReadRetry(unittest.TestCase):
             with mock.patch("builtins.open", flaky):
                 self.assertEqual(U.read_result(p, tries=4, wait=0), {"usage": []})
             calls["n"] = -10
+            p2 = os.path.join(d, "r2.json"); json.dump({"usage": []}, real_open(p2, "w"))   # no local copy of this one yet
             with mock.patch("builtins.open", flaky):
                 with self.assertRaises(OSError):
-                    U.read_result(p, tries=2, wait=0)
+                    U.read_result(p2, tries=2, wait=0)
 
 
 if __name__ == "__main__":

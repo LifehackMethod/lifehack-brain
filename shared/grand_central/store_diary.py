@@ -12,6 +12,8 @@ import os
 import re
 import time
 
+import local_first
+import sys
 import store_graph as sg
 
 _DATED = re.compile(r"^(\d{4})/(\d{2})/(\d{2})(-RESCUED[^/]*)?\.md$")
@@ -71,8 +73,7 @@ def index_entry(con, diary, entry_file, notes_root, now=None):
     day = date_of(m.group(1)) if m else None
     if not day:
         return None
-    with open(entry_file, "rb") as f:
-        text = f.read().decode("utf-8", "replace")
+    text = local_first.read_bytes(entry_file).decode("utf-8", "replace")   # local copy first; loud if neither side reads
     fm = _front(text)
     keys = json.dumps(_list(fm.get("mentions")))
     staged = json.dumps(_list(fm.get("staged") or fm.get("staged_ids")))
@@ -100,7 +101,13 @@ def refresh_index(con, diary, diary_root, notes_root, now=None):
             p = os.path.join(dp, fn)
             if not fn.endswith(".md") or fn.startswith("."):
                 continue
-            r = index_entry(con, diary, p, notes_root, now)
+            try:
+                r = index_entry(con, diary, p, notes_root, now)
+            except local_first.DriveReadError as e:       # one unreadable old entry (no local copy) must not stop the rest of the night
+                res.setdefault("unreadable", []).append(p)
+                seen.add(os.path.relpath(os.path.abspath(p), os.path.abspath(notes_root)).replace(os.sep, "/"))   # keep its index row
+                print("store_diary: ENTRY NOT INDEXED (Drive unreadable, no local copy): %s (%s)" % (p, e), file=sys.stderr)
+                continue
             if r is None:
                 res["skipped"] += 1
                 continue

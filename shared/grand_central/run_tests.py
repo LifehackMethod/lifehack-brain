@@ -98,6 +98,7 @@ MANIFEST = [
     ("tests/test_step2_door.py", "unittest", False),  # step 2 attack fixes: ingest and catalogue
     ("handoff/tests/test_handoff.py", "script", False),
     ("tests/test_data_root_loud.py", "unittest", False),   # data_root fails loudly when an expected owner setup is unreadable
+    ("tests/test_drive_local_first.py", "unittest", False),   # scheduled Drive reads go through a local working copy (errno 11 EDEADLK); loud when neither reads
     ("mover/tests/test_static.py", "unittest", False),  # mover: Code.gs static wall (exact scopes, no forbidden API); origin 92a9739
     ("mover/tests/test_gs.py", "unittest", False),      # mover: Code.gs under node with pretend Gmail + Drive (needs node)
     ("mover/tests/test_schema.py", "unittest", False),  # mover: request validation

@@ -91,6 +91,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/handoff/handoff.py` · Phase H, the hand-off folder. An .eml the owner downloads from Gmail and asks for by name
 - `/shared/grand_central/handoff/interpreter.py` · the TOOL-LESS interpreter for the hand-off folder (Phase H3)
 - `/shared/grand_central/handoff/worker.py` · the untrusted-content half of the hand-off reader
+- `/shared/grand_central/local_first.py` · the ONE way a scheduled job reads a file that lives on Google Drive
 - `/shared/grand_central/migrate.py` · migrate.py: apply the migrations to rig.db
 - `/shared/grand_central/model_check.py` · model_check.py: `gc rebuild` and `gc check` (Phase 2 step 2.6; Vision 3.7.4 rules 5 and 6, 3.17 health check)
 - `/shared/grand_central/morning.py` · the morning read (plan B1 "The stages" item 3; B2 step 4)

@@ -601,6 +601,9 @@ def midnight_job(desk=None, today=None, lookback=LOOKBACK_DAYS, state=None, stat
                 out("[midnight] diary index %s: %s" % (name, index_refresh(name, root, notes)))
             except Exception as e:
                 out("[midnight] diary index NOT refreshed for %s: %s" % (name, e))
+        import local_first
+        for n in local_first.take_notes():
+            out("[midnight] NOTE: %s: %s" % (n["path"], n["why"]))
     line = "gc-midnight ok date=%s desk=%s staged_days=%d settled=%d written=%d existing=%d newest=%s at=%s entries=%d" % (
         today.isoformat(), desk, staged_days, written + existing, written, existing, newest, now_iso(), entries)
     write_receipt("gc-midnight", line, state)
