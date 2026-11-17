@@ -2,6 +2,7 @@
 # <count>\t<path>: how many personal-desk-name words a tracked file may still hold (rule R3, a ratchet).
 # These are older docs, SOPs and archive copies cleaned outside 3b.7 B. A count may only go DOWN; a file
 # not listed may hold none. The names themselves are never written here.
+# 2026-11-16: component-page-template.md holds 1 word only because the required CC BY-SA credit names an arc42 author whose first name collides with a desk-name hash (a false positive, not private material).
 2	.claude/agents/archivist.md
 1	.claude/skills/planning-weekly/prompts/04-council.md
 1	.claude/skills/planning-weekly/prompts/council/long-lens-ponzi.md
@@ -9,6 +10,9 @@
 4	archive/2026-10-31-skill-system-cleanup/system/tools/skill_command_check.py
 2	archive/2026-10-31-skill-system-cleanup/system/tools/test_transcript_outline.py
 6	archive/2026-10-31-skill-system-cleanup/system/tools/transcript_outline.py
+1	canon/cron-jobs-sop.md
+8	canon/skill-building-sop.history.md
+35	canon/skill-building-sop.md
 3	system/hooks/tests/test_desk_tool_placement.sh
 18	system/hooks/tests/test_guard_build_mode.sh
 12	system/organism/elements/archivist.md
@@ -33,9 +37,7 @@
 2	system/organism/elements/statusline-hud.md
 130	system/organism/manual.md
 3	system/security-posture-baseline.md
-1	canon/cron-jobs-sop.md
-8	canon/skill-building-sop.history.md
-35	canon/skill-building-sop.md
+1	system/templates/component-page-template.md
 2	system/tools/architecture_reason.py
 2	system/tools/job-fetch-hosts.txt
 1	system/tools/obsidian-prune-archive.mjs
