@@ -25,6 +25,12 @@ USAGE:
         requirement against the plans: one line per requirement, `R001 | VERDICT | reason`, with
         VERDICT one of MET/UNMET/CONFLICT/STALE/NOT-A-REQUIREMENT/NO-OUTCOME. Over 250
         requirements the list is split by document, one call per document (said on stdout).
+  read_harness.py --whole --plans FILE... --docs FILE... --task FILE plus the model flag naming the reader: glm, sonnet or opus (ids come from model_ids.py tiers)
+        --out FOLDER        (card 5.1)
+        ONE call with every file printed in full (line-numbered) in the prompt, no tools, one
+        fixed reply shape (heading ledger + findings with CANON/PLAN quotes); code checks the
+        ledger against the real headings and every quote against its file; one retry naming what
+        was missing. Writes reply.raw.txt, findings.tsv, findings.md, check.md.
 
 OUTPUT: <out>/replies/<section_id>.txt (raw reply, written before the record is touched),
   <out>/results.tsv (tab-separated, header run_id, ts, section_id, verdict, quote_ok, model, ccv,
@@ -68,6 +74,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -102,14 +109,17 @@ def norm(s):
 
 # ---------------------------------------------------------------- model call
 
-def _run_command(cmd):
-    """Run one external command with stdin from /dev/null. stderr is captured, never silenced.
-    Returns (stdout_text, None) or (None, error_message_with_stderr_tail)."""
+def _run_command(cmd, input_text=None, timeout_secs=None):
+    """Run one external command. stdin from /dev/null, unless input_text is given (the
+    whole-document prompt is far too large for argv, so it goes on stdin). stderr is captured,
+    never silenced. Returns (stdout_text, None) or (None, error_message_with_stderr_tail)."""
+    timeout = timeout_secs or CALL_TIMEOUT_SECS
     try:
-        p = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
-                           text=True, timeout=CALL_TIMEOUT_SECS)
+        p = subprocess.run(cmd,
+                           input=input_text if input_text is not None else subprocess.DEVNULL,
+                           capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
-        return None, "call timed out after %ss" % CALL_TIMEOUT_SECS
+        return None, "call timed out after %ss" % timeout
     except Exception as e:  # launcher missing, spawn failure, ...
         return None, "call could not run (%s: %s)" % (e.__class__.__name__, e)
     err_tail = norm((p.stderr or "")[-300:])
@@ -118,28 +128,45 @@ def _run_command(cmd):
     return p.stdout, None
 
 
-def call_model(prompt, model, allow_read=False):
+def call_model(prompt, model, allow_read=False, timeout_secs=None, stdin_prompt=False,
+               no_tools=False, usage_out=None):
     """ONE sealed model call, behind one function so tests replace it with a stub.
     allow_read=True hands the model the Read tool and nothing else (the captain).
-    Returns (reply_text, None) or (None, error_message)."""
+    no_tools=True allows nothing at all (the whole-document read). stdin_prompt=True sends the
+    prompt on stdin instead of argv (it is far too large for argv). usage_out, if given a dict,
+    receives the call's usage counts. Returns (reply_text, None) or (None, error_message)."""
     if model == "glm":
-        cmd = [GLM_LAUNCHER, REPO_ROOT, "--", "-p", prompt, "--output-format", "json"]
+        cmd = [GLM_LAUNCHER, REPO_ROOT, "--", "-p"]
+        if not stdin_prompt:
+            cmd += [prompt]
+        cmd += ["--output-format", "json"]
         if allow_read:
             cmd += ["--allowedTools", "Read"]
-    elif model == "opus":
-        # "opus" is the plan's name for the strong model; the id itself comes from the tier table.
-        cmd = ["claude", "-p", prompt, "--model", model_id("large"), "--output-format", "json"]
+        elif no_tools:
+            cmd += ["--allowedTools", ""]
+    elif model in ("opus", "sonnet"):
+        # "opus"/"sonnet" are the plan's names for the strong models; the ids come from the tier table.
+        cmd = ["claude", "-p"]
+        if not stdin_prompt:
+            cmd += [prompt]
+        cmd += ["--model", model_id("large" if model == "opus" else "medium"),
+                "--output-format", "json"]
         if allow_read:
             cmd += ["--allowedTools", "Read"]
+        elif no_tools:
+            cmd += ["--allowedTools", ""]
     else:
         return None, "unknown model: %s" % model
-    out, err = _run_command(cmd)
+    out, err = _run_command(cmd, input_text=prompt if stdin_prompt else None,
+                            timeout_secs=timeout_secs)
     if err:
         return None, err
     try:
         d = json.loads(out)
     except Exception:
         return None, "stdout was not JSON (%s...)" % (out or "")[:120]
+    if usage_out is not None and isinstance(d.get("usage"), dict):
+        usage_out.update(d["usage"])
     if d.get("is_error"):
         return None, "is_error=true (%s)" % str(d.get("result", ""))[:200]
     reply = d.get("result")
@@ -157,19 +184,26 @@ def claude_version():
 
 # ------------------------------------------------------------------ splitting
 
+def real_headings(text):
+    """[(1-based line number, heading line)] for lines matching ^#{1,6}\\s+\\S outside ```
+    fences. ONE heading rule for the whole tool: the splitter and the --whole ledger check
+    both come here."""
+    heads, in_fence = [], False
+    for i, l in enumerate(text.split("\n")):
+        if l.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence and HEAD_RE.match(l):
+            heads.append((i + 1, l))
+    return heads
+
 def split_document(basename, text):
     """-> [(section_id, section_text)] for one document. Headings are lines matching
     ^#{1,6}\\s+\\S outside ``` fences. Text before the first heading is its own section. A
     section over MAX_SECTION_LINES lines is cut at blank lines into parts of at most
     MAX_SECTION_LINES lines. section_id = <basename>:<first>-<last>:<sha256[:8]>."""
     lines = text.split("\n")
-    heads, in_fence = [], False
-    for i, l in enumerate(lines):
-        if l.strip().startswith("```"):
-            in_fence = not in_fence
-            continue
-        if not in_fence and HEAD_RE.match(l):
-            heads.append(i)
+    heads = [ln - 1 for ln, _l in real_headings(text)]
     if heads and heads[0] == 0:
         starts = list(heads)
     elif heads:
@@ -758,6 +792,293 @@ def captain_run(captain_path, plan_paths, doc_paths, out, model):
     return 0
 
 
+# ------------------------------------------------------------------- whole
+
+WHOLE_KINDS = ("CONFLICT", "UNMET", "STALE", "TENSION")
+WHOLE_MODELS = ("glm", "sonnet", "opus")
+WHOLE_TIMEOUT_SECS = 1800
+WHOLE_RULES = (
+    "REPLY RULES -- plain text lines only, one item per line, nothing else:\n"
+    "LEDGER | <file label> | <line number> | <heading text>\n"
+    "FINDING | <n> | <CONFLICT|UNMET|STALE|TENSION> | <one or two plain sentences>\n"
+    "CANON | <n> | <file label> | <line number> | <words quoted from that file>\n"
+    "PLAN | <n> | <file label> | <line number> | <words quoted from that file>\n"
+    "First the ledger: one LEDGER line for EVERY markdown heading (a line starting with 1-6 "
+    "'#' then a space, outside ``` code fences) of EVERY file, in order, with its line number. "
+    "Then the findings, numbered 1, 2, 3, ... Every FINDING carries at least one CANON or PLAN "
+    "line with the same <n> (a TENSION between two plans may carry two PLAN lines and no CANON "
+    "line); quotes are copied word for word from the named file. If you find no problems: the "
+    "ledger, then the single line NO-FINDINGS. Use no tools; everything you need is in this "
+    "prompt.")
+
+def whole_prompt(task_text, files):
+    """ONE prompt: the task's text, the reply rules, then every file printed in full, each
+    between BEGIN/END markers, every line prefixed with its 1-based line number and a tab."""
+    parts = [task_text.strip(), "", WHOLE_RULES, ""]
+    for label, text in files:
+        lines = text.split("\n")
+        parts.append("===== FILE %s BEGINS (%d lines) =====" % (label, len(lines)))
+        for i, l in enumerate(lines, 1):
+            parts.append("%d\t%s" % (i, l))
+        parts.append("===== FILE %s ENDS =====" % label)
+        parts.append("")
+    return "\n".join(parts)
+
+def parse_whole_reply(reply):
+    """Check the reply's SHAPE only. -> dict(ledger, findings, no_findings, stray).
+    ledger: [(label, line, text)]. findings: [{"n", "kind", "text", "quotes": [(type, label,
+    line, quote)]}] in reply order; a CANON/PLAN line whose <n> names no FINDING is stray.
+    stray: lines not in the contract at all."""
+    ledger, findings, stray = [], [], []
+    no_findings = False
+    by_n = {}
+    for raw in (reply or "").split("\n"):
+        line = raw.strip()
+        if not line:
+            continue
+        if line == "NO-FINDINGS":
+            no_findings = True
+            continue
+        m = re.match(r"^LEDGER\s*\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|\s*(.*)$", line)
+        if m:
+            ledger.append((m.group(1), int(m.group(2)), m.group(3)))
+            continue
+        m = re.match(r"^FINDING\s*\|\s*(\d+)\s*\|\s*(\S+)\s*\|\s*(.*)$", line)
+        if m:
+            f = {"n": int(m.group(1)), "kind": m.group(2),
+                 "text": m.group(3).strip(), "quotes": []}
+            findings.append(f)
+            by_n[f["n"]] = f
+            continue
+        m = re.match(r"^(CANON|PLAN)\s*\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|\s*(.*)$",
+                     line)
+        if m:
+            f = by_n.get(int(m.group(2)))
+            if f is None:
+                stray.append(line)
+            else:
+                f["quotes"].append((m.group(1), m.group(3), int(m.group(4)), m.group(5)))
+            continue
+        stray.append(line)
+    return {"ledger": ledger, "findings": findings, "no_findings": no_findings,
+            "stray": stray}
+
+def judge_whole_reply(reply, files):
+    """Code's check of one whole reply against the real files.
+    -> dict(per_file=[(label, found, total)], missing=[(label, line, heading text)],
+    overall_found, overall_total, findings_rows=[(n, kind, text, verified, refused, supported)],
+    quotes_verified, quotes_total, parsed, unparseable, reason).
+    A real heading counts as FOUND if some LEDGER line for that file has a line number within 3
+    of the real one AND the text matches after lowercasing, OR the text matches exactly at any
+    line number. A quote is VERIFIED if norm(quote) is found in norm(the whole named file)."""
+    parsed = parse_whole_reply(reply)
+    text_by_label = dict(files)
+    labels = set(text_by_label)
+    ledger = [l for l in parsed["ledger"] if l[0] in labels]
+    stray_labels = [l for l in parsed["ledger"] if l[0] not in labels]
+    per_file, missing = [], []
+    overall_found = overall_total = 0
+    for label, text in files:
+        heads = real_headings(text)
+        lg = [l for l in ledger if l[0] == label]
+        found = 0
+        for ln, hl in heads:
+            h = norm(re.sub(r"^#+\s*", "", hl))
+            hit = False
+            for _lab, lline, ltext in lg:
+                if abs(lline - ln) <= 3 and norm(ltext).lower() == h.lower():
+                    hit = True
+                    break
+                if norm(ltext) == h:  # exact text at any line number
+                    hit = True
+                    break
+            if hit:
+                found += 1
+            else:
+                missing.append((label, ln, h))
+        per_file.append((label, found, len(heads)))
+        overall_found += found
+        overall_total += len(heads)
+    findings_rows = []
+    quotes_verified = quotes_total = 0
+    for f in parsed["findings"]:
+        verified = refused = 0
+        for _qtype, label, _line, quote in f["quotes"]:
+            quotes_total += 1
+            if label in labels and norm(quote) and norm(quote) in norm(text_by_label[label]):
+                verified += 1
+                quotes_verified += 1
+            else:
+                refused += 1
+        findings_rows.append((f["n"], f["kind"], f["text"], verified, refused,
+                              "yes" if verified else "no"))
+    kinds_ok = all(f["kind"] in WHOLE_KINDS for f in parsed["findings"])
+    has_shape = bool(parsed["ledger"]) or parsed["findings"] or parsed["no_findings"]
+    unparseable = (not has_shape) or bool(stray_labels) or not kinds_ok
+    reasons = []
+    if not has_shape:
+        reasons.append("no LEDGER and no FINDING/NO-FINDINGS lines at all")
+    if stray_labels:
+        reasons.append("LEDGER lines name files that are not in the run: %s"
+                       % ", ".join(sorted(set(stray_labels))))
+    if not kinds_ok:
+        reasons.append("FINDING kinds off the list (allowed: %s)" % ", ".join(WHOLE_KINDS))
+    return {"per_file": per_file, "missing": missing,
+            "overall_found": overall_found, "overall_total": overall_total,
+            "findings_rows": findings_rows,
+            "quotes_verified": quotes_verified, "quotes_total": quotes_total,
+            "parsed": parsed, "unparseable": unparseable,
+            "reason": "; ".join(reasons)}
+
+def whole_run(plan_paths, doc_paths, task_path, model, out):
+    """The whole-document forced read (plan card 5.1): one call, the whole files in the prompt,
+    no tools, code checks the ledger and every quote. Returns exit code."""
+    task_text, err = read_text(task_path, "task file")
+    if err:
+        print(err); print(err, file=sys.stderr)
+        return CANNOT_READ
+    files, problems = [], []
+    for p in list(plan_paths) + list(doc_paths):
+        text, rerr = read_text(p, "input file")
+        if rerr:
+            problems.append(rerr)
+        else:
+            files.append((os.path.basename(p), text))
+    if problems:
+        for m in problems:
+            print(m); print(m, file=sys.stderr)
+        return CANNOT_READ
+    labels = [label for label, _t in files]
+    if len(labels) != len(set(labels)):
+        dupes = sorted({l for l in labels if labels.count(l) > 1})
+        print("usage: two files share a basename; labels must be unique: %s" % ", ".join(dupes),
+              file=sys.stderr)
+        return 2
+
+    os.makedirs(out, exist_ok=True)
+    prompt = whole_prompt(task_text, files)
+
+    def write_raw(name, text):
+        try:
+            write_text_file(os.path.join(out, name), (text or "") + "\n")
+            return None
+        except Exception as e:
+            return "could not write %s (%s: %s)" % (name, e.__class__.__name__, e)
+
+    usage = {}
+    t0 = time.monotonic()
+    reply, cerr = call_model(prompt, model, timeout_secs=WHOLE_TIMEOUT_SECS,
+                             stdin_prompt=True, no_tools=True, usage_out=usage)
+    werr = write_raw("reply.raw.txt", reply)
+    if werr:
+        print(werr); print(werr, file=sys.stderr)
+        return CANNOT_READ
+    verdict = judge_whole_reply(reply, files) if not cerr else None
+
+    # One retry, only when the reply is unusable: a missing heading or a broken shape.
+    retried = False
+    if cerr or verdict["missing"] or verdict["unparseable"]:
+        retried = True
+        if verdict is not None:
+            if verdict["missing"]:
+                names = "; ".join("%s line %d (%s)" % ml for ml in verdict["missing"])
+                note = ("NOTE: your previous reply was not accepted: these headings are missing "
+                        "from the ledger: %s. Answer again, following the rules exactly." % names)
+            else:
+                note = ("NOTE: your previous reply was not accepted: the reply shape was not "
+                        "followed (%s). Answer again, following the rules exactly."
+                        % verdict["reason"])
+            retry_prompt = prompt + "\n\n" + note
+        else:
+            retry_prompt = prompt  # a failed call, not a bad reply: same prompt
+        usage2 = {}
+        reply2, cerr2 = call_model(retry_prompt, model, timeout_secs=WHOLE_TIMEOUT_SECS,
+                                   stdin_prompt=True, no_tools=True, usage_out=usage2)
+        werr = write_raw("reply.retry.raw.txt", reply2)
+        if werr:
+            print(werr); print(werr, file=sys.stderr)
+            return CANNOT_READ
+        reply, cerr, usage = (reply2, cerr2, usage2)
+        verdict = judge_whole_reply(reply2, files) if not cerr else None
+    seconds = time.monotonic() - t0
+
+    parsed = verdict["parsed"] if verdict else None
+    # findings.tsv
+    tsv = ["n\tkind\ttext\tquotes_verified\tquotes_refused\tsupported"]
+    if verdict:
+        for n, kind, text, ver, ref, sup in verdict["findings_rows"]:
+            tsv.append("%d\t%s\t%s\t%d\t%d\t%s" % (n, kind, text.replace("\t", " "),
+                                                   ver, ref, sup))
+    write_text_file(os.path.join(out, "findings.tsv"), "\n".join(tsv) + "\n")
+    # findings.md -- nothing here names the model, so a judge can read it blind.
+    text_by_label = dict(files)
+    md = ["# findings", ""]
+    if parsed and parsed["no_findings"] and not parsed["findings"]:
+        md.append("NO-FINDINGS")
+    elif parsed and parsed["findings"]:
+        by_n = {f["n"]: f for f in parsed["findings"]}
+        for n, kind, text, ver, ref, sup in verdict["findings_rows"]:
+            md += ["## finding %d" % n,
+                   "kind: %s" % kind,
+                   "text: %s" % text,
+                   "quotes verified: %d, refused: %d, supported: %s" % (ver, ref, sup)]
+            for qtype, label, line, quote in by_n[n]["quotes"]:
+                ok = label in text_by_label and norm(quote) and \
+                    norm(quote) in norm(text_by_label[label])
+                md.append("- %s %s line %d: %s -- %s" % (
+                    qtype, label, line, quote, "VERIFIED" if ok else "REFUSED"))
+            md.append("")
+    else:
+        md.append("(no findings in the reply)")
+    write_text_file(os.path.join(out, "findings.md"), "\n".join(md) + "\n")
+    # check.md
+    ck = ["# whole-run check", "",
+          "model: %s" % model,
+          "claude version: %s" % claude_version(),
+          "retried: %s" % ("yes" if retried else "no")]
+    if verdict:
+        for label, found, total in verdict["per_file"]:
+            ck.append("ledger %s: %d/%d" % (label, found, total))
+        ck.append("ledger overall: %d/%d" % (verdict["overall_found"], verdict["overall_total"]))
+        if verdict["missing"]:
+            ck.append("missing headings: " +
+                      "; ".join("%s line %d (%s)" % ml for ml in verdict["missing"]))
+        ck.append("quotes: %d/%d verified" % (verdict["quotes_verified"], verdict["quotes_total"]))
+        ck.append("findings: %d" % len(verdict["findings_rows"]))
+        ck.append("unsupported: %d" % sum(1 for r in verdict["findings_rows"] if r[5] == "no"))
+    else:
+        ck.append("no judged reply: the model call failed (%s)" % (cerr or ""))
+    ck.append("seconds: %.1f" % seconds)
+    ck.append("tokens: input=%s cache_read=%s cache_creation=%s output=%s" % (
+        usage.get("input_tokens", "unknown"), usage.get("cache_read_input_tokens", "unknown"),
+        usage.get("cache_creation_input_tokens", "unknown"),
+        usage.get("output_tokens", "unknown")))
+    if verdict is None:
+        result = "UNPARSEABLE"
+    elif verdict["unparseable"]:
+        result = "UNPARSEABLE"
+    elif verdict["missing"]:
+        result = "INCOMPLETE"
+    else:
+        result = "COMPLETE"
+    ck.append("RESULT=%s" % result)
+    write_text_file(os.path.join(out, "check.md"), "\n".join(ck) + "\n")
+
+    if verdict is None:
+        print("whole run UNPARSEABLE: the model call failed (%s)" % (cerr or ""))
+        return 1
+    if verdict["unparseable"]:
+        print("whole run UNPARSEABLE: %s" % verdict["reason"])
+        return 1
+    if verdict["missing"]:
+        print("whole run INCOMPLETE: %d heading(s) missing from the ledger" %
+              len(verdict["missing"]))
+        return 1
+    print("COMPLETE: ledger %d/%d, quotes %d/%d verified, %d finding(s)" % (
+        verdict["overall_found"], verdict["overall_total"],
+        verdict["quotes_verified"], verdict["quotes_total"], len(verdict["findings_rows"])))
+    return 0
+
 # --------------------------------------------------------------------- main
 
 def load_docs(paths):
@@ -784,7 +1105,22 @@ def main(argv):
     ap.add_argument("--check-record")
     ap.add_argument("--captain")
     ap.add_argument("--plans", nargs="*", default=None)
+    ap.add_argument("--whole", action="store_true")
+    ap.add_argument("--task")
+    ap.add_argument("--model")
     args = ap.parse_args(argv)
+
+    if args.whole:
+        missing = [f for f, v in (("--plans", args.plans), ("--docs", args.docs),
+                                  ("--task", args.task), ("--model", args.model),
+                                  ("--out", args.out)) if not v]
+        if missing:
+            print("usage: --whole requires %s" % ", ".join(missing), file=sys.stderr)
+            return 2
+        if args.model not in WHOLE_MODELS:
+            print("usage: the reader named with the model flag must be one of %s" % ", ".join(WHOLE_MODELS), file=sys.stderr)
+            return 2
+        return whole_run(args.plans, args.docs, args.task, args.model, args.out)
 
     if args.captain:
         if not args.plans or not args.docs or not args.out:

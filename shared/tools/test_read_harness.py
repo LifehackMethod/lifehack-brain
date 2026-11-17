@@ -348,4 +348,141 @@ check("k", "captain reply that answers one requirement twice: UNANSWERED, exit 1
 check("l", "captain reply with an off-list verdict: UNANSWERED, exit 1", test_l)
 check("m", "honest captain reply: findings.md lists the UNMET one, exit 0", test_m)
 
+# ---- card 5.1: the whole-document forced read ----
+
+WHOLE_PLAN = ("# Plan Alpha\n"
+              "## Step one\n"
+              "The build step writes the report.\n"
+              "## Step two\n"
+              "The verify step checks the report.\n")
+WHOLE_DOC = ("# Doc Bravo\n"
+             "## Findings\n"
+             "The quarterly review checks spending against plan values.\n"
+             "## Scope\n"
+             "This covers houseplant watering only.\n")
+
+def honest_whole_reply():
+    """A shape-legal whole reply for the two fixtures: a complete ledger, one finding with a
+    verified CANON quote and a verified PLAN quote."""
+    led = []
+    for label, text in (("planA.md", WHOLE_PLAN), ("docB.md", WHOLE_DOC)):
+        for ln, hl in rh.real_headings(text):
+            led.append("LEDGER | %s | %d | %s" % (label, ln, hl.lstrip("#").strip()))
+    return "\n".join(led + [
+        "FINDING | 1 | UNMET | nothing in the plan waters the houseplants.",
+        "CANON | 1 | docB.md | 5 | This covers houseplant watering only.",
+        "PLAN | 1 | planA.md | 3 | The build step writes the report.",
+    ]) + "\n"
+
+def make_whole_env():
+    d = tempfile.mkdtemp(prefix="rh_whole_")
+    plan = os.path.join(d, "planA.md"); open(plan, "w", encoding="utf-8").write(WHOLE_PLAN)
+    doc = os.path.join(d, "docB.md"); open(doc, "w", encoding="utf-8").write(WHOLE_DOC)
+    task = os.path.join(d, "task.txt")
+    open(task, "w", encoding="utf-8").write("Read these files whole and report problems.\n")
+    return d, plan, doc, task
+
+def run_whole(stub):
+    d, plan, doc, task = make_whole_env()
+    out = os.path.join(d, "out")
+    rh.call_model = stub
+    code, _ = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
+                        "--model", "sonnet", "--out", out])
+    return code, out, d
+
+def read_file(out_dir, name):
+    with open(os.path.join(out_dir, name), encoding="utf-8") as fh:
+        return fh.read()
+
+# (n) honest whole reply: exit 0, RESULT=COMPLETE
+def test_n():
+    code, out, _d = run_whole(lambda prompt, model, **kw: (honest_whole_reply(), None))
+    assert code == 0, "exit %d, expected 0" % code
+    ck = read_file(out, "check.md")
+    assert "RESULT=COMPLETE" in ck, ck
+    assert "retried: no" in ck, ck
+    assert "ledger planA.md: 3/3" in ck and "ledger docB.md: 3/3" in ck, ck
+    assert os.path.exists(os.path.join(out, "reply.raw.txt")), "raw reply missing"
+    tsv = read_file(out, "findings.tsv")
+    assert "\tUNMET\t" in tsv and "\tyes\n" in tsv, tsv
+
+# (o) reply missing one heading: retried once, the missing heading named; second reply complete
+def test_o():
+    calls, prompts = [], []
+    def fake(prompt, model, **kw):
+        calls.append(1)
+        prompts.append(prompt)
+        if len(calls) == 1:
+            # the ledger is missing docB.md's "Scope" heading (real line 4)
+            return honest_whole_reply().replace("LEDGER | docB.md | 4 | Scope\n", ""), None
+        return honest_whole_reply(), None
+    code, out, _d = run_whole(fake)
+    assert len(calls) == 2, "expected one retry, calls=%d" % len(calls)
+    assert "Scope" in prompts[1] and "docB.md" in prompts[1] and "line 4" in prompts[1], \
+        "the retry prompt must name the missing heading"
+    assert code == 0, "exit %d, expected 0" % code
+    ck = read_file(out, "check.md")
+    assert "retried: yes" in ck, ck
+    assert "RESULT=COMPLETE" in ck, ck
+    assert os.path.exists(os.path.join(out, "reply.retry.raw.txt")), "retry raw reply missing"
+
+# (p) reply missing a heading on both tries: exit 1, RESULT=INCOMPLETE, heading listed
+def test_p():
+    def fake(prompt, model, **kw):
+        return honest_whole_reply().replace("LEDGER | docB.md | 4 | Scope\n", ""), None
+    code, out, _d = run_whole(fake)
+    assert code == 1, "exit %d, expected 1" % code
+    ck = read_file(out, "check.md")
+    assert "RESULT=INCOMPLETE" in ck, ck
+    assert "docB.md line 4 (Scope)" in ck, ck
+
+# (q) one real and one made-up quote: made-up REFUSED and counted; finding with only a
+#     made-up quote is UNSUPPORTED
+def test_q():
+    reply = honest_whole_reply().replace(
+        "CANON | 1 | docB.md | 5 | This covers houseplant watering only.\n"
+        "PLAN | 1 | planA.md | 3 | The build step writes the report.\n",
+        "CANON | 1 | docB.md | 5 | This covers houseplant watering only.\n"
+        "CANON | 1 | docB.md | 5 | words that appear in no file anywhere.\n"
+        "FINDING | 2 | TENSION | a finding whose only quote is made up.\n"
+        "CANON | 2 | docB.md | 5 | this quote is invented from nothing.\n")
+    code, out, _d = run_whole(lambda prompt, model, **kw: (reply, None))
+    assert code == 0, "exit %d, expected 0" % code
+    ck = read_file(out, "check.md")
+    assert "quotes: 1/3 verified" in ck, ck
+    assert "unsupported: 1" in ck, ck
+    tsv = read_file(out, "findings.tsv")
+    lines = tsv.rstrip("\n").split("\n")
+    row2 = [l for l in lines if l.startswith("2\t")][0]
+    assert "\tno\n" in "\n" + row2 + "\n" or row2.endswith("\tno"), row2
+    fmd = read_file(out, "findings.md")
+    assert fmd.count("REFUSED") == 2, fmd
+    assert "VERIFIED" in fmd, fmd
+
+# (r) unparseable reply on both tries: exit 1, RESULT=UNPARSEABLE
+def test_r():
+    calls = []
+    def fake(prompt, model, **kw):
+        calls.append(1)
+        return "I read the documents carefully and have some thoughts to share.\n", None
+    code, out, _d = run_whole(fake)
+    assert len(calls) == 2, "expected one retry, calls=%d" % len(calls)
+    assert code == 1, "exit %d, expected 1" % code
+    ck = read_file(out, "check.md")
+    assert "RESULT=UNPARSEABLE" in ck, ck
+
+# (s) findings.md does not contain the model name
+def test_s():
+    code, out, _d = run_whole(lambda prompt, model, **kw: (honest_whole_reply(), None))
+    assert code == 0, "exit %d, expected 0" % code
+    fmd = read_file(out, "findings.md")
+    assert "sonnet" not in fmd.lower() and "claude" not in fmd.lower(), fmd
+
+check("n", "honest whole reply: exit 0, RESULT=COMPLETE", test_n)
+check("o", "missing one heading: retried once with it named, second reply complete, exit 0", test_o)
+check("p", "missing a heading on both tries: exit 1, RESULT=INCOMPLETE, heading listed", test_p)
+check("q", "made-up quote REFUSED and counted; quoteless finding UNSUPPORTED", test_q)
+check("r", "unparseable reply on both tries: exit 1, RESULT=UNPARSEABLE", test_r)
+check("s", "findings.md does not name the model", test_s)
+
 sys.exit(0 if all(RESULTS) else 1)
