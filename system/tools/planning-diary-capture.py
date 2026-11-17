@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cal diary daily auto-capture — PULL emitter (look-back: what happened on a date).
+"""Planning-Diary daily auto-capture — PULL emitter (look-back: what happened on a date).
 
 Writes desks/cal/diary/YYYY/MM/DD.md from sources that ALREADY EXIST — no new emit jobs,
 NO LLM (mechanical + ported only):

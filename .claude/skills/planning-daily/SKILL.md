@@ -1,7 +1,7 @@
 ---
 topic: [calendar-management]
 skill: planning-daily
-description: "Cal — the morning trust-fall: interrogative daily planning that clears the surfaces and lands one high-leverage move per lane. Works standalone with no account (diary + a planning conversation + open loops); calendar/task surfaces join in once Google is connected. Use on \"planning daily\", \"what's my day\", \"morning check-in\", \"trust fall\"."
+description: "Cal — the morning trust-fall: interrogative daily planning that clears the surfaces and lands one high-leverage move per lane. Works standalone with no account (diary + a planning conversation + open loops); calendar/task surfaces join in if Google is connected (never required). Use on \"planning daily\", \"what's my day\", \"morning check-in\", \"trust fall\"."
 shape: interactive-workflow
 version: 0.3
 maturity: "PROVISIONAL — ported 2026-08-14. Layer 1 (no account) verified end to end; Layer 2 (Google connected) is wired but not yet run against a real account in this repo. See status table below."

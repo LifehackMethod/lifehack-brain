@@ -4,7 +4,7 @@
 WHY THIS EXISTS
   The journal (producer) and this parser (consumer) drifted apart for two months and
   nothing noticed: 125 of 466 entry rows and 196 of 288 session blocks were silently
-  dropped, so the Cal diary — and every lookback that reads it — saw a near-empty week.
+  dropped, so the Planning-Diary — and every lookback that reads it — saw a near-empty week.
   See state/handoff-cal-diary-format-drift.md and [CAL-DIARY-FORMAT-DRIFT] in the debt ledger.
 
 WHAT IT LOCKS
@@ -148,10 +148,10 @@ check("T6 '| desk / slug' variant attributes to the desk",
 # T7 — no desk field anywhere (40 blocks look like this). Must still be CAPTURED, not dropped;
 #      unattributed is honest, silent loss is not.
 by, st = parse(
-    f"## SESSION CONTEXT — {D} — Helm whole-dashboard re-scope kickoff\n"
+    f"## SESSION CONTEXT — {D} — whole-dashboard re-scope kickoff\n"
     "The person dumped a full walkthrough.\n", D)
 check("T7 desk-less H2 block is captured (not silently dropped)",
-      any("Helm whole-dashboard re-scope" in b for bs in by.values() for b in bs),
+      any("whole-dashboard re-scope" in b for bs in by.values() for b in bs),
       flat(by))
 
 # T8/T9 — the bold decision/build lines.

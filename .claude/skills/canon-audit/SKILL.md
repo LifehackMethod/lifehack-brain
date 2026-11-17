@@ -89,7 +89,7 @@ through the human-vetting gate (`vetted: true`), not corroboration count (confid
    - **live** — a current-state number (net worth now, a balance) → **should be a pointer to the live source**, never a frozen value. Flag if frozen (the verify-don't-guess rule).
    - **time-bound / half-life** — true for a moment, then historical (a figure that was true in one year, a valuation "as of" a date, "represented by X in 2023") → **propose routing it to its dated home**, where staleness is structural (the date is in the path). **The dated home is the desk's OWN dated record/diary when the fact is desk-local** (e.g. `desks/<subject>/records/diary/2026-04-snapshot.md`), **OR the shared diary's period summary when it's a cross-desk/life fact** (e.g. `desks/cal/diary/2024/review-year-2024.md`) — choose by judgment, don't default to Cal. Each time-bound proposal carries a **confidence (H/L)**.
 
-> Routing today is by type + altitude only. Temporal-home is the missing axis — durable→canon, live→sheet-pointer, time-bound→a **dated home** (desk-local record/diary, or the Cal diary for cross-desk/life facts).
+> Routing today is by type + altitude only. Temporal-home is the missing axis — durable→canon, live→sheet-pointer, time-bound→a **dated home** (desk-local record/diary, or the Planning-Diary for cross-desk/life facts).
 
 ---
 
@@ -163,8 +163,8 @@ This skill is expected to be imperfect at first and to sharpen across real reps.
 
 Format: `- {YYYY-MM-DD} · v{x} · desk:{d} · MISS: <what it missed/misclassified> → FIX: <the one-line skill change applied>`
 
-- 2026-06-26 · v0.2 · MISS: temporal-home defaulted time-bound facts to the **diary** specifically, but a real subject-local fact (a dated career snapshot, a dated history of who represented you) wants the **desk's OWN dated record/diary**, not a cross-desk write into Cal. → FIX: generalized the DIARY-ROUTE target to "desk-local dated record/diary OR the Cal diary (cross-desk/life facts only), by judgment — don't default to Cal."
-- 2026-06-26 · v0.3 · MISS: crowding (D) and cohesion (J) fired as two separate findings for the SAME root (an oversize file that's oversize *because* it fuses disjoint clusters) → duplicate items in the queue. → FIX: merge step now emits ONE split proposal (`source-check: canon-audit/D+J`) when D and J share a root. (v0.2 fix confirmed working this rep: Cal's time-bound note correctly routed to the Cal diary while a subject's routed to a subject-local records.)
+- 2026-06-26 · v0.2 · MISS: temporal-home defaulted time-bound facts to the **diary** specifically, but a real subject-local fact (a dated career snapshot, a dated history of who represented you) wants the **desk's OWN dated record/diary**, not a cross-desk write into Cal. → FIX: generalized the DIARY-ROUTE target to "desk-local dated record/diary OR the Planning-Diary (cross-desk/life facts only), by judgment — don't default to Cal."
+- 2026-06-26 · v0.3 · MISS: crowding (D) and cohesion (J) fired as two separate findings for the SAME root (an oversize file that's oversize *because* it fuses disjoint clusters) → duplicate items in the queue. → FIX: merge step now emits ONE split proposal (`source-check: canon-audit/D+J`) when D and J share a root. (v0.2 fix confirmed working this rep: Cal's time-bound note correctly routed to the Planning-Diary while a subject's routed to a subject-local records.)
 
 ---
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# planning-diary-run.sh — headless runner for the Cal diary tee-ups. READ-ONLY against
+# planning-diary-run.sh — headless runner for the Planning-Diary tee-ups. READ-ONLY against
 # Google; the only writes are the local diary .md files (+ a "ready" ntfy buzz on
 # weekly+). Dispatches by cadence:
 #   daily (default) → planning-diary-capture.py  (writes diary/YYYY/MM/DD.md) — SILENT (no buzz)
