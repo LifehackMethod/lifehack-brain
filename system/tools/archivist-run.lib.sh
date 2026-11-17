@@ -53,6 +53,10 @@ CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$CODE_ROOT/system/tools/gws-auth.lib.sh" || {
   echo "FATAL: cannot source $CODE_ROOT/system/tools/gws-auth.lib.sh"; exit 1; }
 
+# The ONE model table — a tier, never a literal id, reaches a runner (canon/cron-jobs-sop.md §7).
+. "$CODE_ROOT/system/tools/model.lib.sh" || {
+  echo "FATAL: cannot source $CODE_ROOT/system/tools/model.lib.sh"; exit 1; }
+
 # The data root, through the ONE resolver — never a hardcoded personal Drive path.
 DATA="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 
@@ -67,7 +71,7 @@ CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 
 # (the gws credential path used to be hardcoded here; it now lives in gws-auth.lib.sh's
 #  gws_creds_path, and the helper publishes what it looked at as $GWS_CREDS_FILE)
-ARCH_MODEL="${ARCH_MODEL:-claude-sonnet-4-6}"
+ARCH_MODEL="${ARCH_MODEL:-$MODEL_ID_MEDIUM}"   # medium tier: mechanical/structural review (model.lib.sh table)
 
 _alog() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${ARCH_LABEL}: $*"; }
 
