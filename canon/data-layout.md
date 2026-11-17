@@ -9,8 +9,8 @@
 
 ## Where the brain folder itself lives
 
-**Where your brain folder lives and how it gets set up is covered in `INSTALL.md`, which is the
-authority.** This page does not repeat it. This page is only the shape of what goes inside.
+**How your brain folder gets set up is covered in `INSTALL.md`.** Where it lives is set out just below (a
+local folder first, backed up by Google Drive). Otherwise this page is only the shape of what goes inside.
 
 The brain folder is a local folder first; Google Drive backs it up. Beside the three folders (the
 Lifehack Harness, personal code, and the brain folder) sits a fourth, local folder that is NOT
@@ -32,7 +32,7 @@ is not set, the honest answer is "not set" and the tool refuses.
 │   ├── canon.md                    the few things that stay true. small on purpose.
 │   └── purpose.md                  what this folder is for
 ├── records/<type>/                  everything found, decided or written down — see "Types" below
-├── diary/YYYY/MM/DD.md              the dated tree: one entry per day. where things stand is read here.
+├── diary/YYYY/MM/DD.md              the dated tree. the main daily diary is the planning desk's Planning-Diary, not this folder.
 ├── open-loops.md                    started, not finished
 ├── debt-ledger.md                   root only. all known system technical debt: the deferred build list
 ├── projects/<slug>/                 one folder per project not started from a desk — see "A project" below
@@ -239,7 +239,7 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<brain>/projects/<slug>/canon/canon.md` | `/save` | a project settles something |
 | a desk's own `projects/<slug>/` (same three paths as above) | `project-manager`, `/checkin`, `/save` | a project is started from inside that desk |
 | `<brain>/open-loops.md` | `/save` | something is started and not finished |
-| `<brain>/diary/YYYY/MM/DD.md` | the diary cron job, at the end of the day | one entry per day, append-only |
+| `<brain>/diary/YYYY/MM/DD.md` | not used for the main diary: that is the planning desk's Planning-Diary (the plugin's `planning-diary` job row stays off) | — |
 | `<brain>/status/<producer>.json` | each producer, its own tile | overwritten on every run |
 | `<brain>/debt-ledger.md` | `/save`, `/build` | a piece of system technical debt becomes known |
 | `<brain>/records/<type>/` | `/save` | a finding belongs to no one project |

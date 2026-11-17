@@ -12,24 +12,27 @@
 
 ## What is in it
 
-| Document | What it is |
-|---|---|
-| `canonical-principles-sop.md` | the merged principles behind the system |
-| `skill-building-sop.md` | building, fixing or testing a skill |
-| `build-conformance-sop.md` | how conformance works: guards, checks, tests |
-| `hook-sop.md` | when and which kind of hook to build |
-| `hook-contract.md` | hook mechanics: exit codes, deny format, registration |
-| `cron-jobs-sop.md` | adding, changing, switching on or debugging a scheduled job |
-| `desk-building-sop.md` | the one canonical statement of a desk's shape |
-| `security-canon.md` | the security rules |
-| `knowledge-altitude.md` | what goes in canon, records and the layers between |
-| `data-layout.md` | where data lives in the notes |
-| `context-injection-sop.md` | what text a session receives without asking, and how to keep it true |
-| `circulatory-system-sop.md` | how a project's knowledge crosses the session handoff |
-| `helpers-and-model-routing-sop.md` | which helper runs on which model tier |
-| `connecting-an-outside-service-sop.md` | adding a key, token or connector without exposing it |
-| `coordinating-windows-sop.md` | working beside and handing over between live windows |
-| `status-emission-sop.md` | the status tile contract and the one writer |
-| `status-health-proof-sop.md` | proof, receipts and labels for a part that works |
+| Document | Altitude | What it is |
+|---|---|---|
+| `canonical-principles-sop.md` | high | the merged principles behind the system |
+| `skill-building-sop.md` | working | building, fixing or testing a skill |
+| `build-conformance-sop.md` | working | how conformance works: guards, checks, tests |
+| `hook-sop.md` | working | when and which kind of hook to build |
+| `hook-contract.md` | working | hook mechanics: exit codes, deny format, registration |
+| `cron-jobs-sop.md` | working | adding, changing, switching on or debugging a scheduled job |
+| `desk-building-sop.md` | working | the one canonical statement of a desk's shape |
+| `security-canon.md` | high | the security rules |
+| `knowledge-altitude.md` | working | what goes in canon, records and the layers between |
+| `data-layout.md` | working | where data lives in the notes |
+| `context-injection-sop.md` | working | what text a session receives without asking, and how to keep it true |
+| `circulatory-system-sop.md` | working | how a project's knowledge crosses the session handoff |
+| `helpers-and-model-routing-sop.md` | working | which helper runs on which model tier |
+| `connecting-an-outside-service-sop.md` | working | adding a key, token or connector without exposing it |
+| `coordinating-windows-sop.md` | working | working beside and handing over between live windows |
+| `status-emission-sop.md` | working | the status tile contract and the one writer |
+| `status-health-proof-sop.md` | working | proof, receipts and labels for a part that works |
+| `sop-template.md` | working | the shape every SOP starts from |
 
 Each has its `.history.md` beside it.
+
+**Altitude** says how hard a change of meaning is (canon as gravity, `canonical-principles-sop.md` §0.5).

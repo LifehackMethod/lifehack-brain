@@ -174,3 +174,15 @@ any machine. An absolute path baked into this file works on exactly one computer
 ~~~~
 PostToolUse hooks always exit 0. Use stderr for warnings. **Fail-closed:** a guard that can't parse its input DENIES (`exit 2`), never `exit 0`.
 ~~~~
+
+## 2026-11-16 - reason: step 4b (round five), HC1 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+   turn. `system/tools/citation_lint.py` checks both directions on every commit and refuses one
+   without the other, so this is not a rule anyone has to remember.
+~~~~
+
+~~~~
+it. `citation_lint.py` catches the file-vs-registration mismatch; it cannot tell you the session was
+never restarted.
+~~~~

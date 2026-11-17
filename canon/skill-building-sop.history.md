@@ -11,7 +11,7 @@ The skills SOP as it stood before 2026-11-10, and its own history file, are arch
 
 - 2026-11-10 — the SOP written fresh (Enver, 2026-11-10; COMPASS P-122). Nothing superseded yet.
 
-## 2026-11-10 - reason: approval stamped in the header; /next and /back unquoted so citation_lint does not read them as skill folders; history line names the checklist without its old path; description wording made zero-judgment (claudeops-a9). Exact text before the change:
+## 2026-11-10 - reason: approval stamped in the header; /next and /back unquoted so citation_lint does not read them as skill folders; history line names the checklist without its old path; description wording made zero-judgment (a window in the operator's private repo). Exact text before the change:
 
 status: draft
 approved_by: "pending — Enver, via the V2 coordinator"
@@ -423,3 +423,20 @@ purpose: "Build a skill that keeps doing its job in a real, filling window, by l
 ~~~~
   `system/templates/producer-spec-template.md` (canon: the products of the harness). Its conformance check runs
 ~~~~
+
+## 2026-11-16 - reason: step 4b (round five), No Private Desks scrub ruled by Enver (BUILD-ORDER §5 Q3, settled as recommended,
+2026-11-16): private names inside earlier entries of this log replaced with neutral words; the old text is in git history.
+
+## 2026-11-16 - reason: step 4b (round five), SB1 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+- Use the shared layer first: common tools live once in `shared/`, listed in `system/register/toolbox.md` (canon:
+  the platform).
+~~~~
+
+~~~~
+  its own parts. Side B: shared tools live once and are never copied (canon, the platform). Status: open — UNSURE since
+  2026-10-31 (archived SOP §II.5).
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), SB3 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (text added; nothing left the document)

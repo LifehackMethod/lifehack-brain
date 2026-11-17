@@ -191,8 +191,9 @@ Both halves are files in this repo, so both travel by `git pull` and neither is 
 1. **The script** — `system/hooks/{name}.sh`. Commit it.
 2. **The registration** — a row in `system/register/register.jsonl`, the source; `system/register/generate.py` writes `hooks/hooks.json` and `.claude/settings.json` from it. Same change. A script with no
    registration is a file nobody runs; a registration with no script is a hook that fails on every
-   turn. `system/tools/citation_lint.py` checks both directions on every commit and refuses one
-   without the other, so this is not a rule anyone has to remember.
+   turn. `system/register/check_drift.py` (on commit) and the `register-drift.yml` check in CI (on every push
+   and pull request) check both directions and refuse one without the other, so this is not a rule anyone has to
+   remember.
 3. **⛔ RESTART.** The harness reads `settings.json` at session start. A newly registered hook does
    nothing at all in the window that registered it, and the only symptom is silence. This is the
    single most common reason a correct hook appears not to work.
@@ -200,7 +201,7 @@ Both halves are files in this repo, so both travel by `git pull` and neither is 
    — the message, which is the half a human acts on.
 
 ⚠ **A hook not registered on the machine you are sitting at is silently dark there.** Nothing reports
-it. `citation_lint.py` catches the file-vs-registration mismatch; it cannot tell you the session was
+it. The drift check catches the file-vs-registration mismatch; it cannot tell you the session was
 never restarted.
 
 ---

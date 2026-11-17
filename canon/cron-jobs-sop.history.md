@@ -664,7 +664,7 @@ When the door refuses a personal row, the window says one short line and asks, f
 
 ~~~~
 - P-127, round 4 (2026-11-05, cron door window, "approved"; written from plan quotes, not heard directly by the coordinator): (1) root problem and "mirror ... only ... what they need" settle the personal folder section; (2) "I would just tell them to report it", "two copies of the same job", "you broke it you bought it" settle plugin-job reporting and that a fork carries "you broke it you bought it" (the warning itself is PROPOSED); (3) "hey, this isn't in conformance ... never a huge block" settles T2 (one line every time, replacing "do not re-offer"); (4) "stay in our lane ... enforced when it's on its own" gives the aim; T5, T6 and T7 were settled afterwards by the owner, in session, 2026-11-05.
-- P-127 round 4, the fuller lines (relayed verbatim by claudeops-ce, now written into P-127): "do we change the nature of the job no we shouldn't change the nature of the job" (the wording of the what-may-change rule is PROPOSED); "I do think it could keep offering it" (re-offering a fix in general; its use for a job chosen outside the checker is PROPOSED); "we only have to mirror the stuff that ... would actually need" (the personal folder; the hosts list is PROPOSED, P-127 never names it).
+- P-127 round 4, the fuller lines (relayed verbatim by a window in the operator's private repo, now written into P-127): "do we change the nature of the job no we shouldn't change the nature of the job" (the wording of the what-may-change rule is PROPOSED); "I do think it could keep offering it" (re-offering a fix in general; its use for a job chosen outside the checker is PROPOSED); "we only have to mirror the stuff that ... would actually need" (the personal folder; the hosts list is PROPOSED, P-127 never names it).
 - P-127 rounds 1-3: offer in the moment; asking also works; first real run needs approval; best guess when asked; personal jobs are personal code; the outside-the-checker mark; no session-start line; skill rewriting not planned, not prevented.
 - PROPOSED, not in P-127: listed in section 15. DECIDED by the owner, in session, 2026-11-05 (T5, T6, T7): the comment-line form, running a marked job with a one-line warning, a copy of a plugin job as a new-name job, and reporting a broken plugin job on the plugin's GitHub page.
 ~~~~
@@ -705,4 +705,35 @@ These lines were PROPOSED in the live text, not ruled. They wait here, word for 
 1. **launchd** runs one LaunchAgent per `yes` row (`ai.lifehack.<job>`), written by `install-schedulers.sh --install`. Its only line: `/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`. A run missed in sleep fires once on wake. An interval is either a whole number of hours that divides 86400 (3600, 7200 ... 86400) or a multiple of 86400 (a weekly row gets a daily trigger, and `--if-overdue` enforces the real interval); any other value stops the installer loudly.
 | interval | seconds: a whole-hour divisor of 86400, or a multiple of 86400 (section 4) |
 - Not covered by the rig: real launchd wake behavior, real logins, real push delivery, real Google or Claude auth. One live `launchctl kickstart` per gate keeps those honest. Not covered: if no job runs at all (scheduler stopped, Mac off, every job unloaded), no text is sent; the session line at the start of a session is the only backstop.
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), No Private Desks scrub ruled by Enver (BUILD-ORDER §5 Q3, settled as recommended,
+2026-11-16): private names inside earlier entries of this log replaced with neutral words; the old text is in git history.
+
+## 2026-11-16 - reason: step 4b (round five), CJ3 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for what that leaves out, read the manual's "Non-Mac is unchanged" paragraph (`system/organism/manual.md`, CRON AND ALARMS).
+~~~~
+
+~~~~
+| trigger | the alarm clock | is it time? | launchd (macOS). On Linux (cron) and Windows (schtasks) the trigger starts `pulse.sh`, which has none of the steps below. |
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), CJ2 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+| source | the shared reader that FEEDS it (what it reads, never what it writes): `gmail`, `web`, `gsheet` or `none`. A job that reads email and writes a Sheet is `gmail`. `gmail` makes job-run load the Google credentials. Only `gmail` changes anything (it loads the Google login); the door accepts any non-empty word |
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), CJ4 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+- a raw outside READ (Gmail or Calendar reads, sheets `values get`, `curl`, `urllib`, `requests`) anywhere in the runner, what it sources or invokes, or the helper files beside it. Only files named in `system/tools/shared-fetch-allowlist.txt` may hold one. Never add a desk runner to that list. **Writes** to the owner's own Google account (labels, archive, Sheets, Tasks, Calendar, Docs) are allowed: an accepted risk (ruled 2026-10-28). The one change: a write to a Sheet the person has named as fine china meets fine china protection A, "can't edit it without talking to the human first" (an ask before the edit; `canon/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)); a Sheet not named stays under the accepted risk. With nobody at the screen, as in a scheduled run, protections A and B are denied with a sign and parked for the morning, and the run carries on; protection C (a speed bump with a sign in front of a mass delete: a whole folder or hundreds of files) has its sign logged, and the action waits for the morning rather than being blocked outright. **One vendor-read exception:** a row whose model is exactly `none` may make its own logged-in read (python `requests` or `urllib` only) of the person's own vendor account from ONE file listed as `<job> <file>` in the person's own `<personal-code>/vendor-read-allowlist.txt` (`<file>` relative to the job's tools folder; the plugin's `system/tools/vendor-read-allowlist.txt` ships empty and is read first). A raw Gmail read and `curl` are never a vendor read. It ends if the row gains an AI step;
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), CJ1 (UP-ruled: an appeal he already ruled), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+**Reads go through the shared fetch.** Email: `shared/tools/email_fetch.py` only. What it hands back is already sanitised, scanned and judged: a message the judge could not clear is withheld (the run fails loudly), and a real attack pauses the label and sends one critical text. A runner never re-reads the raw message. It sets NO read policy: the job must pass `--query`, `--cap` and `--since`. Which mail, how many and from when is the SKILL's decision, made with the person when the skill is built; never a default here. Web: `system/tools/safe_fetch.py` and `safe_search_api.sh`; job-run seals web reads for scheduled runs to the plugin's `system/tools/job-fetch-hosts.txt` plus your own `<personal-code>/job-fetch-hosts.txt` (the setup makes it). Add a host to your own list, never to the plugin's: an update overwrites that. A list that exists but cannot be read refuses the run (exit 78) the way the door's run-time refusal does: a failed run with an `errors/` file, `last-run` saying rc=78, and the usual alert. Sheets: `safe_sheets.py`. Push: `shared/notify/notify-send.sh` only, and a runner usually should not push at all because job-run alerts. The credentials live only in the shared fetch; never export them into a runner.
 ~~~~

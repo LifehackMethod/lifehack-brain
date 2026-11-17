@@ -1667,3 +1667,26 @@ Text moved word for word out of the live body by checklist v3. When the draft la
   - ["§17", 1452, "experiments: proposed and run, with dated ground results"]
 > **A tier without a dated receipt decays one step** (§7.2). **Structural findings** — what a model cannot do by
 ~~~~
+
+## 2026-11-16 - reason: step 4b (round five), CP1 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+> **Not the always-loaded layer.** The session loader reads `<brain>/canon/canon.md` and `desks/*/canon/`
+> only. This is a reference shelf, pulled when relevant — which is why length is not a fault here.
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), CP2 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+  **Extended 2026-09-07 (card 5.1) into MODE 7's experiment.** The line above is the same question one level up — constrain at decode time, or check membership after the fact. A guard is that question wearing a hook: parse the call into a type and refuse by default, or scan its text for a listed spelling. Window 7 reuses `system/tools/conformance-lab/probes/guard.py` **as-is** and builds nothing. ⛔ moved to rebuild/conformance-lab/ (skill-system cleanup 884c3c0, 2026-10-31)
+~~~~
+
+~~~~
+  **Controls** — *positive:* the plant above, a forbidden call spelled so the text list is satisfied and the meaning inverted. *Negative:* the clean twin, an unnamed spawn, which must stay at `0` — a guard that refuses the twin is a false positive. *Prior run on disk:* `system/tools/conformance-lab/probes/guard.py`, whose `RULE_HOOK_MAP` already pairs a forbidden payload with its allowed twin per rule and whose verdict vocabulary (`fires` · `theater` · `error` · `dark` · `parked`) is the ancestor of the one this section uses. ⛔ moved to rebuild/conformance-lab/ (skill-system cleanup 884c3c0, 2026-10-31)
+~~~~
+
+~~~~
+  **Artifact** — the redirect is already built and needs nothing new: **`CONFORMANCE_LAB_HOOKS_DIR` overrides the hooks directory the probe fires at (`system/tools/conformance-lab/probes/guard.py:101`)**, which is precisely the knob `driver.py --selftest` flips for its own inert stubs. So: `CONFORMANCE_LAB_HOOKS_DIR="$SCRATCH/hooks-stub" python3 "$REPO/system/tools/conformance-lab/probes/guard.py"; echo "stub_exit=$?"` and the same command against `"$SCRATCH/hooks-real"`. Beside it, the scheduled mechanism's own signal: `bash "$REPO/system/tools/guard-fire-test-run.sh"; echo "exit=$?"; cat "$HOME/.config/lifehack/guard-fire-test/last-run.json"`. **`guard-fire-test` is a live Pulse row — `pulse-config.md:284`, `yes`, `604800` (weekly) — confirmed 2026-09-07**, and its `[ "$rc" -gt 1 ]` branch is the exact boundary it uses to separate *the engine failed to run* from *the engine returned a verdict*. ⛔ conformance-lab moved to rebuild/conformance-lab/ (skill-system cleanup 884c3c0, 2026-10-31)
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), LP1 (UP: an approved appeal (his yes)), on Enver's answer to item 12, 2026-11-16 (text added; nothing left the document)

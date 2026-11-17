@@ -75,7 +75,7 @@ Every line here is a principle with its reason, except the three marked **must**
   history notes. Why: in a stochastic system there is friction, not enforcement, and those words fool a reader into
   thinking a thing is guaranteed or already done.
 - **A check keeps this consistent:** every must outside `canon/` without an approval date, and every should without
-  a reason, can be listed by a scan. (The scan itself goes on the debt ledger until built.)
+  a reason, can be listed by a scan.
 
 **Evidence**
 - **Evidence accumulates; nothing outranks.** Enver's approval, outside research, seeing a thing work in our system,

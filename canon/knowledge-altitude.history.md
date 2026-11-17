@@ -199,3 +199,59 @@ log — `system/archivist/placement-trial-log.md`. the operator skims it, catche
 ~~~~
 This is **scaffolding, NOT law.** It is one file + one logging step, and **nothing else depends on it.** When
 ~~~~
+
+## 2026-11-16 - reason: step 4b (round five), KA1 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+updated_at: 2026-08-31
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), KA5 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+⛔ Not in this repo: `system/research/2026-06-13-preload-vs-pointer-consensus.md` (an older research note, kept in the operator's records) and `.claude/skills/archivist-review/` (not shipped).
+
+> The doctrine for WHERE a piece of knowledge belongs in this system's folders — across **every artifact type** (canon,
+~~~~
+
+~~~~
+just-in-time by `/read`. Pointers are for cross-branch awareness, never for the spine of what a session needs. (Map:
+`system/research/2026-06-13-preload-vs-pointer-consensus.md` — captured 2026-06-13 in the archivist inbox.)
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), KA2 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+authority: user).** `/read`'s branch-walk (`skills/read/SKILL.md` Step 0.6) pulls canon from EVERY ancestor
+~~~~
+
+~~~~
+   highest where it can win a slot (§2–§3), against the folders' intents. (Uses the router, `skills/archivist-route`.)
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), KA3 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+descendant that ever walks past it** — a line in `financial/canon.md` loads into every tax conversation
+~~~~
+
+~~~~
+**There's a range of admission DIFFICULTY across the levels of `canon.md` in our folder schema: the higher up a
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), KA4 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+| Desk | **Hard** | desk `CLAUDE.md` / desk canon | **Needed in basically every conversation about THIS subject?** (a tax rule fails here — most talk about money is not about tax, so it belongs one level down)  (old: most talk isn't tax.) |
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), KA6 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+The archivist **never moves anything.** It proposes; the human approves via `/archivist-review` (⛔ not shipped)
+(snapshot-first, dependency-gated). Applier, never legislator.
+~~~~
+
+~~~~
+a real human-in-the-loop feedback signal *on top of* the normal `/archivist-review` (⛔ not shipped) approval.
+~~~~

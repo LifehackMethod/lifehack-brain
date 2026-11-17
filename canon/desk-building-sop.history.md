@@ -418,7 +418,7 @@ audiences, two delivery mechanisms. All three layers share a total token budget 
 ## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
 
 ~~~~
-**A desk is a room in your life.** Marc is your money room. Emily is your auditions room. Each room keeps its own
+**A desk is a room in your life.** A money desk is your money room. An auditions desk is your auditions room. Each room keeps its own
 ~~~~
 
 ## 2026-11-14 - reason: round three lowerbooks 2026-11-14, approved screen: G5-15, G5-16, G5-17
@@ -432,4 +432,28 @@ audiences, two delivery mechanisms. All three layers share a total token budget 
 
 ~~~~
   ideas to build, alerts that fired), **the name tag** (the card), and **the glasses** (the desk's CLAUDE.md, below).
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), No Private Desks scrub ruled by Enver (BUILD-ORDER §5 Q3, settled as recommended,
+2026-11-16): private names inside earlier entries of this log replaced with neutral words; the old text is in git history.
+
+## 2026-11-16 - reason: step 4b (round five), DB3 (UP: an approved appeal (his yes)), on Enver's 'land it' (text added; nothing left the document)
+
+## 2026-11-16 - reason: step 4b (round five), DB2 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+- **The baseline:** the session-start hook reads the card, chain-loads the canon down the pyramid (root → desk →
+  subfolder, never sideways), and injects the actual text. Deterministic, free, small. The one deliberate human act —
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), DB1 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (text added; nothing left the document)
+
+## 2026-11-16 - reason: step 4b (round five), V10 (UP: an approved appeal (his yes)), on Enver's answer to item 9, 2026-11-16 (old wording, word for word)
+
+~~~~
+  only that something is stale but exactly how stale. Throughlines and trajectories are assembled on demand, at
+~~~~
+
+~~~~
+  compliance buys: visibility everywhere — dashboards, alerts, throughlines, every renderer that ever gets built.
 ~~~~

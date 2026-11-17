@@ -14,3 +14,9 @@ Text cut or moved out of the SOP, copied verbatim first. Append-only.
 ~~~~
 
 The two bracketed phrases replace a private window name and a private plan reference; the text was trimmed for privacy on landing, 2026-11-16. Every other word, and Enver's quote, is as written.
+
+## 2026-11-16 - reason: step 4b (round five), ST1 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+  a reason, can be listed by a scan. (The scan itself goes on the debt ledger until built.)
+~~~~

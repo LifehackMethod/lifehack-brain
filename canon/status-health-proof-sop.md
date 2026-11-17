@@ -111,7 +111,7 @@ Evidence tiers are canon's, as `canon/canonical-principles-sop.md` THE FRAME def
   Evidence: CANDIDATE.
 - **Friction is proportional.** Use the layers of friction, and reserve hard blocks for certain things; no invented limits. Why: a hard block that misfires stops real work. Change if: a lighter layer is shown to fail where a hard block is reserved, or a hard block is shown to stop real work in a case the person has not named. Evidence: OBSERVED (`canon/build-conformance-sop.md` §5.11).
 - **A part is LIVE only if a dated check watched it work.** Why: the label is what a blind session trusts. Change if:
-  a part type is found that can't be watched working. Held by: the label checker (`label_checker.py`). Evidence:
+  a part type is found that can't be watched working. Held by: `label_checker.py`'s dated stamp and receipt pointer (References). Evidence:
   CANDIDATE — approved by Enver, 2026-11-14.
 - **Proof is a receipt written by the code that ran the check — what, when, result.** Why: a sentence a model wrote is
   a self-report. Change if: a check type is found that can't write a receipt. Held by: the checker that writes it
@@ -213,8 +213,9 @@ Evidence tiers are canon's, as `canon/canonical-principles-sop.md` THE FRAME def
 - **A deadman on every hook vs no meta-checker.** Side A catches a silent hook; side B avoids a checker that fails
   like what it checks. Status: open — surfaced to Enver, not resolved here.
 - **Acceptance can undo a verification.** Later work moves the files a finished check verified. Side A protects
-  finished work staying finished; side B protects receipts staying true. Status: open — surfaced to Enver, not
-  resolved here.
+  finished work staying finished; side B protects receipts staying true. Status: settled by Enver's ruling
+  (2026-11-16): a check of committed code reads "unproven" when a file it covers has a newer commit on origin;
+  a check of host state ages by its window only.
 
 ## Pointers
 
@@ -246,7 +247,7 @@ Every real thing this SOP points at, one line each. Paths are relative to the ha
 - `system/tools/mirror_line.sh` — the session-start MIRROR line; reports, blocks nothing (a sign).
 - `system/organism/manual.md` — the manual whose AUTO-COMPUTED blocks carry labels.
 - `system/jobs.md` — the job rows.
-- **not built yet:** the weekly guard fire-test job switched on. Serves: "Green means ran + fresh + produced the expected output" (`canon/canonical-principles-sop.md:578-579`).
+- **not built yet:** the weekly guard fire-test job switched on. Serves: "Green means ran + fresh + produced the expected output" (`canon/canonical-principles-sop.md:594-595`).
 - **not built yet:** `label_checker.py` stamping every label with its date and receipt pointer, emitting DORMANT, dropping TARGET, reading the registry at run time, and downgrading an expired label to "unproven". Serves: same.
 - **not built yet:** fire checks for hook events other than PreToolUse, and an invoker for `health_invariants.py`. Serves: same.
 - **not built yet:** the weekly human-validated roll-up that catches the scheduler itself stopping. Serves: same.

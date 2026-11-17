@@ -193,3 +193,19 @@ The two push cases and all push limits wait for the launcher-lanes step. A stude
 ~~~~
 1. **Text doesn't enforce anything.** True in theory: a stochastic model can ignore what it reads. Seen: the old build rulebook, and a line added to `CLAUDE.md` as enforcement (§0.1, §5.8). It's the strongest candidate, and it's already the owner's ruling for `CLAUDE.md`.
 ~~~~
+
+## 2026-11-16 - reason: step 4b (round five), BC1 (UP: an approved appeal (his yes)), on Enver's 'land it' (text added; nothing left the document)
+
+## 2026-11-16 - reason: step 4b (round five), L3a (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+The harness knows a person through two pointers only: their brain folder (the knowledge layer; content, never code) and their personal code folder (the personal code layer). Nothing in the shared plugin names anyone. Within that, each kind of thing has one folder, and one or more layers notice when it lands elsewhere.
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), L4a (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (text added; nothing left the document)
+
+## 2026-11-16 - reason: step 4b (round five), L3b (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+11. **Layers go lightest first,** as friction levels chosen by the person: a sign, a speed bump, a reason gate (the session can proceed only by stating why), a door, a pop-up (a box the person has to answer, used sparingly because it can hang an unattended session for hours), then a hard block (refused every time, kept for a few particular things). Add the next only where the lighter one fails. Fine china protection C (§2) sits at the speed-bump level, with a sign: never a pop-up or a hard block. (owner's ruling; the sign MEASURED, the reason gate and popup not)
+~~~~

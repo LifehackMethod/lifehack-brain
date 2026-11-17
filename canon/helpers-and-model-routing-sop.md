@@ -123,7 +123,7 @@ Every helper runs on a named tier chosen for its job; no spawn inherits the wind
 
 ## Pointers
 
-- **Rulings behind this SOP:** `canon/canonical-principles-sop.md` §12.g (2026-10-30, canon). Stated here in plain words: the default helper tier is medium; the person decides when the large tier runs; cheap-helper mode is personal practice; no hook checks the model on each spawn.
+- **Rulings behind this SOP:** the person's rulings, stated here in plain words: the default helper tier is medium (2026-11-14); the person decides when the large tier runs; cheap-helper mode is personal practice; no hook checks the model on each spawn (2026-11-05). How much context a helper or checker gets: `canon/canonical-principles-sop.md` §12.g (2026-10-30, canon).
 - **Evidence:** `system/tools/model.lib.sh`; `shared/tools/model_ids.py`; `system/tools/test_agent_pins.py`; `system/tools/tests/test_no_hardcoded_model_ids.sh`; `system/hooks/tests/test_delegation_override.sh`; `system/hooks/guard_agent_return_channel.sh`; `.claude/agents/*.md`; `system/ingestion-reader-contract.md`; commit `66a96a9`.
 - **Words used here:** **helper** — a sub-agent spawned to do one job and report back. **Tier** — small, medium or large: a class of model, mapped to an id in one table. **Pin** — the model line on a spawn or agent file. **Delegation line** — the one line injected every turn saying helpers are standing-authorized and how to pin them. **Wall** — the tool list an agent is limited to.
 

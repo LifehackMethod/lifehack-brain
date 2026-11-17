@@ -45,8 +45,8 @@ history: "canon/skill-building-sop.history.md"
 - Build on the scaffold: the skill template `system/templates/skill-template/` and the spec sheet
   `system/templates/producer-spec-template.md` (canon: the products of the harness). Its conformance check is
   the checklist in Build, step 2.
-- Use the shared layer first: common tools live once in `shared/`, listed in `system/register/toolbox.md` (canon:
-  the platform).
+- Use the shared layer first: common tools live once in `shared/`, listed in `system/register/toolbox.md`, and
+  pre-built parts live once in `system/parts/` (canon: the platform).
 - Know which stages talk with the person and which run alone; the design differs (Build, steps 8 and 12).
 - Skills are free to edit; deleting a skill meets a warning, a speed bump with a road sign. Editing one points you to
   this SOP, so the work is built in a conformant way. Neither meets a pop-up or a block.
@@ -386,8 +386,9 @@ history: "canon/skill-building-sop.history.md"
   never measured weaker levels, so it cannot say which layers a skill can drop. Status: closed by Enver's ruling on
   the three sizes (2026-11-12): the full machinery belongs to the long-phase skill (Build, step 1).
 - **A travelling skill versus the shared layer.** Side A: a skill shared with someone without the plugin has to carry
-  its own parts. Side B: shared tools live once and are never copied (canon, the platform). Status: open — UNSURE since
-  2026-10-31 (archived SOP §II.5).
+  its own parts. Side B: shared tools live once and are never copied (canon, the platform). Status: settled by Enver's
+  ruling (2026-11-16): one copy, in `system/parts/`; a travelling personal skill copies a part only pinned by hash,
+  with a check that the copy has not drifted from its source. Earlier: open, UNSURE since 2026-10-31 (archived SOP §II.5).
 - **The Stop hook's red "Stop hook error" label.** Side A: handing over through a Stop hook keeps alone stages moving.
   Side B: the label looks broken to a person. Status: open (rig P8).
 - **The Harness brief reaches each window only as a short preview.** Side A: Claude Code caps hook output. Side B: a
@@ -409,6 +410,8 @@ history: "canon/skill-building-sop.history.md"
   that this SOP is a write-up from it, with no canon-files run. The failure census
   of 2026-09-05 and the other real-use lessons cited here: the archived SOP,
   `system/_retired-2026-11-10/skill-building-sop.ARCHIVE-2026-11-10.md` (with the old SOP's own history file beside it). This SOP's own history starts fresh at `canon/skill-building-sop.history.md` (the header's `history:`).
+- **The re-anchor switch:** `system/hooks/skill_anchor.sh`, which a skill arms to re-anchor itself every turn (its
+  injector is `system/hooks/skill_anchor_inject.sh`); it carries the Principles line on a rule loaded once fading.
 - **Words used here:** canon's shared vocabulary (skill, scaffold, seam), plus:
   - **command** — one prompt behind a slash command: one shot, no steps that have to hold, no state across turns.
   - **shape** — the frontmatter field naming how a skill is used (Build, step 2).

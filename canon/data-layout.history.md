@@ -214,3 +214,20 @@ move to `<notes>/system/journal/YYYY-MM.md`.
   the folder is *for*; `current.md` holds what it has established.
 | `<brain>/desks/<subject>/records/proposals/` | `/ingest` | a canon candidate, awaiting your ruling |
 ~~~~
+
+## 2026-11-16 - reason: step 4b (round five), DL2 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+**Where your brain folder lives and how it gets set up is covered in `INSTALL.md`, which is the
+authority.** This page does not repeat it. This page is only the shape of what goes inside.
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), DL1 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+├── diary/YYYY/MM/DD.md              the dated tree: one entry per day. where things stand is read here.
+~~~~
+
+~~~~
+| `<brain>/diary/YYYY/MM/DD.md` | the diary cron job, at the end of the day | one entry per day, append-only |
+~~~~

@@ -127,7 +127,7 @@ Every producer leaves one tile, named for the producer, at `<brain>/status/<prod
 
 ## Pointers
 
-- **Rulings behind this SOP:** `canon/desk-building-sop.md` (the desk side of the seam: the single writer, tiles registering by existence, the freshness horizon, the `detail` handshake, rendering delegated); `canon/data-layout.md` (the tile folder); `canon/cron-jobs-sop.md` (the tile-name check at the door, §7); `canon/status-health-proof-sop.md` (proof, receipts, labels, staleness); `canon/security-canon.md` (what the security words mean); this SOP's history file.
+- **Rulings behind this SOP:** `canon/desk-building-sop.md` (the desk side of the seam: the single writer, tiles registering by existence, the freshness horizon, the `detail` handshake, rendering delegated); `canon/data-layout.md` (the tile folder); `canon/cron-jobs-sop.md` (the tile-name check at the door, §7); `canon/status-health-proof-sop.md` (proof, receipts, labels, staleness); `canon/security-canon.md` (what the security words mean).
 - **Evidence:** see References below.
 - **Words used here:** **tile** — a small JSON file a producer writes about its own latest run. **Producer** — the job, skill, tool or personal script that writes a tile. **Envelope** — the fixed fields every tile carries. **Payload** — the producer's own extra fields. **Status word** — one value from the closed list the `status` field may hold. **Stand-down** — a run that chose not to do its work, reported as `rc=75`. **Brain folder** — the folder the person's notes live in. **Renderer** — anything that reads tiles and shows them. **OK over zero work** — a run reporting `OK` after examining nothing. **Conformance friction** — code that makes the wrong move harder, by strength and named by what it does when it fires: sign (a refusal on a first attempt that gives one specific instruction), speed bump (a first attempt refused with a message, where a later try gets through or gets an ask), reason gate (stops until a reason is given), hard block (refused every time); the full ladder is `canon/build-conformance-sop.md` §5.11.
 
@@ -163,7 +163,7 @@ Every real thing this SOP points at, one line each. Paths are relative to the ha
 - **not built yet:** the shell front door handing every tile to `emit_status.py` instead of writing its own. Serves: not yet in canon.
 - **not built yet:** the hand-written job scripts writing through the one writer. Serves: not yet in canon.
 - **not built yet:** the optional `detail` pointer field in the envelope. Serves: not yet in canon.
-- **not built yet:** a reader that marks a tile stale from `last_run` and `stale_after_s`. Serves: "Green means ran + fresh + produced the expected output" (`canon/canonical-principles-sop.md:578-579`).
+- **not built yet:** a reader that marks a tile stale from `last_run` and `stale_after_s`. Serves: "Green means ran + fresh + produced the expected output" (`canon/canonical-principles-sop.md:594-595`).
 - **not built yet:** the security and sentinel tiles on the shared envelope, own words in the payload. Serves: not yet in canon.
 - **not built yet:** `pulse.sh` writing `_pulse.json` through the one writer, on the shared envelope. Serves: not yet in canon.
 - **not built yet:** removal of the fallback writers behind the writer's import. Serves: not yet in canon.

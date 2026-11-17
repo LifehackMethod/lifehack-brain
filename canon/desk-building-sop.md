@@ -33,7 +33,7 @@ machinery serves any of them identically.
   lower. Canon is the pyramid tip: thin, durable truth, true for all subdomains below. It inherits vertically (a
   desk's canon is true for its subfolders) and never laterally (sibling canon is not true for each other).
 - **Date** — the diary tree: the dated axis, separate from records and research. Its structure tells a reader not
-  only that something is stale but exactly how stale. Throughlines and trajectories are assembled on demand, at
+  only that something is stale but exactly how stale. Diary roll-ups and trajectories are assembled on demand, at
   whatever resolution the question needs.
 - **Trust** — read by location: canon is canon because of where it sits; everywhere else starts from a default of
   doubt. Confidence accumulates as
@@ -57,6 +57,7 @@ it was never a warranty against choice. (canon.)
 ## 2. What a desk is — the shape
 
 **A desk is a domain of knowledge plus a three-line card, and nothing that runs.**
+A desk that ships with the harness (the planning desk; Enver's ruling, 2026-11-16) has the same shape: everything that runs it lives once in the platform, as for every desk.
 
 ```
 desks/<name>/
@@ -92,7 +93,7 @@ One pass over the whole stack, from the desk's point of view:
   can never break the platform.
 - **The interface (status emission):** the desk's producers emit status notes through the single writer
   (`emit_status.py`); notes self-register by existence in `status/` at the brain folder's root; the card never lists them. What
-  compliance buys: visibility everywhere — dashboards, alerts, throughlines, every renderer that ever gets built.
+  compliance buys: visibility everywhere — dashboards, alerts, diary roll-ups, every renderer that ever gets built.
   (Full spec: the Status Emission SOP. Not restated here.)
 - **The clients (rendering):** delegated and unowned. Looking is free; touching goes through the door. How the
   desk's state is displayed is the person's business, not the desk's and not the plugin's.
@@ -105,8 +106,8 @@ One pass over the whole stack, from the desk's point of view:
 
 ## 4. Two kinds of loading, two doors
 
-- **The baseline:** the session-start hook reads the card, chain-loads the canon down the pyramid (root → desk →
-  subfolder, never sideways), and injects the actual text. Deterministic, free, small. The one deliberate human act —
+- **The baseline:** the session-start hook reads the card, loads the root canon and the one desk's canon (never
+  sideways; canon nested below the desk is flagged as not loaded), and injects the actual text. Deterministic, free, small. The one deliberate human act —
   opening the desk, by shortcut, folder, or `/deskname` (⛔ placeholder example path) command — is the trigger; everything after is code.
 - **The pull (read-canon):** a subagent that searches the folders, does NOT trust the filing, and returns canonical
   passages VERBATIM — never summarized. On demand, from any window, any desk. Organization is a bonus, not a
@@ -149,6 +150,8 @@ carries on; protection C's sign is logged and the action waits for the morning r
 ---
 
 ## 6. The diary economy
+
+Each desk's diary is made when the desk is created, and is called `<Desk>-Diary`: the planning desk's is Planning-Diary. Shared code knows only that pattern, not any desk's name.
 
 One entry per desk per day, written by a per-desk cron job at end of day: a spare boil-down of that day plus
 pointers to the raw records. Size is controlled upstream, at generation — anything bigger was never diary material;

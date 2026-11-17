@@ -76,7 +76,7 @@ The service works through the skill or job that needs it; its credential sits ou
 1. **Do:** add the server in your own Claude Code configuration or your claude.ai connectors.
    - **Why:** the harness ships no MCP server configuration; the connector is the person's, and the harness guards what comes back.
    - **Expect:** every result from any `mcp__` tool passes through the connector door (`system/hooks/sanitize_connector_output.sh`), which strips hidden characters, redacts flagged spans, and swaps the cleaned text in; an error inside the script withholds the result.
-2. **Do:** before turning on a connector that can send, write or delete (mail, calendar, tasks, sheets, files), the person decides whether to accept those actions, and mail is never sent without the person's approval of that send (drafts are fine).
+2. **Do:** before turning on a connector that can send, write or delete (mail, calendar, tasks, sheets, files), the person decides whether to accept those actions; for mail, the person's ruling is that it "should never be able to send without human in the loop approval. Yeah drafts are okay" (2026-11-13).
    - **Why:** a connector that sends or deletes acts on the person's own accounts directly, and a sent message or a cloud delete cannot be taken back.
 3. **Do:** record it — run the Sentinel Auditor (`.claude/agents/sentinel.md`) with `scope=inventory`.
    - **Expect:** the server listed with its transport (local, local HTTP, or networked) and the sensitivity of its data.
@@ -103,7 +103,7 @@ The service works through the skill or job that needs it; its credential sits ou
 
 ### Letting a raw call reach a new host
 
-1. **Do:** first check whether a raw call is needed — reading a web page goes through `system/tools/safe_fetch.py`, which does not use this list; reading mail goes through `shared/tools/email_fetch.py`, because Python that speaks a mail protocol (IMAP, POP, SMTP, the Gmail API client) is refused whatever the list says (`system/hooks/enforce_egress_allowlist.py:92-110`, switch `email_reader_block`, on in `system/hooks/roundB.conf`).
+1. **Do:** first check whether a raw call is needed — reading a web page goes through `system/tools/safe_fetch.py`, which does not use this list; reading mail goes through `shared/tools/email_fetch.py` (one sanctioned reader per trust zone; the mailroom, in its own separate account, is the second, named), because Python that speaks a mail protocol (IMAP, POP, SMTP, the Gmail API client) is refused whatever the list says (`system/hooks/enforce_egress_allowlist.py:92-110`, switch `email_reader_block`, on in `system/hooks/roundB.conf`).
 2. **Do:** add the host's base domain (`example.com`, not `www.example.com`) between the `ALLOWLIST-START` and `ALLOWLIST-END` markers in `system/egress-allowlist.md`.
    - **Expect:** a host is allowed if it equals a listed domain or is a subdomain of it; a destination written as a shell variable or command substitution is refused whatever the list says (`system/hooks/enforce_egress_allowlist.py`, commit `09ab2fc`). The check refuses an unlisted host every time it fires (a hard block), but it matches command text and fails open on what it cannot parse, so it can be worded around; why, and where the hard wall is, is in `canon/security-canon.md`.
    - **Check:** `echo '{"tool_input":{"command":"curl -sI https://<host>"}}' | bash system/hooks/enforce_egress_allowlist.sh; echo "rc=$?"` prints `rc=0` (the form in `canon/hook-contract.md`, "Testing a Hook Locally"; the hook reads the text, it does not make the call).
@@ -156,7 +156,7 @@ Everything real this SOP points at, with what it is. Strength words, by what a g
 - `system/tools/shared-fetch-allowlist.txt` — the list of files allowed a raw outside call and a credential (the shared fetch).
 - `system/tools/safe_search_api.sh` — the web-search reader; looks for its key in an environment variable, then a file, then the keychain, and names every place it looked.
 - `shared/notify/notify-send.sh` — the one governed sender of phone pushes; reads the push topic from the config folder.
-- `shared/tools/email_fetch.py` — the one shared mail reader; holds the Google mail credential.
+- `shared/tools/email_fetch.py` — the shared mail reader for the person's own account (one sanctioned reader per trust zone; the mailroom's reader, in its own separate account, is the second, named); holds the Google mail credential.
 - `system/tools/claude-auth.lib.sh` — shared preflight for a scheduled model call; finds the token or stands the job down by name.
 - `system/tools/gws-auth.lib.sh` — shared preflight for a scheduled Google job; points `gws` at the keychain-free credential file or stands the job down by name.
 - `system/tools/gws-audit.sh` — read-only health read of the whole Google credential setup.
@@ -193,7 +193,8 @@ Everything real this SOP points at, with what it is. Strength words, by what a g
 **Connectors**
 - `system/hooks/sanitize_connector_output.sh` (logic in `system/hooks/lib/connector_sanitize.py`) — the connector door: cleans every `mcp__` tool result and withholds it on error.
 - `system/tools/sanitize.py`, `system/tools/safe_input.py` — the sanitizer and injection scanner the door uses.
-- **not built yet:** guards on connectors' own send, write and delete actions, matching the shell-command write guards (`system/hooks/guard_gmail_send.sh` and its siblings). Serves: not yet in canon.
+- `system/hooks/guard_drive_destructive.sh` — also registered on the Drive connector's trash action: asks the person before a Sheet file is trashed or several files go at once (an ask).
+- **not built yet:** guards on the rest of connectors' own send, write and delete actions, matching the shell-command write guards (`system/hooks/guard_gmail_send.sh` and its siblings). Serves: not yet in canon.
 
 **Tests and records**
 - `system/hooks/tests/test_egress_wall.sh`, `test_sanitize_connector_output.sh`, `test_gws_logout_guard.sh`, `test_ingest_gate_enforce.sh` — the tests for the hooks above.

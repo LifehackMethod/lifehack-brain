@@ -106,7 +106,7 @@ ceiling (see Layer 1). Treat any channel not listed there as unreviewed, not as 
 | `guard_web_fetch.sh` | 2026-07-03 | WebFetch branch now in `ingest_gate_enforce.sh` |
 | `guard_web_search.sh` | 2026-07-03 | WebSearch branch now in `ingest_gate_enforce.sh` |
 | `guard_file_reads.sh` | 2026-07-03 | Read branch now in `ingest_gate_enforce.sh` |
-| `guard_skip_safe_backdoor.sh` | 2026-07-03 | `CLAUDEOPS_SKIP_*` block now in `ingest_gate_enforce.sh` |
+| `guard_skip_safe_backdoor.sh` | 2026-07-03 | `<PRIVATE-REPO>_SKIP_*` block now in `ingest_gate_enforce.sh` |
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: security-canon hunk 016 (see drafts/security-canon/applied.md)
@@ -247,7 +247,7 @@ This is a historical record, not live instruction. Moved out of `security-canon.
 | `guard_web_fetch.sh` | 2026-07-03 | WebFetch branch now in `ingest_gate_enforce.sh` |
 | `guard_web_search.sh` | 2026-07-03 | WebSearch branch now in `ingest_gate_enforce.sh` |
 | `guard_file_reads.sh` | 2026-07-03 | Read branch now in `ingest_gate_enforce.sh` |
-| `guard_skip_safe_backdoor.sh` | 2026-07-03 | `CLAUDEOPS_SKIP_*` block now in `ingest_gate_enforce.sh` |
+| `guard_skip_safe_backdoor.sh` | 2026-07-03 | `<PRIVATE-REPO>_SKIP_*` block now in `ingest_gate_enforce.sh` |
 
 ~~~~
 
@@ -267,4 +267,25 @@ This is a historical record, not live instruction. Moved out of `security-canon.
 
 ~~~~
 | `enforce_egress_allowlist.sh` | PreToolUse | Bash | Blocks outbound Bash calls to hosts not in `system/egress-allowlist.md`; structurally caps exfiltration even if an injection lands. | Yes — fail-closed |
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), No Private Desks scrub ruled by Enver (BUILD-ORDER §5 Q3, settled as recommended,
+2026-11-16): private names inside earlier entries of this log replaced with neutral words; the old text is in git history.
+
+## 2026-11-16 - reason: step 4b (round five), SC1 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+| `ingest_gate_enforce.sh` | PreToolUse | Bash\|WebFetch\|WebSearch\|Read | **Unified ingestion gate** — SUBSUMES the 6 per-channel hooks listed in this document's archive. Enforces: email→`email_convert.py`, docs→`safe_*`, web→`safe_fetch.py`/`safe_search_api.sh`, calendar→`safe_calendar.py`. Fail-closed (non-email internal error → deny; email → FLAG-floored fail-open). **2026-07-04: scratch-dir lock** — denies MAIN-session `Read` of `/tmp/rdr/` + `/tmp/ingest_body/`; sub-agents pass via `agent_id` in hook stdin, structurally enforcing the reader-actor split in both interactive and cron paths. | Yes — fail-closed |
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), SC2 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+**Escalation model (airport metaphor — how the reader-actor pipeline actually responds):** (1) **Metal-detector regex** = cheap, fast, over-flags — beeps "look here," decides nothing, never blocks on its own. (2) **Tool-less `ingest-reader`** = the JUDGE ("body scanner"): for EACH flagged span only, it decodes the encoding (base64/hex/URL/zero-width) and judges by MEANING — real injection vs. benign encoded content; redacts only real attacks, passes benign spans through unchanged, emits a VERDICT per span (`REAL-ATTACK | BENIGN | NONE`). (3) **The reader's VERDICT — not the raw scanner beep — gates both redaction AND alerting**: the phone alert rings unless the reader says BENIGN; pause, critical text and quarantine follow a REAL-ATTACK verdict; a beep that resolves to `BENIGN` is silently cleared. The reader judges only what-to-redact, never whether-to-act; DANGER-class content hard-quarantines regardless.
+~~~~
+
+## 2026-11-16 - reason: step 4b (round five), SC3 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
+
+~~~~
+**Reader-actor separation (PROVEN 2026-07-03/04 — structural, not behavioral):** the component that READS untrusted text has no tools and no network; the component that ACTS never sees raw text. Pass the reader's output to the actor as **tight TYPED data, never free text** (free-text handoff collapses the separation). In Claude Code: spawn the untrusted-content reader as a tool-less, network-less subagent — a context-isolation guarantee, needs no second model. **Live implementation:** `.claude/agents/ingest-reader.md` (tools: Read only) is the designated reader; `ingest_gate_enforce.sh`'s scratch-dir lock holds the split mechanically — MAIN-session direct reads of `/tmp/rdr/` + `/tmp/ingest_body/` are denied; sub-agents identified by `agent_id` in hook stdin may read. Proven live across multiple ingestion paths in the system this was ported from; the mechanism is what carries over (the original proof record was a project file on that system's synced drive and does not ship in this repo). **Extension:** a seeded-attack test found calendar + Google Tasks returned raw injection to the controller while email did not (its scratch-lock isolates it). Fixed — `safe_calendar.py`/`safe_tasks.py` **isolate free-text by default** (→ `/tmp/rdr` scratch, `_reader_scratch` pointer on stdout); content-reading skills spawn the reader; modes `--redact` (neutralize spans, used by `planning-vault-pull.py` to close the vault-as-downstream-channel gap) / `--no-isolate` (raw, no-LLM plumbing only).
 ~~~~

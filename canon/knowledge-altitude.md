@@ -3,14 +3,12 @@ id: system-knowledge-altitude
 title: Knowledge Altitude — where everything belongs (the archivist's placement doctrine)
 record_type: doctrine
 created_at: 2026-06-11
-updated_at: 2026-08-31
+updated_at: 2026-11-16
 status: active
 authority: user
 ---
 
 # Knowledge Altitude
-
-⛔ Not in this repo: `system/research/2026-06-13-preload-vs-pointer-consensus.md` (an older research note, kept in the operator's records) and `.claude/skills/archivist-review/` (not shipped).
 
 > The doctrine for WHERE a piece of knowledge belongs in this system's folders — across **every artifact type** (canon,
 > skill, project/brief, record, SOP/playbook — or nothing at all). Read by the **archivist** (when it routes
@@ -77,10 +75,10 @@ instance) — canon is always relative to its territory and altitude, never abso
 across any folder" — that describes only the apex, not canon in general.)*
 
 **The mechanism the ladder rests on — WHY placement has a cost, not just a category (the operator, 2026-08-05,
-authority: user).** `/read`'s branch-walk (`skills/read/SKILL.md` Step 0.6) pulls canon from EVERY ancestor
+authority: user).** `/read`'s branch-walk (`.claude/skills/read/SKILL.md` Step 0.6) pulls canon from EVERY ancestor
 folder on the way down — a read from `tax/` loads tax canon AND financial canon AND root canon, one
 *customized chain*, not one file. **Consequence: anything placed in a parent is paid for by every
-descendant that ever walks past it** — a line in `financial/canon.md` loads into every tax conversation
+descendant that ever walks past it** — a line in `financial/canon/canon.md` loads into every tax conversation
 AND every bookkeeping conversation, permanently. So the placement question is not "what is this about" but
 **"who has to bear the cost of it."** The test: every child needs it → parent; only one branch needs it →
 that child; nobody needs it *loaded*, but it must stay findable → records (the findability invariant
@@ -130,7 +128,7 @@ If this doctrine only knew canon, every non-canon save would have nowhere to go.
 ## 2. For canon — admission DIFFICULTY by level (the scarce-space idea)
 Once an item is judged **canon-shaped**, this is how it finds its level:
 
-**There's a range of admission DIFFICULTY across the levels of `canon.md` in our folder schema: the higher up a
+**There's a range of admission DIFFICULTY across the levels of canon (each folder's `canon/canon.md`) in our folder schema: the higher up a
 piece tries to live, the less space there is — so the harder it must fight to justify its place against
 everything else competing for that canon.**
 
@@ -146,7 +144,7 @@ as you climb; judge each level by its concrete question:
 | Level | Difficulty | Folder | The plain question it must pass |
 |---|---|---|---|
 | Global | **Hardest** | global `CLAUDE.md` | **Does this need to shape EVERY conversation, on ANY subject?** |
-| Desk | **Hard** | desk `CLAUDE.md` / desk canon | **Needed in basically every conversation about THIS subject?** (a tax rule fails here — most talk about money is not about tax, so it belongs one level down)  (old: most talk isn't tax.) |
+| Desk | **Hard** | desk `CLAUDE.md` / desk canon | **Needed in basically every conversation about THIS subject?** (a tax rule fails here — most talk about money is not about tax, so it belongs one level down) |
 | Sub-folder | **Medium** | sub-area canon (e.g. a practice / finance) | **Needed across this whole sub-area?** |
 | Deep | **Easy** | sub-sub canon | **Is this even *about* this topic?** (If yes, let it in — it barely loads, so overload is harmless.) |
 
@@ -178,8 +176,8 @@ corpus like ours, do NOT pointer-ize the canon you actually load:** un-loaded kn
 pointer-only desk canon left ~50% of facts invisible in blind tests until the SessionStart hook auto-injected content;
 the research confirms silent-miss > context cost for small corpora). So: **THIN up high** (the few load-bearing lines +
 **cross-branch** pointers to *other* domains you're not in), **full content on the branch you ARE in**, loaded
-just-in-time by `/read`. Pointers are for cross-branch awareness, never for the spine of what a session needs. (Map:
-`system/research/2026-06-13-preload-vs-pointer-consensus.md` — captured 2026-06-13 in the archivist inbox.)
+just-in-time by `/read`. Pointers are for cross-branch awareness, never for the spine of what a session needs. (Research
+note of 2026-06-13, kept in the operator's records.)
 
 **Findability invariant — no buried treasure (the corollary's other half).** Moving content *down* must never
 move its *findability* down with it. Whenever knowledge is placed into a deeper / specialist folder — sunk from a
@@ -225,14 +223,14 @@ Example (a subject's canon — note that the near-miss points DOWN at what sinks
    folder it wants (§1). This includes **cull** (it's really a record → route to `records/`; or junk → propose
    dropping) and **propose a new SOP / skill / project** when a repeatable or self-contained thing has no folder yet.
 2. **Place** — within the chosen type, land it in the right folder; for **canon**, run it up the levels to the
-   highest where it can win a slot (§2–§3), against the folders' intents. (Uses the router, `skills/archivist-route`.)
+   highest where it can win a slot (§2–§3), against the folders' intents. (Uses the router, `.claude/skills/archivist-route`.)
 3. **Audit + sink** — periodically re-test EXISTING `CLAUDE.md`/canon lines against their folder's intent; flag
    any that can **no longer win their slot at that level** and should **sink lower.**
 4. **Split** — flag a folder grown fat + broad enough to **split** into specialized children (which creates new
    lower shelves for sinkers). This is the cohesion check **J**, grown up. Pure judgment + J — **no size
    trigger, no math.**
 
-The archivist **never moves anything.** It proposes; the human approves via `/archivist-review` (⛔ not shipped)
+The archivist **never moves anything.** It proposes; the human approves
 (snapshot-first, dependency-gated). Applier, never legislator.
 
 ## 6. Authorship — who writes a folder's intent
@@ -258,7 +256,7 @@ While we're still earning trust in the archivist's placement judgment, run a **m
 for every triage / place / cull / sink / split it proposes, the archivist writes a **one-line plain-English
 RATIONALE** (which type + level, which intent it matched or failed, what it rejected and why) to a single trial
 log. the operator skims it, catches bad calls, and corrects the intents —
-a real human-in-the-loop feedback signal *on top of* the normal `/archivist-review` (⛔ not shipped) approval.
+a real human-in-the-loop feedback signal *on top of* the normal approval.
 
 This is **scaffolding, NOT a standing rule.** It is one file + one logging step, and **nothing else depends on it.** When
 the operator is confident the judgment is good, the whole probation is deleted cleanly — remove the log and the
