@@ -343,18 +343,17 @@ do_work() {
   fi
 
   # ── STATUS TILE EMIT — planning-weekly-analyze runs weekly; a health sweeper watches this tile
-  #    (stale_after_s=604800 = 7 days). ──
-  local _NOW _TILE
-  _NOW="$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")"
-  _TILE="$DRIVE/state/status/planning-weekly-analyze.json"
-  python3 -c "
-import json, os
-os.makedirs('$DRIVE/state/status', exist_ok=True)
-d={'schema_version':1,'emit_mode':'manual','last_run':'$_NOW','rc':0,'stale_after_s':604800,'status':'OK','summary':'planning-weekly-analyze single-pass ok — weekly-mine-draft.md written for $ISO_WEEK','iso_week':'$ISO_WEEK','no_pulse':True}
-tmp='$_TILE.tmp'
-json.dump(d,open(tmp,'w'),indent=2)
-os.replace(tmp,'$_TILE')
-" || echo "[$SUBSYSTEM_NAME] WARN: status tile write failed (non-fatal)" >&2
+  #    (stale_after_s=604800 = 7 days). CR-9 step 2(c) (move 18, one tile home): through the ONE
+  #    writer, emit_status.py, into <brain>/status/ — was a hand-rolled json.dump second writer
+  #    under state/status/. The brain root comes from shared/brain_root.py ($DRIVE), never a
+  #    hard-coded desk folder; a contract violation exits non-zero and is named, not swallowed.
+  printf '{"iso_week": "%s", "no_pulse": true}' "$ISO_WEEK" | \
+    python3 "$CODE_ROOT/system/tools/emit_status.py" \
+      --out "$DRIVE/status/planning-weekly-analyze.json" \
+      --desk planning --pulse-job planning-weekly-analyze --stale-after-s 604800 \
+      --status OK --rc 0 \
+      --summary "planning-weekly-analyze single-pass ok — weekly-mine-draft.md written for $ISO_WEEK" \
+      --json - || echo "[$SUBSYSTEM_NAME] WARN: status tile write failed (non-fatal)" >&2
 
   return 0
 }
