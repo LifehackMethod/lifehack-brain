@@ -245,7 +245,7 @@ class PullWindowTests(unittest.TestCase):
         import argparse
         p = self.pull
         calls = []
-        saved = (p.pull_email, p.pull_source_if_needed, p.flush_pending, p.prune_quarantine_files)
+        saved = (p.pull_email, p.pull_source_if_needed, p.flush_pending, p.prune_quarantine_files, p.db_path)
         p.pull_email = lambda *a, **k: calls.append("email")
         p.pull_source_if_needed = lambda db, src, mode, fn: calls.append((src, mode))
         p.flush_pending = lambda db: None
@@ -259,7 +259,7 @@ class PullWindowTests(unittest.TestCase):
             p.db_path = lambda: ":memory:"
             p.run(args, db)
         finally:
-            p.pull_email, p.pull_source_if_needed, p.flush_pending, p.prune_quarantine_files = saved
+            p.pull_email, p.pull_source_if_needed, p.flush_pending, p.prune_quarantine_files, p.db_path = saved
         self.assertNotIn("email", calls)
         self.assertEqual(calls, [("calendar", "always"), ("tasks", "always"), ("filters", "never"), ("contacts", "never")])
 

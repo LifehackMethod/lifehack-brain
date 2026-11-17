@@ -1191,7 +1191,7 @@ class FullRead(Base):
 # ================================================================ the trick-email runner (fake model only here)
 
 class TrickRunner(Base):
-    POISON = os.path.join(ROOT, "data", "poison_set.json")
+    POISON = os.path.join(ROOT, "tests", "fixtures", "poison_set.json")
 
     def test_runner_plumbing_with_a_fake_model_and_the_quarantined_token_is_refused(self):
         class Benign(morning.Model):

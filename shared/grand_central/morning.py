@@ -2016,7 +2016,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("trick-set")
     t.add_argument("--scratch", required=True)
-    t.add_argument("--set", default=os.path.join(ROOT, "data", "poison_set.json"))
+    t.add_argument("--set", default=os.path.join(ROOT, "tests", "fixtures", "poison_set.json"))
     t.add_argument("--k", type=int, default=3)
     t.add_argument("--model", default=None)
     t.add_argument("--i-know-this-calls-the-real-model", action="store_true", dest="real")
