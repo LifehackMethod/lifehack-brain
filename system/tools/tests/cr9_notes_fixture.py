@@ -27,7 +27,7 @@ With --empty: neither -- the no-feeds day-one state (the folders exist, they are
 Generic everywhere: no personal names, desks, emails or content (No Private Desks stays clean).
 
 CLI:
-    python3 shared/grand_central/tests/cr9_notes_fixture.py [--empty | --with-history]
+    python3 system/tools/tests/cr9_notes_fixture.py [--empty | --with-history]
 Prints the temp root's path on the last line.
 """
 import argparse
@@ -38,7 +38,7 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))  # tests -> grand_central -> shared -> repo
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))  # tests -> tools -> system -> repo
 SCAFFOLD = os.path.join(ROOT, "system", "tools", "cowork-ingest", "desk_scaffold.py")
 
 PLANNING_DESK = "planning"   # the FOLDER under desks/

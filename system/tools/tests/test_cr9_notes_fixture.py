@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """test_cr9_notes_fixture.py -- the cr9 notes-root fixture builds what step 5 will see.
 
-Run: python3 shared/grand_central/tests/test_cr9_notes_fixture.py
+Run: python3 system/tools/tests/test_cr9_notes_fixture.py
 
 Builds the fixture BOTH ways and asserts:
   1. the desk door (shared/desk_door.py) PASSES on desks/planning — given the folder AND given the
@@ -25,8 +25,8 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SHARED = os.path.dirname(os.path.dirname(HERE))          # .../shared
-REPO = os.path.dirname(SHARED)
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))  # tests -> tools -> system -> repo
+SHARED = os.path.join(REPO, "shared")
 sys.path.insert(0, SHARED)
 sys.path.insert(0, os.path.join(SHARED, "grand_central"))
 
