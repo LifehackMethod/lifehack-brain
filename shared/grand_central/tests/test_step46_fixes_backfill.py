@@ -72,7 +72,7 @@ class Fix3(t45.T):
 
 @_only_mine
 class Backfill(t45.T):
-    FIRST, LAST, TODAY = "2026-11-10", "2026-11-16", "2026-11-16"
+    FIRST, LAST, TODAY = "2026-11-10", "2026-11-16", "2026-11-17"   # the 7 days BEFORE today (never today)
 
     def setUp(self):
         super().setUp()
@@ -107,6 +107,14 @@ class Backfill(t45.T):
     def setUp_dirs(self):
         for d in ("desk-a", "desk-b", "desk-c", "desk-d"):
             os.makedirs(os.path.join(self.notes, "desks", d, "diary"), exist_ok=True)
+
+    def test_PLANTED_today_is_refused(self):
+        # coordinator ruling 2026-11-17: the backfill, like the midnight job, never writes today (the old code accepted it)
+        with self.assertRaises(ValueError):
+            gcjobs._check_window("2026-11-11", self.TODAY, self.TODAY)
+        with self.assertRaises(ValueError):
+            gcjobs._check_window(self.TODAY, self.TODAY, self.TODAY)
+        gcjobs._check_window(self.FIRST, self.LAST, self.TODAY)          # the 7 days before today are fine
 
     def test_written_skipped_nothing_and_stamp(self):
         r, out = self.go()

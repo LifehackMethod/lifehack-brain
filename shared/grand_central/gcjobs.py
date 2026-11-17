@@ -631,7 +631,8 @@ LIVE_DB = gc_settings.db_path()
 
 
 def _check_window(first, last, today):
-    """Refuse (ValueError) anything beyond the last 7 days: a bad date, last before first, more than 7 days, or a day after today."""
+    """Refuse (ValueError) anything outside the 7 days BEFORE today: a bad date, last before first, more than 7 days,
+    today itself (the midnight job never writes today, coordinator ruling 2026-11-17) or a day after it."""
     try:
         a, b, t = (datetime.date.fromisoformat(x) for x in (first, last, today))
     except ValueError:
@@ -642,7 +643,9 @@ def _check_window(first, last, today):
         raise ValueError("more than %d days" % BACKFILL_DAYS)
     if b > t:
         raise ValueError("a day in the future")
-    if (t - a).days > BACKFILL_DAYS - 1:
+    if b == t:
+        raise ValueError("today: the midnight job writes only days before today")
+    if (t - a).days > BACKFILL_DAYS:
         raise ValueError("starts more than %d days back" % BACKFILL_DAYS)
 
 
