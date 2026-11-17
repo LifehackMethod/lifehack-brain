@@ -537,7 +537,7 @@ RANK = {"untested": 0, "unproven": 1, "PARTIAL": 2, "LIVE": 3}
 
 
 def reading_label(reading):
-    if reading == "untested":
+    if reading == "untested" or reading.startswith("untested ("):
         return "untested", RANK["untested"]
     if reading.startswith("unproven"):
         return "unproven", RANK["unproven"]
@@ -729,10 +729,31 @@ def cmd_stamp(args):
                     "window": None, "untested": "", "not_tested": [], "suspect": False}
         return best
 
+    # step 6(b): a page check may declare its part DORMANT (built, deliberately not in
+    # use) or not_run (honestly "not run here", with the reason). The declaration wins
+    # over any receipt: DORMANT stands outside the weakest-wins roll-up and is counted
+    # beside it; "not run here" reads as untested with that reason, never green.
+    dormant_ids = set(c.get("id") for c in expected if c.get("dormant") is True and c.get("id") is not None)
+    notrun_by_id = dict((c.get("id"), c) for c in expected if c.get("not_run") and c.get("id") is not None)
+
+    def declared_reading(cid):
+        base = {"receipt": None, "result": None, "date": None, "sha": None, "clean": None,
+                "window": None, "untested": "", "not_tested": [], "suspect": False}
+        if cid in dormant_ids:
+            base["reading"] = "DORMANT (built, not in use)"
+            base["rank"] = None  # outside the weakest-wins order
+            return base
+        base["reading"] = "untested (not run here: %s)" % notrun_by_id[cid].get("not_run")
+        base["rank"] = RANK["untested"]
+        return base
+
     rows = []
     readings = []
     for cid in page_ids + extra_ids:
-        best = pick_best(cid)
+        if cid in dormant_ids or cid in notrun_by_id:
+            best = declared_reading(cid)
+        else:
+            best = pick_best(cid)
         readings.append(best)
         unt = best.get("untested") or "; ".join(best.get("not_tested") or [])  # fix 8
         rows.append("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
@@ -746,8 +767,10 @@ def cmd_stamp(args):
             unt or "—",
             best["reading"]))
 
-    labels = [reading_label(r["reading"]) for r in readings]
-    weakest = min(labels, key=lambda t: t[1])[0]
+    n_dormant = sum(1 for r in readings if r.get("rank") is None)
+    active = [r for r in readings if r.get("rank") is not None]
+    labels = [reading_label(r["reading"]) for r in active]
+    weakest = min(labels, key=lambda t: t[1])[0] if labels else None
     if fetch_note and weakest == "LIVE":  # fix 4: an unread origin cannot earn LIVE
         weakest = "PARTIAL"
     # only the receipts that actually stand behind the label set the dates
@@ -771,7 +794,12 @@ def cmd_stamp(args):
 
     n_untested = sum(1 for l, _ in labels if l == "untested")
     n_total = len(labels)
-    if n_untested and n_total:
+    dorm_suffix = " · %d dormant" % n_dormant if n_dormant else ""
+    if readings and n_total == 0:
+        # every check on the page is DORMANT: the page itself reads DORMANT
+        status = "Status: DORMANT (all %d checks dormant) · checked unknown · valid until unknown · %s" % (
+            n_dormant, receipts_str)
+    elif n_untested and n_total:
         rest = [lab for lab, rk in labels if lab != "untested"]
         best_earned = min(rest, key=lambda l: RANK.get(l, 0)) if rest else "none"
         if fetch_note and best_earned == "LIVE":  # fix 4
@@ -784,6 +812,8 @@ def cmd_stamp(args):
         status = "Status: unproven (%s) · checked %s · valid until %s · %s" % (reason, checked, valid_until, receipts_str)
     else:
         status = "Status: %s · checked %s · valid until %s · %s" % (weakest, checked, valid_until, receipts_str)
+    if n_total:
+        status += dorm_suffix
 
     # health line
     health_paths = fm.get("health", []) or []

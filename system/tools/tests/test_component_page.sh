@@ -7,6 +7,9 @@
 #   · the stamper's roll-up: no receipt = unproven (missing, refused by name); no origin sha = unproven; past the window = unproven; a covered
 #   file changed on origin since the receipt's sha = unproven; a FAIL = PARTIAL; no refusal seen = suspect, never LIVE; an expected check absent
 #   from every receipt = untested, with the best earned label beside it; all good = LIVE · the deliberate drift: a file deleted on origin is caught.
+#   step 6(b): a check declared DORMANT (built, deliberately not in use) stands outside the weakest-wins
+#   roll-up and is counted beside it (mixed page rolls up the rest with "N dormant"; an all-DORMANT page
+#   reads DORMANT) · a check declared not_run reads "not run here" with its reason, never green, never hidden.
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 TOOL="$ROOT/system/tools/organism/component_page.py"
@@ -354,6 +357,72 @@ source: origin/main
 P2
 python3 "$TOOL" stamp "$PAGE2" --repo "$W" --brain "$BRAIN" --now "$NOW" > /dev/null 2>&1
 has "$PAGE2" "Status: untested — no check exists · not built yet: (no check declared) · Serves: see the page's Quality characteristics" "page with no checks: exact untested line, no crash"
+
+# ── step 6(b): DORMANT and "not run here" ──
+tile "$CUR2" 1 2026-11-16T10:00:00+00:00 PASS 1 1
+
+PAGE4="$W/system/organism/components/dormant-demo.md"
+cat > "$PAGE4" <<'PAGE4'
+---
+component: demo
+title: "Demo (dormant part)"
+source: origin/main
+checks:
+  - {id: probe-a, watches: "a works"}
+  - {id: probe-d, watches: "d is built but deliberately not in use", dormant: true}
+receipts:
+  - <brain>/status/component-demo.json
+---
+# Demo (dormant part)
+
+## Status
+<!-- STATUS:BEGIN -->
+<!-- STATUS:END -->
+PAGE4
+python3 "$TOOL" stamp "$PAGE4" --repo "$W" --brain "$BRAIN" --now "$NOW" > /dev/null 2>&1
+grep -m1 '^Status:' "$PAGE4" | grep -qE "^Status: LIVE · .* · 1 dormant" && ok "mixed page: the non-DORMANT checks roll up, dormant counted beside" || bad "mixed dormant: $(grep -m1 '^Status:' "$PAGE4")"
+grep -F "| probe-d |" "$PAGE4" | grep -qF "DORMANT (built, not in use)" && ok "dormant check row reads DORMANT, outside the roll-up" || bad "dormant row: $(grep -F '| probe-d |' "$PAGE4")"
+
+PAGE5="$W/system/organism/components/all-dormant.md"
+cat > "$PAGE5" <<'PAGE5'
+---
+component: demo
+title: "Demo (all dormant)"
+source: origin/main
+checks:
+  - {id: probe-d1, watches: "d1 built, not in use", dormant: true}
+  - {id: probe-d2, watches: "d2 built, not in use", dormant: true}
+---
+# Demo (all dormant)
+
+## Status
+<!-- STATUS:BEGIN -->
+<!-- STATUS:END -->
+PAGE5
+python3 "$TOOL" stamp "$PAGE5" --repo "$W" --brain "$BRAIN" --now "$NOW" > /dev/null 2>&1
+grep -m1 '^Status:' "$PAGE5" | grep -qF "Status: DORMANT (all 2 checks dormant)" && ok "an all-DORMANT page reads DORMANT" || bad "all dormant: $(grep -m1 '^Status:' "$PAGE5")"
+
+PAGE6="$W/system/organism/components/notrun.md"
+cat > "$PAGE6" <<'PAGE6'
+---
+component: demo
+title: "Demo (not run here)"
+source: origin/main
+checks:
+  - {id: probe-a, watches: "a works"}
+  - {id: probe-r, watches: "the job-sim rig", not_run: "the rig is benched on this machine (it rewrote real state, 2026-11-17)"}
+receipts:
+  - <brain>/status/component-demo.json
+---
+# Demo (not run here)
+
+## Status
+<!-- STATUS:BEGIN -->
+<!-- STATUS:END -->
+PAGE6
+python3 "$TOOL" stamp "$PAGE6" --repo "$W" --brain "$BRAIN" --now "$NOW" > /dev/null 2>&1
+grep -m1 '^Status:' "$PAGE6" | grep -qF "untested (1 of 3 checks missing) · best earned LIVE" && ok "'not run here' reads as untested with the best earned label beside it" || bad "not run status: $(grep -m1 '^Status:' "$PAGE6")"
+grep -F "| probe-r |" "$PAGE6" | grep -qF "not run here: the rig is benched" && ok "'not run here' row carries its reason, never green" || bad "not run row: $(grep -F '| probe-r |' "$PAGE6")"
 
 # ── the deliberate drift: a file the page names is deleted on origin ──
 git rm -q system/tools/a.sh && git commit -qm "drift: delete a.sh" && git push -q origin main 2>/dev/null
