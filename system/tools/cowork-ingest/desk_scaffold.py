@@ -58,7 +58,7 @@ STUB = {
     "desk.yaml": ("# The card (SOP §2): name, canon, diary — NOTHING else. Read by code before the model\n"
         "# wakes; the model never sees it. Jobs belong to the job list; status notes self-register in\n"
         "# <brain>/status/; access grants to the capability registry. One fact, one place.\n"
-        "name: {desk}\ncanon: canon/canon.md\ndiary: {diary_name}\n"),
+        "name: {desk}\ncanon: canon/canon.md\ndiary: diary\n"),
     "diary/README.md": ("# {DiaryName}\n\nThis desk's diary. One entry per day at `YYYY/MM/DD.md`, written by the\n"
         "desk's diary cron at end of day — a spare boil-down plus pointers to the raw records. Never\n"
         "edited once written (append-only). Roll-ups are built on demand from this tree.\n"),
@@ -124,9 +124,14 @@ def check_shape(base, desk, list_path=None):
             canon = card.get("canon")
             if canon and not os.path.isfile(os.path.join(base, str(canon))):
                 problems.append("desk.yaml canon pointer %r does not resolve to a real file" % canon)
-            want = diary_name_for(desk)
-            if card.get("diary") != want:
-                problems.append("desk.yaml diary %r is not the shared pattern's name %r" % (card.get("diary"), want))
+            dpath = card.get("diary")
+            if dpath and not os.path.isdir(os.path.join(base, str(dpath))):
+                problems.append("desk.yaml diary pointer %r does not resolve to the desk's diary folder" % dpath)
+            elif dpath and os.path.realpath(os.path.join(base, str(dpath))) != os.path.realpath(os.path.join(base, "diary")):
+                problems.append("desk.yaml diary pointer %r is not the desk's diary folder (diary/)" % dpath)
+            want = diary_name_for(desk)  # the NAME stays derived through diary_names.py, never the pointer
+            if want != "%s-Diary" % desk.capitalize():
+                problems.append("derived diary name %r does not match the <Desk>-Diary pattern" % want)
     if list_path:
         ids = _desk_ids_in_list(list_path)
         if desk not in ids:

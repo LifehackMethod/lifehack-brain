@@ -62,7 +62,7 @@ class TestShape(DeskScaffoldCase):
         # the card: exactly three facts — name, canon, diary — and the pointers resolve
         with open(os.path.join(base, "desk.yaml"), encoding="utf-8") as fh:
             lines = [ln.strip() for ln in fh.read().splitlines() if ln.strip() and not ln.strip().startswith("#")]
-        self.assertEqual(sorted(lines), ["canon: canon/canon.md", "diary: Alpha-Diary", "name: alpha"])
+        self.assertEqual(sorted(lines), ["canon: canon/canon.md", "diary: diary", "name: alpha"])
         self.assertTrue(os.path.isfile(os.path.join(base, "canon", "canon.md")))
 
     def test_diary_is_named_by_the_ONE_shared_pattern_not_a_copy(self):
@@ -152,7 +152,7 @@ class TestPlantedFaultFails(DeskScaffoldCase):
         base = os.path.join(self.tmp, "desks", "alpha")
         os.makedirs(os.path.join(base, "canon"))
         with open(os.path.join(base, "desk.yaml"), "w", encoding="utf-8") as fh:
-            fh.write("name: alpha\ncanon: canon/canon.md\ndiary: Alpha-Diary\n")
+            fh.write("name: alpha\ncanon: canon/canon.md\ndiary: diary\n")
         list_path = os.path.join(self.tmp, "desks", "desk-registry.yaml")
         with open(list_path, "w", encoding="utf-8") as fh:
             fh.write("schema_version: 2\ndesks:\n  - desk_id: alpha\n")
@@ -181,6 +181,18 @@ class TestPlantedFaultFails(DeskScaffoldCase):
                 fh.write(text.replace("canon/canon.md", "canon/gone.md"))
         problems = self._scaffold_then(plant)
         self.assertTrue(any("does not resolve" in p for p in problems), problems)
+
+    def test_a_fresh_scaffold_passes_the_desk_door(self):
+        """Integration: a desk the scaffold just made passes shared/desk_door.py (SOP §5), in a temp notes root."""
+        r = run_scaffold(self.tmp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        base = os.path.join(self.tmp, "desks", "alpha")
+        list_path = os.path.join(self.tmp, "desks", "desk-registry.yaml")
+        env = dict(os.environ, LIFEHACK_DESK_LIST=list_path)  # the test seam: never the real desk list
+        door = subprocess.run([sys.executable, os.path.join(REPO, "shared", "desk_door.py"), base],
+                              capture_output=True, text=True, cwd=REPO, env=env)
+        self.assertEqual(door.returncode, 0, door.stdout + door.stderr)
+        self.assertIn("PASS", door.stdout)
 
     def test_a_desk_missing_from_the_list_is_caught(self):
         import desk_scaffold
