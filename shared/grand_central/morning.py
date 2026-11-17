@@ -1306,10 +1306,13 @@ def diary_entry_path(diary_root, day, desk, layout="tree"):
 
 
 def find_staged(records_dir, day, desk):
+    """The day's staged write-ups for this desk: the morning draft, any top-ups, and (4P.4b) the validated
+    weekly picture <day>-<desk>-validated.md, so the midnight entry points at it too."""
     stem = "%s-%s" % (day, desk)
     try:
         names = sorted(n for n in os.listdir(records_dir)
-                       if n.endswith(".md") and (n == stem + ".md" or n.startswith(stem + "-topup")))
+                       if n.endswith(".md") and (n == stem + ".md" or n.startswith(stem + "-topup")
+                                                 or n.startswith(stem + "-validated")))
     except OSError:
         return []
     return [os.path.join(records_dir, n) for n in names]
@@ -1637,15 +1640,32 @@ def records_context_dir(notes, desk):
 
 
 def previous_picture(records_dir, desk):
-    """The latest staged write-up of this desk (newest file) -> baseline markdown made of its Picture bullets, as a
-    DRAFT (so every line is carried unconfirmed). None if there is none. The bullets are model-written prose, so the
-    prompt labels them unconfirmed and untrusted-in-origin."""
+    """The latest staged picture of this desk -> baseline markdown made of its Picture bullets. 4P.4b: the
+    newest VALIDATED weekly picture (<day>-<desk>-validated.md) wins over any later draft -- his word is
+    never superseded by a machine guess -- and the baseline says so; a draft only still comes back as a
+    DRAFT (every line carried unconfirmed). None if there is none. The bullets of a draft are model-written
+    prose, so the prompt labels them unconfirmed and untrusted-in-origin."""
     # Drive-first reads fail in a scheduled job (errno 11, offloaded file): list and read through the local working copy.
     # No folder at all -> no picture; a read that fails with no local copy raises DriveReadError, never an empty picture.
-    names = [n for n in local_first.list_names(records_dir) if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}-%s(-topup[0-9]+)?\.md" % re.escape(desk), n)]
+    esc = re.escape(desk)
+    draft_re = r"[0-9]{4}-[0-9]{2}-[0-9]{2}-%s(-topup[0-9]+)?\.md" % esc
+    valid_re = r"([0-9]{4}-[0-9]{2}-[0-9]{2})-%s-validated\.md" % esc
+    names = [n for n in local_first.list_names(records_dir) if re.fullmatch(draft_re, n) or re.fullmatch(valid_re, n)]
     if not names:
         return None, None
     names.sort(key=lambda n: local_first.mtime(os.path.join(records_dir, n)))
+    # 4P.4b: a validated picture is preferred over a later draft; names begin with their date, so the
+    # lexicographically greatest validated name is the newest one.
+    valid_names = sorted(n for n in names if re.fullmatch(valid_re, n))
+    if valid_names:
+        vname = valid_names[-1]
+        vtext = local_first.read_text(os.path.join(records_dir, vname))
+        vm = re.search(r"^## Picture\s*\n(.*?)(?=^## |\Z)", vtext, re.S | re.M)
+        vbullets = [ln for ln in (vm.group(1).splitlines() if vm else [])
+                    if ln.startswith("- ") and "(nothing to carry" not in ln and "not carried" not in ln.lower()]
+        if vbullets:
+            return "# Baseline - his validated weekly picture of %s\n\n## Picture\n%s\n" % (vname[:10], "\n".join(vbullets)), vname
+        # a validated file with no Picture bullets carries nothing: fall through to the drafts
     latest = names[-1]
     text = local_first.read_text(os.path.join(records_dir, latest))
     m = re.search(r"^## Picture\s*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
@@ -1916,7 +1936,9 @@ def hand_run(argv, model=None, out=print):
     base_text, latest = (None, None) if a.all_mail_as_new else previous_picture(rec_dir, a.desk)
     life_map = None
     if base_text:
-        say("3. baseline: the previous draft (%s), every line carried as unconfirmed" % latest)
+        is_valid = "validated weekly picture" in base_text.splitlines()[0].lower()
+        say("3. baseline: the %s (%s)%s" % ("validated weekly picture" if is_valid else "previous draft", latest,
+            "" if is_valid else ", every line carried as unconfirmed"))
     else:
         try:
             import synthesize as _syn

@@ -76,6 +76,8 @@ MANIFEST = [
     ("tests/test_step310_onboarding.py", "unittest", False),  # Phase 3 step 3.10: onboarding sheet and recording his answers, planted cases
     ("tests/test_step42_routing.py", "unittest", False),  # Phase 4 step 4.2: routing by part of life, planted cases
     ("tests/test_doors.py", "unittest", False),        # step 6: planning doors (proposals, answer, urgent, week)
+    ("tests/test_step4p_decide.py", "unittest", False),  # 4P.4 + 4P.4b engine: gc decide, the validated weekly picture, morning reads it
+    ("tests/test_step4p_interface.py", "unittest", False),  # 4P.1 finish check: the planning-interface page is true (planted wrong field caught)
     ("tests/test_quarantine_files.py", "unittest", False),  # quarantine review files + detail column
     ("tests/test_graph.py", "unittest", False),  # World Model Trial Step 1: the flexible memory + the one door
     ("tests/test_engine.py", "unittest", False),  # World Model Trial Step 3: the engine

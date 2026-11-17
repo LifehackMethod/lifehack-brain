@@ -23,6 +23,13 @@
   gc urgent [--limit N] [--json]   open items ranked by computed urgency + overrides (pins up, quiet-until hidden)
   gc engine [--json]   run the engine now: window -> signals -> episodes -> rank -> gaps (writes the memory and the gap queue)
   gc week [--start DATE] [--json]  one-week digest for a planning skill (start defaults to today; 7 days)
+  gc decide --draft DRAFT.json --decisions DECISIONS.json [--day D] [--desk NAME] [--said-on D] [--json]
+        THE DOOR FOR A SESSION'S DECISIONS ON A DRAFT (4P.4): records them (yeses only, through record_answer),
+        runs the snapshot check (store.check_snapshot), and on PASS stages the validated weekly picture
+        (<day>-<desk>-validated.json + .md) in the planning desk's records/context/ (the desk found through
+        shared/desk_list.py). gc decide --show [--day D] [--json] prints the newest staged picture and its
+        check result re-run now: the weekly run's receipt (contract 5.7). Exit 1 on a refused decision or a
+        failed check; the decisions stay recorded, nothing is staged.
   (fresh/new/who/thread/proposals/urgent/week are read-only; --json prints one JSON document on stdout; errors exit 1)
 """
 import argparse
@@ -537,6 +544,30 @@ def cmd_week(a):
     return 0
 
 
+def cmd_decide(a):
+    """4P.4: record a session's decisions on a draft, check the snapshot, stage the validated weekly
+    picture (--show: the receipt). The planning desk folder is found through shared/desk_list.py."""
+    import decide
+    if a.show:
+        g = _feed_gate(a)
+        if g is not None:
+            _emit(a, g, feeds.text_line(g))
+            return 0
+        res = decide.show(day=a.day, desk=a.desk)
+        _emit(a, res, "validated picture %s: %s (%d check error(s))" % (
+            res.get("file"), "VALID" if res.get("valid") else "FAILED CHECK",
+            len(res.get("check", {}).get("errors", []))))
+        return 0 if res.get("valid") else 1
+    res = decide.decide(day=a.day, desk=a.desk, draft_path=a.draft, decisions_path=a.decisions, said_on=a.said_on)
+    if not res.get("ok"):
+        print("decide: decisions recorded, NOTHING staged (check_snapshot failed): %s" %
+              "; ".join(res.get("check", {}).get("errors", [])), file=sys.stderr)
+        _emit(a, res, "NOT staged: %s" % "; ".join(res.get("check", {}).get("errors", [])))
+        return 1
+    _emit(a, res, "validated picture staged: %s (draft %s, %d decision(s), check clean)" % (
+        res.get("md"), res["snapshot"].get("draft_id"), len(res["snapshot"].get("decisions", []))))
+    return 0
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="gc", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=None, help="use another database file (default: the live rig.db)")
@@ -596,6 +627,9 @@ def main(argv=None):
                                                      ("--said-on", dict(default=None))]),
                            ("urgent", cmd_urgent, [("--limit", dict(type=int, default=20))]),
                            ("week", cmd_week, [("--start", dict(default=None))]),
+                           ("decide", cmd_decide, [("--draft", dict(default=None)), ("--decisions", dict(default=None)),
+                           ("--day", dict(default=None)), ("--desk", dict(default=None)), ("--said-on", dict(default=None)),
+                           ("--show", dict(action="store_true"))]),
                            ("engine", cmd_engine, [])):
         sp = sub.add_parser(name)
         for flag, kw in args:

@@ -79,6 +79,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/coverage.py` · the front room's checks on its own work
 - `/shared/grand_central/daily.py` · daily.py: Grand Central's daily engine (plan STEP 7 / Phase E1+E2)
 - `/shared/grand_central/db.py` · db.py: the one connect() for rig.db. Pragmas live here and nowhere else
+- `/shared/grand_central/decide.py` · Phase 4P.4 / 4P.4b: the door for a planning session's decisions on a draft, and the validated weekly picture
 - `/shared/grand_central/delta.py` · delta.py: Grand Central V2 step 3. Compare what arrived in [since, now] against the baseline (everything before) and report three kinds of…
 - `/shared/grand_central/diary_keys.py` · Phase 4 step 4.3: keys in every diary entry (Vision 2.7 and 3.10)
 - `/shared/grand_central/diary_names.py` · diary_names.py: Phase 4 (ruling 4.1). A desk's diary is named by ONE pattern, '<Desk>-Diary'
