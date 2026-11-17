@@ -835,6 +835,8 @@ where they exist, from recency when sources conflict
 (7.4), from re-derivation over self-attestation (7.2) — and a claim carrying none of these reads as a
 proposal, not a fact. AUTHORITATIVE → Enver, 2026-11-06.
 
+**7.0a Moving knowledge lower should not move its findability lower — no buried treasure.** Leave a one-line pointer where a future session would naturally look; a note no session can reach from its domain is lost, not stored. *(`[H]` OBSERVED; U2, round five, 2026-11-16.)*
+
 **7.0b Prose is where meaning lives; structure is where trust lives.**
 The model reads both prose and structured formats; code reads only exact structure — so a format never serves
 the model, it serves the machine that needs handles (**addressability**). Knowledge is stored in prose (the

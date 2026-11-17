@@ -255,3 +255,84 @@ The archivist **never moves anything.** It proposes; the human approves via `/ar
 ~~~~
 a real human-in-the-loop feedback signal *on top of* the normal `/archivist-review` (⛔ not shipped) approval.
 ~~~~
+
+## 2026-11-16 - reason: round five KA read — F4 (DOWN: §9 probation is unbuilt scaffolding written as a live step, moved to history on the owner's yes), plus, per P-16, the old wording of every line this batch replaced, copied verbatim from removed-lines.txt
+
+~~~~
+> skill, project/brief, record, SOP/playbook — or nothing at all). Read by the **archivist** (when it routes
+> inbox items, audits folders, or proposes a split) and by **`/save`**. Lives LOW on purpose — loaded only when
+> this work is happening, never injected into every conversation. (It passes its own test by NOT sitting at the
+> summit (global `CLAUDE.md`).) Plain language by design: a cold session must be able to use it.
+> ✅ The parent doctrine itself is `system/intent-doctrine.md`, which is here. The sentence above is the
+> whole of it that this page needs; read the doctrine when you are deciding what KIND of intent a
+> thing carries.
+filed at the thinnest altitude that still holds it.** (Sometimes that observation is even a rule — but canon is
+observation first, never rules by definition.) Two tests, both required:
+consistent pattern, a durable fact/trait/preference about the person or their world — sometimes a rule, but
+observation first) → canon. A dated number, a one-off event, an expiring
+status → a *record*, not canon. Plain check: would this still be true, and worth loading, well into the
+future (the ~2-year test)?
+— and no higher.** Scope narrows as you descend: a few things are true for *every* session (global, tiny by
+**Refinement — the split test is an injection question, not just an always-loaded-cost one (the operator, 2026-08-05,
+authority: user).** The real question behind "does this deserve its own territory" is: *what is a corpus of
+IS") — that framing only bites on knowledge that loads by default (global/desk canon), while the injection
+**Too big and too diverse are different problems with different fixes (the operator, 2026-08-05, authority: user).**
+**The mechanism the ladder rests on — WHY placement has a cost, not just a category (the operator, 2026-08-05,
+authority: user).** `/read`'s branch-walk (`.claude/skills/read/SKILL.md` Step 0.6) pulls canon from EVERY ancestor
+folder on the way down — a read from `tax/` loads tax canon AND financial canon AND root canon, one
+*customized chain*, not one file. **Consequence: anything placed in a parent is paid for by every
+descendant that ever walks past it** — a line in `financial/canon/canon.md` loads into every tax conversation
+that child; nobody needs it *loaded*, but it must stay findable → records (the findability invariant
+above). Worked example (`financial/`): shared-for-everything facts — *"he is married, rents an apartment
+- **canon** — a durable, generalizable *observation* (a standing pattern or fact; a rule only if it genuinely is one) (→ if so, apply the level ladder, §2–§3);
+- **a record** — a fact, number, finding, or event (dated, searchable — NOT a rule);
+**Records split by SHAPE, not just durability (the operator, 2026-08-05, authority: user).** A record is either a
+**discrete dated item** worth keeping on its own (invented example, ⚠ nobody real, same convention as
+**A folder can hold both canon and records at once — they are not competing types (the operator, 2026-08-05, authority:
+user).** Every folder is born with a canon file and a stated purpose/intent (§4), but that doesn't make it
+record vs an SOP — from the type list in §1 above (`CLAUDE.md`'s Memory
+/ Persistence-Routing rules distinguish record vs canon vs diary; this doctrine + each folder's `intent` add the
+**Why this matters now:** the inbox is the **catch-all** — `/save` drops anything whose folder is unclear straight
+in, so it fills with mixed, ambiguous stuff *on purpose*. The archivist is the **disambiguator** that sorts it.
+If this doctrine only knew canon, every non-canon save would have nowhere to go.
+| Global | **Hardest** | global `CLAUDE.md` | **Does this need to shape EVERY conversation, on ANY subject?** |
+| Desk | **Hard** | desk `CLAUDE.md` / desk canon | **Needed in basically every conversation about THIS subject?** (a tax rule fails here — most talk about money is not about tax, so it belongs one level down) |
+| Sub-folder | **Medium** | sub-area canon (e.g. a practice / finance) | **Needed across this whole sub-area?** |
+| Deep | **Easy** | sub-sub canon | **Is this even *about* this topic?** (If yes, let it in — it barely loads, so overload is harmless.) |
+**Canon's virtue is precision and self-sufficiency, not size.** Always-on canon (global/desk) is also
+always-loaded) a canon sits, the more it should be a **directory** — the few load-bearing rules + **pointers** to
+real lever is **altitude/leanness** — keep the always-loaded floor SMALL (under the context-rot threshold ~20K tokens),
+just-in-time by `/read`. Pointers are for cross-branch awareness, never for the spine of what a session needs. (Research
+note of 2026-06-13, kept in the operator's records.)
+move its *findability* down with it. Whenever knowledge is placed into a deeper / specialist folder — sunk from a
+brain file, filed into a project's records, or parked in a playbook — **the domain that would reach for it must
+Every folder — of **any** type (a canon, a skill folder, a project, a records area, a playbook) — carries an
+**`intent`**: one plain-English line stating its admission bar (what it takes to belong here). For canon this is
+the P6 territory-map field `accepts:` **upgraded** from "what belongs" → "the *bar* to belong"; the same idea
+extends to the other types so the router has one consistent thing to read everywhere.
+> **intent:** ONLY the high-level rules always true for any conversation about this subject — how it is
+**Rules:**
+- **For an always-on folder (global, a desk), the near-miss is usually the VERTICAL sink** — the specialty detail
+1. **Triage by type** — for each inbox item (and each existing artifact under audit), FIRST decide which TYPE of
+3. **Audit + sink** — periodically re-test EXISTING `CLAUDE.md`/canon lines against their folder's intent; flag
+   any that can **no longer win their slot at that level** and should **sink lower.**
+   lower shelves for sinkers). This is the cohesion check **J**, grown up. Pure judgment + J — **no size
+- **the operator writes the high-tier bars** (global, each desk). Those are the operator's own calls; they are never machine-guessed.
+## 7. KISS — the hard lines (refuse this complexity)
+- Plain-text intents + LLM judgment. **NO numeric scoring, NO thresholds, NO "preponderance equations."**
+  This ban is about filing (where a piece of knowledge sits); evidence points stay a judged weight, never a
+This doctrine governs the archivist and `/save` — not every conversation — so it does **not** earn the summit.
+Full text lives here (low, on-demand). A bare pointer (or nothing)
+in global `CLAUDE.md`. If we ever catch ourselves wanting to paste this into `CLAUDE.md`, that's the doctrine
+failing its own test — don't.
+## 9. Probation — temporary scaffolding, built to be deleted
+While we're still earning trust in the archivist's placement judgment, run a **monitoring period (~1–2 months)**:
+for every triage / place / cull / sink / split it proposes, the archivist writes a **one-line plain-English
+RATIONALE** (which type + level, which intent it matched or failed, what it rejected and why) to a single trial
+log. the operator skims it, catches bad calls, and corrects the intents —
+a real human-in-the-loop feedback signal *on top of* the normal approval.
+This is **scaffolding, NOT a standing rule.** It is one file + one logging step, and **nothing else depends on it.** When
+the operator is confident the judgment is good, the whole probation is deleted cleanly — remove the log and the
+logging step; the doctrine and the engine are untouched. Designed from day one to be ripped out, never to
+harden into a permanent layer.
+~~~~
