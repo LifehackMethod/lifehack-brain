@@ -21,8 +21,8 @@ scope:
   - system/tools/tests/test_install_schedulers_intervals.sh
   - system/tools/tests/test_job_run_door.sh
   - system/tools/tests/test_pulse_state_path.sh
-  - system/tools/tests/test_scheduled_jobs_check.sh  # not on origin yet
-  - system/tools/organism/checks/scheduled_jobs_check.py  # not on origin yet
+  - system/tools/tests/test_scheduled_jobs_check.sh
+  - system/tools/organism/checks/scheduled_jobs_check.py
 shared:
   - {paths: [system/tools/model.lib.sh], home: false, role_here: friction, file_home: helpers-routing}
   - {paths: [system/tools/gws-auth.lib.sh], home: false, role_here: data, file_home: google}
@@ -68,8 +68,8 @@ The scheduler, the one job wrapper, and the door that refuses a bad job: plugin 
 
 Human scope meaning: everything that turns a row in a jobs list into a run that fired, was checked, recorded its state, and told the person when it broke — plus the two dispatchers (launchd installer, pulse) and the rig that tests the chain. The code-root pointer (~/.config/lifehack/code-root) is machine state, not a repo file; it is named here for the chain, not homed.
 
-<!-- AS-BUILT:BEGIN generator=system/tools/organism/component_page.py source=origin/V2@50c09ab fetched=2026-11-17T01:42:20Z sha256=a175c0dd9e83e3fa0a8005f338dcb9fb15771005e1cc4835b8b40b78f3b51d14 -->
-As built from origin `origin/V2` (@50c09ab):
+<!-- AS-BUILT:BEGIN generator=system/tools/organism/component_page.py source=origin/V2@d668dd2 fetched=2026-11-17T01:59:28Z sha256=32667d3c5b8c766d194f952def57ecd073cdba1c8dc7a5541f36ffcc504561ad -->
+As built from origin `origin/V2` (@d668dd2):
 
 | kind | path | commit |
 | --- | --- | --- |
@@ -84,6 +84,7 @@ As built from origin `origin/V2` (@50c09ab):
 | file | system/tools/job-fetch-hosts.txt | 063dcb8 2026-10-27 |
 | file | system/tools/job-run.sh | 1fed78d 2026-11-05 |
 | file | system/tools/job-texts.txt | cfc100e 2026-10-31 |
+| file | system/tools/organism/checks/scheduled_jobs_check.py | d7c5c8e 2026-11-16 |
 | file | system/tools/pulse-park.sh | 5b42d06 2026-11-01 |
 | file | system/tools/pulse.sh | 0037ccb 2026-11-14 |
 | file | system/tools/runner-lock.lib.sh | 7c254d0 2026-10-28 |
@@ -91,6 +92,7 @@ As built from origin `origin/V2` (@50c09ab):
 | test | system/tools/tests/test_install_schedulers_intervals.sh | 0c03262 2026-11-16 |
 | test | system/tools/tests/test_job_run_door.sh | 0037ccb 2026-11-14 |
 | test | system/tools/tests/test_pulse_state_path.sh | 80be844 2026-11-01 |
+| test | system/tools/tests/test_scheduled_jobs_check.sh | d7c5c8e 2026-11-16 |
 
 Hook wiring (from origin `hooks/hooks.json`):
 
@@ -116,6 +118,7 @@ Register rows in scope (from origin `system/register/register.jsonl`):
 | tool:public:/system/tools/ingest-run.lib.sh | /system/tools/ingest-run.lib.sh | tool | 4b465288 |
 | tool:public:/system/tools/install-schedulers.sh | /system/tools/install-schedulers.sh | tool | 3c911a70 |
 | tool:public:/system/tools/job-run.sh | /system/tools/job-run.sh | tool | d849ea41 |
+| tool:public:/system/tools/organism/checks/scheduled_jobs_check.py | /system/tools/organism/checks/scheduled_jobs_check.py | tool | 5a95e87c |
 | tool:public:/system/tools/pulse-park.sh | /system/tools/pulse-park.sh | tool | c91d78db |
 | tool:public:/system/tools/pulse.sh | /system/tools/pulse.sh | tool | 5ff68c22 |
 | tool:public:/system/tools/runner-lock.lib.sh | /system/tools/runner-lock.lib.sh | tool | 5f09f232 |
@@ -137,9 +140,9 @@ Jobs (from origin `system/jobs.md`):
 
 Pointers:
 
-named but missing: `system/templates/component-page-template.md`
+named but missing: `system/sops/pr-sop.md` ⛔ not on origin
 
-not on origin: 2
+not on origin: 0
 
 pointed at by: none
 <!-- AS-BUILT:END -->
@@ -220,6 +223,8 @@ Read 2026-11-16 by Opus 5.5 (claude-opus-5-5) · as-built at 50c09ab · stamp 20
 - **UNOWNED** — the door accepts any non-empty source word; canon states this itself, so it is canon's design as written, and whether it should stand is the owner's call — evidence system/tools/install-schedulers.sh:163 — canon canon/cron-jobs-sop.md:119 — goes to: upward candidate through the canon-files run; debt ledger L123.
 - **BROKEN POINTER** (wording) — canon says a gmail row "loads the Google login"; the wrapper only runs the loader in a subshell to read its exit code and exports nothing — evidence system/tools/job-run.sh:486-487 — canon canon/cron-jobs-sop.md:119 — goes to: upward candidate through the canon-files run (Appeal 1).
 
+Refreshed 2026-11-16 at d668dd2 (after the push), by the build window, mechanically; no new reading: the two items "the whole Status block comes from code the host has not got" and "the page's footer names a template that is not on origin" are resolved (as-built: not on origin: 0; the check re-ran on the clean d668dd2 checkout). Every other item stands as read.
+
 ## Inside (whitebox) <!-- human -->
 
 Motivation: the split is canon's three layers — the trigger stays dumb, the wrapper is the only place a run earns exit 0, and the routine is the skill's business (canon/cron-jobs-sop.md:38-50). Everything two desks would want different lives in the desk; everything a person would be upset to see differ lives here once (canon/cron-jobs-sop.md:66-71). The plugin/personal split exists because a plugin update overwrites the plugin's own files, so a person's job needs its own home (canon/cron-jobs-sop.md:229).
@@ -252,18 +257,18 @@ Contained building blocks:
 
 Suffix (human-owned): ·gap
 
-<!-- STATUS:BEGIN stamper=system/tools/organism/component_page.py stamped=2026-11-17T01:42:21Z sha256=6cbe870bf7705d51c6a8ee7f66026bfba3bba4e0ca539d510e2c7cdd6caadb76 -->
+<!-- STATUS:BEGIN stamper=system/tools/organism/component_page.py stamped=2026-11-17T01:59:29Z sha256=963f5b86edfb9dc4fd9ae3f744560cbaaa53795f3cdab7b9ce71e5c57a838561 -->
 Status: PARTIAL · checked 2026-11-16 · valid until 2026-11-23 · <brain>/status/component-scheduled-jobs.json
 Past "valid until", read this as unproven, whatever the word says.
 Health: no tile declared
 
 | check | watches | result | date | at sha | clean | window | receipt | untested | reading |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| intervals-test | an interval is any whole number of seconds of 60 or more (canon/cron-jobs-sop.md:81 is the canon pointer for 'any interval, not only whole hours'; the 60-second floor is the code's: system/tools/install-schedulers.sh:545 and its test system/tools/tests/test_install_schedulers_intervals.sh) | PASS | 2026-11-16 | 50c09ab | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | LIVE |
-| door-test | the door refuses a bad row, prints the reason, and job-run.sh runs the same door before every run of a yes row (canon/cron-jobs-sop.md:134,136) — held by system/tools/tests/test_job_run_door.sh | PASS | 2026-11-16 | 50c09ab | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | LIVE |
-| no-send-verb | email never sends without human approval; drafts stay allowed (COMPASS P-184; canon/canonical-principles-sop.md §15.29) — held by a probe of the door's Gmail write list | FAIL | 2026-11-16 | 50c09ab | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | PARTIAL |
-| refusal-rulebook-resolves | every refusal names a rulebook that exists and says where the rule lives (COMPASS P-127) — held by a probe of the door's refusal texts | FAIL | 2026-11-16 | 50c09ab | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | PARTIAL |
-| state-local-not-drive | job state is local, never Drive (canon/cron-jobs-sop.md:88) — held by the check's Drive-path probe; system/tools/tests/test_pulse_state_path.sh is a related test the check does not run | FAIL | 2026-11-16 | 50c09ab | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | PARTIAL |
+| intervals-test | an interval is any whole number of seconds of 60 or more (canon/cron-jobs-sop.md:81 is the canon pointer for 'any interval, not only whole hours'; the 60-second floor is the code's: system/tools/install-schedulers.sh:545 and its test system/tools/tests/test_install_schedulers_intervals.sh) | PASS | 2026-11-16 | d668dd2 | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | LIVE |
+| door-test | the door refuses a bad row, prints the reason, and job-run.sh runs the same door before every run of a yes row (canon/cron-jobs-sop.md:134,136) — held by system/tools/tests/test_job_run_door.sh | PASS | 2026-11-16 | d668dd2 | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | LIVE |
+| no-send-verb | email never sends without human approval; drafts stay allowed (COMPASS P-184; canon/canonical-principles-sop.md §15.29) — held by a probe of the door's Gmail write list | FAIL | 2026-11-16 | d668dd2 | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | PARTIAL |
+| refusal-rulebook-resolves | every refusal names a rulebook that exists and says where the rule lives (COMPASS P-127) — held by a probe of the door's refusal texts | FAIL | 2026-11-16 | d668dd2 | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | PARTIAL |
+| state-local-not-drive | job state is local, never Drive (canon/cron-jobs-sop.md:88) — held by the check's Drive-path probe; system/tools/tests/test_pulse_state_path.sh is a related test the check does not run | FAIL | 2026-11-16 | d668dd2 | yes | 604800 | <brain>/status/component-scheduled-jobs.json | job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end | PARTIAL |
 not tested by these checks: job-sim.sh rig (not run: long); live installed jobs and their last-success ages (personal, not shipped); the Linux/Windows pulse path end to end
 <!-- STATUS:END -->
 

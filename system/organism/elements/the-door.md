@@ -17,6 +17,7 @@ updated_at: 2026-10-29
 status: active
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see system/organism/components/scheduled-jobs.md
 
 # the-door — element detail
 

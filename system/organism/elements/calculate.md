@@ -4,6 +4,7 @@ maturity_label: DORMANT
 record_type: organism-element
 altitude: index-line
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Context injection" component (round five triage; its page is written when it is rebuilt)
 
 A single-command skill (`.claude/skills/calculate/SKILL.md`) that arms "numbers-mode" for the current session — a UserPromptSubmit hook then re-injects the compute-mechanically rule every turn (via the compute-mechanically-gate plane) until explicitly disarmed or a 12h TTL expires. Subject folders named on your own list at `<notes>/config/numbers-auto-arm` (one folder name per line; no file means no auto-arm) arm themselves on launch; `/calculate` is the manual on-switch for any other session. `/calculate off` disarms. See compute-mechanically-gate for the underlying hook implementation.
 

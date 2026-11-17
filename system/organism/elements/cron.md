@@ -20,6 +20,7 @@ updated_at: 2026-10-27
 status: active
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see system/organism/components/scheduled-jobs.md
 
 > **RENAMED 2026-10-29 from `cron.md` (operator's ruling).** This element is **CRON**: Bekim's "scheduled
 > execution" component — launchd, the code-root pointer, `job-run.sh`, the job list and the door. "Pulse" survives

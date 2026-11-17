@@ -4,6 +4,7 @@ maturity_label: LIVE
 record_type: organism-element
 altitude: index-line
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Coaching: the harness as a leader" component (round five triage; its page is written when it is rebuilt)
 
 Two-skill stack for mining and promoting personal chat history into active canon: `/ingest` (Vera the Curator — one skill, four phases each a unit of human attention: SORT → SCAN → DEEP-READ → PLACE across a ChatGPT export; the separate filer skill folded into `/ingest` as `phases/4-place.md` on 2026-08-05, confirm-gated on every placement) and `/chatgpt-historical` (human-in-the-loop promotion of ChatGPT-era facts into active desk canon, one approved write at a time). Both live under `.claude/skills/ingest` and `skills/chatgpt-historical`; the multi-agent tagger/reader/conclusions agents are the untrusted-content isolation layer beneath them. Normative behavioral contract: `.claude/skills/ingest/SPEC.md`. Whether `skills/chatgpt-historical` resolves from this repo's root as written is answered on its own line immediately below and in the CITATION BANNER that follows — not on this descriptive line.
 ⛔ `skills/chatgpt-historical` does not resolve from this repo's root as a citation: the skill genuinely ships, but only from the operator's own machine install, outside this repo — see the CITATION BANNER below, including its 2026-09-07 correction, for the full history.

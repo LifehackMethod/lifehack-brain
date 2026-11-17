@@ -447,13 +447,13 @@ def cmd_asbuilt(args):
             t = git(repo, "cat-file", "-t", "%s:%s" % (sha, path))
             if t.returncode == 0 and t.stdout.strip() in ("blob", "tree"):
                 return None  # a directory (tree) resolves
-            return "named but missing: `%s`" % tok
+            return "named but missing: `%s` ⛔ not on origin" % tok
         if path not in blobset:
-            return "named but missing: `%s`" % tok
+            return "named but missing: `%s` ⛔ not on origin" % tok
         c = git(repo, "show", "%s:%s" % (sha, path))
         nlines = len(c.stdout.splitlines())
         if ln > nlines:
-            return "named but missing: `%s` (file has %d lines)" % (tok, nlines)
+            return "named but missing: `%s` (file has %d lines) ⛔ line past the end at origin" % (tok, nlines)
         return None
 
     for tok in re.findall(r"`([^`\n]+)`", "\n".join(scan)):

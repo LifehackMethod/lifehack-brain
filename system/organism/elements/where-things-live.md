@@ -21,6 +21,7 @@ updated_at: 2026-08-21
 status: draft
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Seeing itself" component (round five triage; its page is written when it is rebuilt)
 
 # where-things-live — element detail
 

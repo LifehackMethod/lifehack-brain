@@ -31,6 +31,7 @@ updated_at: 2026-07-22
 status: active
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Circulatory system" component (round five triage; its page is written when it is rebuilt)
 
 # memory-write (`/save`) — element detail
 

@@ -20,6 +20,7 @@ updated_at: 2026-10-29
 status: active
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Shared tools and register" component (round five triage; its page is written when it is rebuilt)
 
 # shared-layer — element detail
 

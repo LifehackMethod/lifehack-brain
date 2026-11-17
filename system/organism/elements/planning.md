@@ -22,6 +22,7 @@ updated_at: 2026-08-15
 status: draft
 authority: agent
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Planning desk" component (round five triage; its page is written when it is rebuilt)
 
 # planning — element detail
 

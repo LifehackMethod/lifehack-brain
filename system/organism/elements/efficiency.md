@@ -25,6 +25,7 @@ updated_at: 2026-08-05
 status: draft
 authority: agent
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Seeing itself" component (round five triage; its page is written when it is rebuilt)
 
 # efficiency — element detail
 

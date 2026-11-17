@@ -26,6 +26,7 @@ updated_at: 2026-07-23
 status: draft
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Circulatory system" component (round five triage; its page is written when it is rebuilt)
 
 # memory-read (`/read` + `/checkin` + `project-manager` + project-registry) — element detail
 

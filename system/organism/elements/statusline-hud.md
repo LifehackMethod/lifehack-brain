@@ -22,6 +22,7 @@ updated_at: 2026-07-24
 status: draft
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; no component homes this file (round five triage)
 
 # statusline-hud — element detail
 

@@ -23,6 +23,7 @@ updated_at: 2026-07-24
 status: draft
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Sentinel" component (round five triage; its page is written when it is rebuilt)
 
 # research-web-plane — element detail
 

@@ -22,6 +22,7 @@ updated_at: 2026-07-23
 status: active
 authority: user
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Sentinel" component (round five triage; its page is written when it is rebuilt)
 
 # egress-allowlist-wall — element detail
 

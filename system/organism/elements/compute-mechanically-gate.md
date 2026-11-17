@@ -4,6 +4,7 @@ maturity_label: ~~DORMANT~~ ⚠ CORRECTED 2026-08-25: LIVE (see body correction 
 record_type: organism-element
 altitude: index-line
 ---
+> last traced 2026-10-30; not checked against V2 canon; see the "Context injection" component (round five triage; its page is written when it is rebuilt)
 
 ~~Two hooks~~ **One hook** (`system/hooks/inject_compute_mechanically.sh`) plus one non-hook flag-CLI (`numbers_flag.sh`) that enforce the no-LLM-arithmetic rule introduced after a major finance error on 2026-06-26. Finance desks (Deryl/Clair-billing) auto-arm on session start; any session can arm manually via `/calculate`; a tight regex backstop catches obvious math tokens everywhere else. ~~Both hooks are read-only inject observers — degrade-safe, never block.~~
 > **CORRECTED: `numbers_flag.sh` is not itself a hook.** Fed with no subcommand argument, it
