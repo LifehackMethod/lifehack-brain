@@ -383,23 +383,32 @@ def make_whole_env():
     return d, plan, doc, task
 
 def run_whole(stub):
+    code, out, d, _stdout = run_whole_capture(stub)
+    return code, out, d
+
+def run_whole_capture(stub):
+    """Like run_whole, but also returns what the tool printed on stdout (card 6.1c)."""
     d, plan, doc, task = make_whole_env()
     out = os.path.join(d, "out")
     rh.call_model = stub
-    code, _ = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
-                        "--model", "sonnet", "--out", out])
-    return code, out, d
+    code, stdout = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
+                             "--model", "sonnet", "--out", out])
+    return code, out, d, stdout
 
 def read_file(out_dir, name):
     with open(os.path.join(out_dir, name), encoding="utf-8") as fh:
         return fh.read()
 
-# (n) honest whole reply: exit 0, RESULT=COMPLETE
+# (n) honest whole reply: exit 0, the check states what was proven and carries the honesty line
 def test_n():
-    code, out, _d = run_whole(lambda prompt, model, **kw: (honest_whole_reply(), None))
+    code, out, _d, stdout = run_whole_capture(lambda prompt, model, **kw: (honest_whole_reply(), None))
     assert code == 0, "exit %d, expected 0" % code
     ck = read_file(out, "check.md")
-    assert "RESULT=COMPLETE" in ck, ck
+    assert "RESULT=" not in ck and "COMPLETE" not in ck, ck
+    assert "proven: every file was put in front of the model (2 files" in ck, ck
+    assert "proven: 6 of 6 headings listed" in ck, ck
+    assert "proven: 2 of 2 quotes found" in ck, ck
+    assert rh.HONESTY_LINE in ck, ck
     assert "retried: no" in ck, ck
     assert "ledger planA.md: 3/3" in ck and "ledger docB.md: 3/3" in ck, ck
     assert os.path.exists(os.path.join(out, "reply.raw.txt")), "raw reply missing"
@@ -423,7 +432,8 @@ def test_o():
     assert code == 0, "exit %d, expected 0" % code
     ck = read_file(out, "check.md")
     assert "retried: yes" in ck, ck
-    assert "RESULT=COMPLETE" in ck, ck
+    assert "RESULT=" not in ck and "COMPLETE" not in ck, ck
+    assert "proven: 6 of 6 headings listed" in ck, ck
     assert os.path.exists(os.path.join(out, "reply.retry.raw.txt")), "retry raw reply missing"
 
 # (p) reply missing a heading on both tries: exit 1, RESULT=INCOMPLETE, heading listed
@@ -433,7 +443,9 @@ def test_p():
     code, out, _d = run_whole(fake)
     assert code == 1, "exit %d, expected 1" % code
     ck = read_file(out, "check.md")
-    assert "RESULT=INCOMPLETE" in ck, ck
+    assert "RESULT=" not in ck and "COMPLETE" not in ck, ck
+    assert "proven: 5 of 6 headings listed" in ck, ck
+    assert "not proven: every heading listed; 1 missing" in ck, ck
     assert "docB.md line 4 (Scope)" in ck, ck
 
 # (q) one real and one made-up quote: made-up REFUSED and counted; finding with only a
@@ -469,7 +481,9 @@ def test_r():
     assert len(calls) == 2, "expected one retry, calls=%d" % len(calls)
     assert code == 1, "exit %d, expected 1" % code
     ck = read_file(out, "check.md")
-    assert "RESULT=UNPARSEABLE" in ck, ck
+    assert "RESULT=" not in ck and "COMPLETE" not in ck, ck
+    assert "proven: nothing about the reply" in ck, ck
+    assert rh.HONESTY_LINE in ck, ck
 
 # (s) findings.md does not contain the model name
 def test_s():
@@ -478,11 +492,109 @@ def test_s():
     fmd = read_file(out, "findings.md")
     assert "sonnet" not in fmd.lower() and "claude" not in fmd.lower(), fmd
 
-check("n", "honest whole reply: exit 0, RESULT=COMPLETE", test_n)
+check("n", "honest whole reply: exit 0, check states what was proven", test_n)
 check("o", "missing one heading: retried once with it named, second reply complete, exit 0", test_o)
-check("p", "missing a heading on both tries: exit 1, RESULT=INCOMPLETE, heading listed", test_p)
+check("p", "missing a heading on both tries: exit 1, proven lines name the gap", test_p)
 check("q", "made-up quote REFUSED and counted; quoteless finding UNSUPPORTED", test_q)
-check("r", "unparseable reply on both tries: exit 1, RESULT=UNPARSEABLE", test_r)
+check("r", "unparseable reply on both tries: exit 1, proven lines name it", test_r)
 check("s", "findings.md does not name the model", test_s)
+
+# ---- card 6.1: (a) the real glm-1 quote case; (b) no bare complete; (c) stdout; (d) run log ----
+
+# (t) built from the real case whole/glm-1 (2026-11-19): the file bolds text with ** markers and
+#     the reply quotes it without them (finding 4) or keeps the trailing ones (finding 9); both
+#     are real quotes and must verify, not be refused. Placeholder text and paths.
+BOLD_PLAN = ("# Plan Chi\n"
+             "## Step one\n"
+             "**The weekly skill gets the FULL rulebook**, not the small version.\n")
+BOLD_DOC = ("# Doc Delta\n"
+            "## Scope\n"
+            "**Skill-SOP items skipped, and why:** the forked test copies.\n")
+
+def test_t():
+    d = tempfile.mkdtemp(prefix="rh_bold_")
+    plan = os.path.join(d, "planX.md"); open(plan, "w", encoding="utf-8").write(BOLD_PLAN)
+    doc = os.path.join(d, "docY.md"); open(doc, "w", encoding="utf-8").write(BOLD_DOC)
+    task = os.path.join(d, "task.txt")
+    open(task, "w", encoding="utf-8").write("Read these files whole and report problems.\n")
+    reply = ("LEDGER | planX.md | 1 | Plan Chi\n"
+             "LEDGER | planX.md | 2 | Step one\n"
+             "LEDGER | docY.md | 1 | Doc Delta\n"
+             "LEDGER | docY.md | 2 | Scope\n"
+             "FINDING | 1 | TENSION | the rulebook breadth is contested.\n"
+             "PLAN | 1 | planX.md | 3 | The weekly skill gets the FULL rulebook, not the small version.\n"
+             "CANON | 1 | docY.md | 3 | Skill-SOP items skipped, and why:** the forked test copies.\n")
+    rh.call_model = lambda prompt, model, **kw: (reply, None)
+    code, stdout = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
+                             "--model", "sonnet", "--out", os.path.join(d, "out")])
+    assert code == 0, "exit %d, expected 0" % code
+    ck = open(os.path.join(d, "out", "check.md"), encoding="utf-8").read()
+    assert "proven: 2 of 2 quotes found" in ck, ck
+    fmd = open(os.path.join(d, "out", "findings.md"), encoding="utf-8").read()
+    assert "REFUSED" not in fmd, fmd
+    assert fmd.count("VERIFIED") == 2, fmd
+
+# (u) the findings and the check go to stdout as well as the files (card 6.1c)
+def test_u():
+    code, out, _d, stdout = run_whole_capture(lambda prompt, model, **kw: (honest_whole_reply(), None))
+    assert code == 0, "exit %d, expected 0" % code
+    for chunk in ("# findings", "kind: UNMET", "VERIFIED", "# whole-run check",
+                  "proven: 6 of 6 headings listed", rh.HONESTY_LINE):
+        assert chunk in stdout, "stdout missing %r\nstdout was:\n%s" % (chunk, stdout)
+
+# (v) every run prints the handover facts and appends one run-log line (card 6.1d)
+def test_v():
+    old_log = rh.LOG_PATH
+    try:
+        d = tempfile.mkdtemp(prefix="rh_log_")
+        rh.LOG_PATH = os.path.join(d, "run", "read_harness.log")
+        code, out, _d, stdout = run_whole_capture(
+            lambda prompt, model, **kw: (honest_whole_reply(), None))
+        assert code == 0, "exit %d, expected 0" % code
+        for part in ("model=sonnet", "files=2", "lines=", "seconds=", "tokens", "untested-size=no"):
+            assert part in stdout, stdout
+        with open(rh.LOG_PATH, encoding="utf-8") as fh:
+            lines = fh.read().rstrip("\n").split("\n")
+        assert len(lines) == 1, "expected exactly one log line, got %d" % len(lines)
+        for part in ("mode=whole", "model=sonnet", "files=2", "seconds=", "tokens in=", "untested-size=no"):
+            assert part in lines[0], lines[0]
+        # a second run appends, never overwrites
+        run_whole(lambda prompt, model, **kw: (honest_whole_reply(), None))
+        with open(rh.LOG_PATH, encoding="utf-8") as fh:
+            lines = fh.read().rstrip("\n").split("\n")
+        assert len(lines) == 2, "expected two log lines, got %d" % len(lines)
+    finally:
+        rh.LOG_PATH = old_log
+
+# (w) a run larger than the tested size (2,664 lines over 8 files) is flagged untested size
+def test_w():
+    old_log = rh.LOG_PATH
+    try:
+        d, plan, doc, task = make_whole_env()
+        big_doc = os.path.join(d, "big.md")
+        big = "# Big Doc\n## Only Heading\n" + \
+            "\n".join("filler line %d" % i for i in range(2700)) + "\n"
+        open(big_doc, "w", encoding="utf-8").write(big)
+        out = os.path.join(d, "out")
+        rh.LOG_PATH = os.path.join(d, "run", "read_harness.log")
+        led = "".join("LEDGER | planA.md | %d | %s\n" % (ln, hl.lstrip("#").strip())
+                      for ln, hl in rh.real_headings(WHOLE_PLAN))
+        rh.call_model = lambda prompt, model, **kw: (
+            led + "LEDGER | big.md | 1 | Big Doc\nLEDGER | big.md | 2 | Only Heading\nNO-FINDINGS\n", None)
+        code, stdout = run_main(["--whole", "--plans", plan, "--docs", big_doc, "--task", task,
+                                 "--model", "sonnet", "--out", out])
+        assert code == 0, "exit %d, expected 0" % code
+        assert "untested-size=yes" in stdout, stdout
+        assert "UNTESTED SIZE" in read_file(out, "check.md"), "check.md lacks the untested-size flag"
+        with open(rh.LOG_PATH, encoding="utf-8") as fh:
+            line = fh.read().strip()
+        assert "untested-size=yes" in line, line
+    finally:
+        rh.LOG_PATH = old_log
+
+check("t", "real glm-1 case: quotes of bolded text verify with or without the ** markers", test_t)
+check("u", "findings and check printed on stdout as well as written", test_u)
+check("v", "handover facts printed and one run-log line appended per run", test_v)
+check("w", "run over the tested size is flagged untested size", test_w)
 
 sys.exit(0 if all(RESULTS) else 1)

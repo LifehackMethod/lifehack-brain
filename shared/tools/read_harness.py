@@ -101,9 +101,13 @@ REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
 def norm(s):
     """Collapse whitespace, and drop markdown line prefixes (blockquote `>`, list bullets) at line starts.
     A quote that spans two lines of a blockquote is real; without this it was refused as made up
-    (nibble run 2026-11-17: 2 of 55 honest answers refused; a checker refusing the truth)."""
+    (nibble run 2026-11-17: 2 of 55 honest answers refused; a checker refusing the truth).
+    Markdown emphasis asterisks are dropped too: a quote of bolded text copied WITHOUT the **
+    markers is real (whole/glm-1, 2026-11-19: 3 honest quotes refused for exactly this; a
+    checker refusing the truth)."""
     s = re.sub(r"(?m)^[ \t]*(?:>[ \t]?)+", "", s or "")
     s = re.sub(r"(?m)^[ \t]*[-*+][ \t]+", "", s)
+    s = re.sub(r"\*", "", s)
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -794,9 +798,36 @@ def captain_run(captain_path, plan_paths, doc_paths, out, model):
 
 # ------------------------------------------------------------------- whole
 
+def append_run_log(mode, model, n_files, n_lines, seconds, usage, outcome):
+    """Append ONE line for this run to the run log (LOG_PATH, under ~/.claude/run, never inside
+    a repo). A log failure warns on stderr and never fails the run. Returns the line written."""
+    untested = n_files > TESTED_MAX_FILES or n_lines > TESTED_MAX_LINES
+    line = ("%s | mode=%s | model=%s | files=%d | lines=%d | seconds=%.1f | "
+        "tokens in=%s out=%s | untested-size=%s | %s" % (
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), mode, model,
+        n_files, n_lines, seconds,
+        usage.get("input_tokens", "unknown"), usage.get("output_tokens", "unknown"),
+        "yes" if untested else "no", outcome))
+    try:
+        d = os.path.dirname(LOG_PATH)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        with open(LOG_PATH, "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    except Exception as e:
+        print("run log not written (%s: %s): %s" % (e.__class__.__name__, e, LOG_PATH),
+            file=sys.stderr)
+    return line
+
 WHOLE_KINDS = ("CONFLICT", "UNMET", "STALE", "TENSION")
 WHOLE_MODELS = ("glm", "sonnet", "opus")
 WHOLE_TIMEOUT_SECS = 1800
+# Plan card 6.1(b): this line is carried verbatim in every whole-run check.
+HONESTY_LINE = "No model reliably notices what a plan leaves out; a result with no problems found is not proof that nothing is missing."
+# Plan card 6.1(d): the tested size, and the run log (NEVER inside a repo).
+TESTED_MAX_LINES = 2664
+TESTED_MAX_FILES = 8
+LOG_PATH = os.path.join(os.path.expanduser("~"), ".claude", "run", "read_harness.log")
 WHOLE_RULES = (
     "REPLY RULES -- plain text lines only, one item per line, nothing else:\n"
     "LEDGER | <file label> | <line number> | <heading text>\n"
@@ -1030,7 +1061,6 @@ def whole_run(plan_paths, doc_paths, task_path, model, out):
             md.append("")
     else:
         md.append("(no findings in the reply)")
-    write_text_file(os.path.join(out, "findings.md"), "\n".join(md) + "\n")
     # check.md
     ck = ["# whole-run check", "",
           "model: %s" % model,
@@ -1053,31 +1083,61 @@ def whole_run(plan_paths, doc_paths, task_path, model, out):
         usage.get("input_tokens", "unknown"), usage.get("cache_read_input_tokens", "unknown"),
         usage.get("cache_creation_input_tokens", "unknown"),
         usage.get("output_tokens", "unknown")))
+    # Plan 6.1(b): no bare "complete". The check file states WHAT WAS PROVEN and carries the
+    # honesty line verbatim; the outcome line on stdout names the same facts.
+    total_lines = sum(t.count("\n") + 1 for _l, t in files)
+    untested = len(files) > TESTED_MAX_FILES or total_lines > TESTED_MAX_LINES
+    ck.append("files handed to the model: %d (%d lines)" % (len(files), total_lines))
+    if untested:
+        ck.append("UNTESTED SIZE: %d lines over %d files is larger than the tested size "
+                  "(%d lines over %d files)" % (total_lines, len(files),
+                                                TESTED_MAX_LINES, TESTED_MAX_FILES))
     if verdict is None:
-        result = "UNPARSEABLE"
+        ck.append("proven: nothing about the reply; the model call failed (%s)" % (cerr or ""))
+        outcome = "UNPARSEABLE: the model call failed (%s)" % (cerr or "")
+        exit_code = 1
     elif verdict["unparseable"]:
-        result = "UNPARSEABLE"
+        ck.append("proven: nothing about the reply; the reply shape was not followed (%s)"
+                  % verdict["reason"])
+        outcome = "UNPARSEABLE: %s" % verdict["reason"]
+        exit_code = 1
     elif verdict["missing"]:
-        result = "INCOMPLETE"
+        ck.append("proven: %d of %d headings listed" % (
+            verdict["overall_found"], verdict["overall_total"]))
+        ck.append("proven: %d of %d quotes found" % (
+            verdict["quotes_verified"], verdict["quotes_total"]))
+        ck.append("not proven: every heading listed; %d missing (see above)"
+                  % len(verdict["missing"]))
+        outcome = "INCOMPLETE: %d heading(s) missing from the ledger" % len(verdict["missing"])
+        exit_code = 1
     else:
-        result = "COMPLETE"
-    ck.append("RESULT=%s" % result)
-    write_text_file(os.path.join(out, "check.md"), "\n".join(ck) + "\n")
-
-    if verdict is None:
-        print("whole run UNPARSEABLE: the model call failed (%s)" % (cerr or ""))
-        return 1
-    if verdict["unparseable"]:
-        print("whole run UNPARSEABLE: %s" % verdict["reason"])
-        return 1
-    if verdict["missing"]:
-        print("whole run INCOMPLETE: %d heading(s) missing from the ledger" %
-              len(verdict["missing"]))
-        return 1
-    print("COMPLETE: ledger %d/%d, quotes %d/%d verified, %d finding(s)" % (
-        verdict["overall_found"], verdict["overall_total"],
-        verdict["quotes_verified"], verdict["quotes_total"], len(verdict["findings_rows"])))
-    return 0
+        ck.append("proven: every file was put in front of the model (%d files, %d lines)"
+                  % (len(files), total_lines))
+        ck.append("proven: %d of %d headings listed" % (
+            verdict["overall_found"], verdict["overall_total"]))
+        ck.append("proven: %d of %d quotes found" % (
+            verdict["quotes_verified"], verdict["quotes_total"]))
+        outcome = ("ledger %d/%d, quotes %d/%d verified, %d finding(s)"
+                   % (verdict["overall_found"], verdict["overall_total"],
+                      verdict["quotes_verified"], verdict["quotes_total"],
+                      len(verdict["findings_rows"])))
+        exit_code = 0
+    ck.append(HONESTY_LINE)
+    findings_text = "\n".join(md) + "\n"
+    check_text = "\n".join(ck) + "\n"
+    write_text_file(os.path.join(out, "findings.md"), findings_text)
+    write_text_file(os.path.join(out, "check.md"), check_text)
+    # Plan 6.1(c): the findings and the check also go to stdout, for a caller that cannot open files.
+    print(findings_text, end="")
+    print(check_text, end="")
+    # Plan 6.1(d): the run log, one line.
+    log_line = append_run_log("whole", model, len(files), total_lines, seconds, usage, outcome)
+    print("whole run %s | model=%s files=%d lines=%d seconds=%.1f tokens in=%s out=%s "
+          "| untested-size=%s | run log: %s" % (
+        outcome, model, len(files), total_lines, seconds,
+        usage.get("input_tokens", "unknown"), usage.get("output_tokens", "unknown"),
+        log_line.split("untested-size=")[1].split(" |")[0], LOG_PATH))
+    return exit_code
 
 # --------------------------------------------------------------------- main
 
