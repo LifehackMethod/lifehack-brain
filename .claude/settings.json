@@ -85,6 +85,11 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/guard_agent_return_channel.sh\"",
             "statusMessage": "Checking this helper can hand its work back..."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/inject_helper_chart.sh\"",
+            "statusMessage": "Showing the chart for choosing a helper once, at a session's first helper launch (never blocks; later launches silent)"
           }
         ],
         "matcher": "Agent"
@@ -379,6 +384,17 @@
             "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/session_flight_recorder.sh\"",
             "statusMessage": "Closing the session log..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/report_read_coverage.sh\"",
+            "statusMessage": "Counting, from a stopped helper's record, how much of each document it opened; a partial or uncounted document reaches the status screen (never blocks)"
           }
         ]
       }

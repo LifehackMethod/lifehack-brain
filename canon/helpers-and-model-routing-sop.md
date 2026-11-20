@@ -59,6 +59,40 @@ Every helper runs on a named tier chosen for its job; no spawn inherits the wind
 
 ### Choosing the model
 
+**The chart for choosing a helper** (approved by Enver 2026-11-19; landed 2026-11-20). The hook `system/hooks/inject_helper_chart.sh` prints it from between these markers at a session's first helper launch; it holds no copy.
+
+<!-- helper-chart:start -->
+
+```mermaid
+flowchart TD
+  A[A job comes up] --> B{Can ordinary code do it?<br/>find, count, compare, run}
+  B -- yes --> B1[No helper: run the command]
+  B -- no --> C{Is it your own brief,<br/>plan or handoff?}
+  C -- yes --> C1[Read it whole yourself]
+  C -- no --> D{Web page or email?}
+  D -- yes --> D1[Only the safe readers:<br/>web-searcher, ingest]
+  D -- no --> K{Push, delete, or anything<br/>that cannot be undone?}
+  K -- yes --> K1[Only on the person's word,<br/>in the window that does it;<br/>their physical steps go to them as human hands]
+  K -- no --> G{Will someone rely on what<br/>a whole document says?<br/>checking, judging, comparing}
+  G -- yes --> G1{Do you know which documents?}
+  G1 -- no --> G2[Cheap helper finds the files,<br/>returns names only] --> G3
+  G1 -- yes --> G3[The reading tool, the librarian:<br/>hands over every line, checks the answer]
+  G3 --> G4{More than 2,664 lines<br/>or 8 files, the tested size?}
+  G4 -- yes --> G5[Split into groups of whole documents,<br/>one run each]
+  G4 -- no --> G6[One run]
+  G -- no --> F{Checking someone's work<br/>without reading documents?}
+  F -- yes --> F1[A different model from the author,<br/>blind to the expected answer]
+  F -- no --> H{Only one fact from a file?}
+  H -- yes --> H1[Read it yourself or a cheap helper;<br/>partial is fine]
+  H -- no --> I{Building something?}
+  I -- "spec written" --> I1[Worker, small model;<br/>someone else runs the tests]
+  I -- "design not decided" --> I2[Lead, large model, on the person's say,<br/>writes the spec; then workers build]
+  I -- "neither / unsure" --> J[Medium-tier helper, the default]
+```
+
+<!-- helper-chart:end -->
+
+
 1. **Do:** decide whether a helper is needed at all — use the smallest tool that does the job (`canon/canonical-principles-sop.md` §5.12).
    - **Expect:** a helper only where the work is separable and its result can be checked.
 2. **Do:** classify the job with the routing order in the harness brief (`CLAUDE.md`, "Sending work to a sub-agent"), first match wins, and read off the tier below; a job that fits no row takes the medium tier, the default for helpers.

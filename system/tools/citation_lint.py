@@ -155,9 +155,9 @@ EXEMPT_FILES = {
 #      declaration and expiry live in the register, not here, and an EXPIRED suspension must
 #      still fail (generate.py re-emits it as active, so missing-from-wiring is real drift again).
 UNREGISTERED_OK = {
-    "inject_delegation_standing.sh": "a hook, unregistered ON PURPOSE (sop-cleanup ruling 4.2, 2026-10-30): "
-                                     "the delegation line is the maintainer's own preference, so it moved "
-                                     "out of the plugin wiring into his personal settings; kept on disk",
+    "inject_delegation_standing.sh": "registered in hooks/hooks.json on UserPromptSubmit (restored "
+                                     "2026-11-20 on Enver's word, with the reading sentence) — known "
+                                     "gap: this lint never reads hooks/hooks.json",
     "pm_flag.sh": "a command-line tool the skills call directly (arm/status/clear), not a hook",
     "skill_anchor.sh": "same — the arming half; `skill_anchor_inject.sh` is the registered hook",
     "numbers_flag.sh": "same — `/calculate` calls it directly; `inject_compute_mechanically.sh` is "
@@ -278,7 +278,6 @@ UNREGISTERED_OK = {
                        "system/hooks/tests/test_checkin_save_seam.sh, including the proven-fail "
                        "(corrupted receipt) case.",
 }
-# ⚠ CLEANUP-PASS 2026-10-31: inject_delegation_standing.sh moved to ~/lifehack-v2/archive/2026-10-31-skill-system-cleanup/system/hooks/inject_delegation_standing.sh; guard_step_gate.sh moved to ~/lifehack-v2/rebuild/guard_step_gate.sh; this passage is stale — fix in the cleanup pass. Ledger: state/projects/skill-system/records/2026-10-31-cleanup-ledger.md
 
 # A backticked `/word` is usually a skill here — but not always, and neither of these is ours to
 # ship: the harness's own commands, and the top of a filesystem path.

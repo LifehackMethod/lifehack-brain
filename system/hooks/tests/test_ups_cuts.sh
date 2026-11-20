@@ -66,8 +66,8 @@ env HOME="$SB/hm" CLAUDE_CODE_SESSION_ID="$SESS" bash "$HOOKS/numbers_flag.sh" a
 numfires "hello there" && ok || bad "numbers-mode armed still fires on any prompt" "silent"
 env HOME="$SB/hm" CLAUDE_CODE_SESSION_ID="$SESS" bash "$HOOKS/numbers_flag.sh" clear >/dev/null 2>&1
 
-echo "-- 4.2 delegation hook no longer shipped to students"
-grep -q inject_delegation_standing "$REPO/hooks/hooks.json" && bad "plugin hooks.json" "still registers it" || ok
+echo "-- 4.2 reversed 2026-11-20 (Enver): the delegation hook is registered in the plugin again, with the reading sentence"
+grep -q inject_delegation_standing "$REPO/hooks/hooks.json" && ok || bad "plugin hooks.json" "doesn't register it"
 grep -q inject_delegation_standing "$REPO/.claude/settings.json" && bad "V2 settings.json" "still registers it" || ok
 python3 -c "import json,sys; json.load(open(sys.argv[1])); json.load(open(sys.argv[2]))" "$REPO/hooks/hooks.json" "$REPO/.claude/settings.json" && ok || bad "wiring files parse" ""
 grep -q pm_announce_reset "$REPO/hooks/hooks.json" && ok || bad "reset hook is wired (SessionStart compact|clear)" "missing"

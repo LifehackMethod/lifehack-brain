@@ -63,6 +63,11 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_agent_return_channel.sh\"",
       "statusMessage": "Checking this helper can hand its work back..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_helper_chart.sh\"",
+      "statusMessage": "Showing the chart for choosing a helper once, at a session's first helper launch (never blocks; later launches silent)"
      }
     ],
     "matcher": "Agent"
@@ -381,6 +386,17 @@
     ]
    }
   ],
+  "SubagentStop": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/report_read_coverage.sh\"",
+      "statusMessage": "Counting, from a stopped helper's record, how much of each document it opened; a partial or uncounted document reaches the status screen (never blocks)"
+     }
+    ]
+   }
+  ],
   "UserPromptExpansion": [
    {
     "hooks": [
@@ -410,6 +426,11 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_compute_mechanically.sh\"",
       "statusMessage": "Checking whether this turn has maths in it..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/inject_delegation_standing.sh\"",
+      "statusMessage": "Confirming delegation is standing-authorized..."
      },
      {
       "type": "command",
