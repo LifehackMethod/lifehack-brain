@@ -693,4 +693,31 @@ check("x", "no pointer: small is the plugin's own, route=plugin printed", test_x
 check("y", "working pointer: called with model-id, prompt-file, out-file; route=pointer", test_y)
 check("z", "broken pointer: exit 4, named loudly, no call, no fallback", test_z)
 
+# (aa) labels written without the extension point at the one file they name; a label naming no
+#      file in the run is refused as unparseable, never a crash (found by card 8.2's read job)
+def test_aa():
+    d = tempfile.mkdtemp(prefix="rh_stem_")
+    plan = os.path.join(d, "planX.md"); open(plan, "w", encoding="utf-8").write(BOLD_PLAN)
+    doc = os.path.join(d, "docY.md"); open(doc, "w", encoding="utf-8").write(BOLD_DOC)
+    task = os.path.join(d, "task.txt")
+    open(task, "w", encoding="utf-8").write("Read these files whole and report problems.\n")
+    reply = ("LEDGER | planX | 1 | Plan Chi\n"
+             "LEDGER | planX | 2 | Step one\n"
+             "LEDGER | docY | 1 | Doc Delta\n"
+             "LEDGER | docY | 2 | Scope\n"
+             "FINDING | 1 | TENSION | the rulebook breadth is contested.\n"
+             "PLAN | 1 | planX | 3 | The weekly skill gets the FULL rulebook, not the small version.\n")
+    rh.call_model = lambda prompt, model, **kw: (reply, None)
+    code, stdout = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
+                             "--model", "medium", "--out", os.path.join(d, "out")])
+    assert code == 0, "stem labels: exit %d, expected 0\n%s" % (code, stdout)
+    stray = reply.replace("LEDGER | docY | 2 | Scope", "LEDGER | nowhere | 2 | Scope")
+    rh.call_model = lambda prompt, model, **kw: (stray, None)
+    code, stdout = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
+                             "--model", "medium", "--out", os.path.join(d, "out2")])
+    assert code == 1, "stray label: exit %d, expected 1" % code
+    assert "nowhere" in stdout, stdout
+
+check("aa", "labels without extension accepted; a stray label refused, never a crash", test_aa)
+
 sys.exit(0 if all(RESULTS) else 1)

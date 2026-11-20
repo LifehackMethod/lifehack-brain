@@ -1026,6 +1026,19 @@ def judge_whole_reply(reply, files):
     parsed = parse_whole_reply(reply)
     text_by_label = dict(files)
     labels = set(text_by_label)
+    # A model often names a file without its extension ("doc-one" for "doc-one.md"). Accept that
+    # spelling when it points at exactly one file in the run; anything else stays a stray label.
+    stems = {}
+    for lab in labels:
+        stems.setdefault(os.path.splitext(lab)[0], []).append(lab)
+    alias = {s: ls[0] for s, ls in stems.items() if len(ls) == 1 and s not in labels}
+
+    def canon_label(lab):
+        return alias.get(lab, lab)
+
+    parsed["ledger"] = [(canon_label(l[0]),) + tuple(l[1:]) for l in parsed["ledger"]]
+    for f in parsed["findings"]:
+        f["quotes"] = [(q[0], canon_label(q[1])) + tuple(q[2:]) for q in f["quotes"]]
     ledger = [l for l in parsed["ledger"] if l[0] in labels]
     stray_labels = [l for l in parsed["ledger"] if l[0] not in labels]
     per_file, missing = [], []
@@ -1072,7 +1085,7 @@ def judge_whole_reply(reply, files):
         reasons.append("no LEDGER and no FINDING/NO-FINDINGS lines at all")
     if stray_labels:
         reasons.append("LEDGER lines name files that are not in the run: %s"
-                       % ", ".join(sorted(set(stray_labels))))
+                       % ", ".join(sorted(set(l[0] for l in stray_labels))))
     if not kinds_ok:
         reasons.append("FINDING kinds off the list (allowed: %s)" % ", ".join(WHOLE_KINDS))
     return {"per_file": per_file, "missing": missing,
