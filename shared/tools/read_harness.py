@@ -12,7 +12,7 @@ the plans, answering every quoted requirement exactly once.
 
 USAGE:
   read_harness.py --docs FILE... --question FILE --out FOLDER
-        [--section-model glm] [--final-model opus] [--no-final] [--workers 4]
+        [--section-model small] [--final-model large] [--no-final] [--workers 4]
   read_harness.py --check-record RESULTS.tsv [--docs FILE...]
         re-read a finished record; exit 0 only if every section of those docs has at least one
         row, every verdict is on the list, all rows of one section carry the same verdict, and
@@ -25,7 +25,7 @@ USAGE:
         requirement against the plans: one line per requirement, `R001 | VERDICT | reason`, with
         VERDICT one of MET/UNMET/CONFLICT/STALE/NOT-A-REQUIREMENT/NO-OUTCOME. Over 250
         requirements the list is split by document, one call per document (said on stdout).
-  read_harness.py --whole --plans FILE... --docs FILE... --task FILE plus the model flag naming the reader: glm, sonnet or opus (ids come from model_ids.py tiers)
+  read_harness.py --whole --plans FILE... --docs FILE... --task FILE plus the model flag naming the reader tier: small, medium or large (ids come from model_ids.py)
         --out FOLDER        (card 5.1)
         ONE call with every file printed in full (line-numbered) in the prompt, no tools, one
         fixed reply shape (heading ledger + findings with CANON/PLAN quotes); code checks the
@@ -66,6 +66,23 @@ FAIL_POSTURE: a failed call, a timeout, a non-JSON stdout, is_error=true or an e
   never a legal answer. stderr of any external command is captured, never silenced, and its tail
   lands in the error message. The model call sits behind one function (call_model) so tests
   replace it with a stub; no test ever calls a real model.
+
+FOR SESSIONS, NOT SCHEDULED JOBS: this tool is run by a session that wants a document read
+  reliably; it prints the route, the model and the spend on every run. Scheduled jobs call
+  models through system/tools/model.lib.sh instead.
+
+MODELS: the model flag takes a TIER -- small, medium or large -- resolved to a model id by
+  model_ids.py (the tier table in system/tools/model.lib.sh). No id is ever hard-coded here.
+
+SMALL-MODEL POINTER: one optional pointer on the person's machine names the command to use
+  for the small tier. The environment variable LIFEHACK_SMALL_MODEL_CMD_FILE names a pointer
+  file, default ~/.config/lifehack/small-model-command; the file's first non-blank line is an
+  absolute path to an executable. No pointer file, or an empty one: small is the plugin's own
+  (model_id("small")). The pointer command is called exactly like the test seam
+  LIFEHACK_MODEL_STUB in model.lib.sh: <command> <model-id> <prompt-file> <out-file>. A
+  pointer naming a missing or non-executable path (or a non-absolute one) EXITS 4 and says so
+  -- never a silent fallback. Medium and large have no pointer. Every run prints which route
+  made the call: route=pointer or route=plugin.
 """
 import argparse
 import hashlib
@@ -76,6 +93,7 @@ import subprocess
 import sys
 import time
 import tempfile
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -94,17 +112,47 @@ MAX_REQS_ONE_CALL = 250
 CALL_TIMEOUT_SECS = 600
 RESULTS_HEADER = "run_id\tts\tsection_id\tverdict\tquote_ok\tmodel\tccv\tquote\treq_id\tquotes_dropped"
 CAPTAIN_HEADER = "req_id\tsection_id\tverdict\treason\tquote"
-GLM_LAUNCHER = os.path.join(os.path.expanduser("~"), ".claude-cheap", "bin", "glm-window.sh")
-# The folder handed to glm-window.sh (its working folder): this repo's root.
-REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
+TIERS = ("small", "medium", "large")
+SMALL_MODEL_CMD_FILE_ENV = "LIFEHACK_SMALL_MODEL_CMD_FILE"
+SMALL_MODEL_CMD_FILE_DEFAULT = os.path.join(
+    os.path.expanduser("~"), ".config", "lifehack", "small-model-command")
+# Resolved once per run in main(); None = no pointer, small is the plugin's own.
+SMALL_MODEL_CMD = None
+# Which route made the last call ("pointer" or "plugin"); printed on every run.
+LAST_ROUTE = None
+# The run's spend, accumulated by call_model (tokens where the reply carries usage).
+_usage_lock = threading.Lock()
+USAGE_TOTALS = {"input_tokens": 0, "output_tokens": 0}
+
+
+def _record_usage(usage):
+    if not isinstance(usage, dict):
+        return
+    with _usage_lock:
+        for k in ("input_tokens", "output_tokens"):
+            v = usage.get(k)
+            if isinstance(v, int):
+                USAGE_TOTALS[k] += v
+
+
+def reset_usage():
+    with _usage_lock:
+        USAGE_TOTALS["input_tokens"] = 0
+        USAGE_TOTALS["output_tokens"] = 0
+
+
+def route_line():
+    """One line naming the route, the model and the spend -- printed on every run."""
+    return "route=%s tokens in=%d out=%d" % (
+        LAST_ROUTE or "plugin", USAGE_TOTALS["input_tokens"], USAGE_TOTALS["output_tokens"])
 
 def norm(s):
     """Collapse whitespace, and drop markdown line prefixes (blockquote `>`, list bullets) at line starts.
     A quote that spans two lines of a blockquote is real; without this it was refused as made up
     (nibble run 2026-11-17: 2 of 55 honest answers refused; a checker refusing the truth).
     Markdown emphasis asterisks are dropped too: a quote of bolded text copied WITHOUT the **
-    markers is real (whole/glm-1, 2026-11-19: 3 honest quotes refused for exactly this; a
-    checker refusing the truth)."""
+    markers is real (a whole run measured 2026-11-19: 3 honest quotes refused for exactly
+    this; a checker refusing the truth)."""
     s = re.sub(r"(?m)^[ \t]*(?:>[ \t]?)+", "", s or "")
     s = re.sub(r"(?m)^[ \t]*[-*+][ \t]+", "", s)
     s = re.sub(r"\*", "", s)
@@ -118,10 +166,13 @@ def _run_command(cmd, input_text=None, timeout_secs=None):
     whole-document prompt is far too large for argv, so it goes on stdin). stderr is captured,
     never silenced. Returns (stdout_text, None) or (None, error_message_with_stderr_tail)."""
     timeout = timeout_secs or CALL_TIMEOUT_SECS
+    kwargs = {"capture_output": True, "text": True, "timeout": timeout}
+    if input_text is not None:
+        kwargs["input"] = input_text
+    else:
+        kwargs["stdin"] = subprocess.DEVNULL
     try:
-        p = subprocess.run(cmd,
-                           input=input_text if input_text is not None else subprocess.DEVNULL,
-                           capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(cmd, **kwargs)
     except subprocess.TimeoutExpired:
         return None, "call timed out after %ss" % timeout
     except Exception as e:  # launcher missing, spawn failure, ...
@@ -132,45 +183,108 @@ def _run_command(cmd, input_text=None, timeout_secs=None):
     return p.stdout, None
 
 
+def resolve_small_pointer():
+    """Resolve the small-model pointer (spec, card 6.2). -> (cmd_path or None, error_message).
+    (None, None): no pointer -- the pointer file is missing or empty, so small is the
+    plugin's own. An error message: the pointer file's first non-blank line is not an
+    absolute path, or names a missing or non-executable command -- the caller exits 4,
+    never falls back."""
+    path = os.environ.get(SMALL_MODEL_CMD_FILE_ENV) or SMALL_MODEL_CMD_FILE_DEFAULT
+    try:
+        with open(path, encoding="utf-8") as fh:
+            first = next((l.strip() for l in fh if l.strip()), "")
+    except FileNotFoundError:
+        return None, None  # no pointer file: the plugin's own small model
+    except OSError as e:
+        return None, "small-model pointer file unreadable (%s: %s): %s" % (
+            e.__class__.__name__, e, path)
+    if not first:
+        return None, None  # an empty pointer file: the plugin's own small model
+    if not os.path.isabs(first):
+        return None, ("small-model pointer must name an ABSOLUTE path to an executable; "
+                      "it names: %s (pointer file: %s)" % (first, path))
+    if not (os.path.isfile(first) and os.access(first, os.X_OK)):
+        return None, ("small-model pointer names a command that is missing or not "
+                      "executable: %s (pointer file: %s)" % (first, path))
+    return first, None
+
+
+def _call_pointer_command(cmd, model_id_str, prompt, timeout_secs, usage_out):
+    """The pointer route: run <command> <model-id> <prompt-file> <out-file> (the same
+    calling convention as model.lib.sh's LIFEHACK_MODEL_STUB). The reply is whatever the
+    command writes to the out-file; if that is the claude JSON envelope, the result and the
+    usage are taken from it, otherwise the whole file is the reply. Returns
+    (reply_text, None) or (None, error_message)."""
+    global LAST_ROUTE
+    d = tempfile.mkdtemp(prefix="rh_model_")
+    prompt_file = os.path.join(d, "prompt.txt")
+    out_file = os.path.join(d, "reply.txt")
+    with open(prompt_file, "w", encoding="utf-8") as fh:
+        fh.write(prompt)
+    _out, err = _run_command([cmd, model_id_str, prompt_file, out_file],
+                             timeout_secs=timeout_secs)
+    if err:
+        return None, err
+    try:
+        with open(out_file, encoding="utf-8") as fh:
+            raw = fh.read()
+    except OSError as e:
+        return None, "the small-model command wrote no reply file (%s: %s)" % (
+            e.__class__.__name__, e)
+    LAST_ROUTE = "pointer"
+    try:
+        env = json.loads(raw)
+    except Exception:
+        env = None
+    if isinstance(env, dict) and isinstance(env.get("result"), str) and env["result"].strip():
+        if usage_out is not None and isinstance(env.get("usage"), dict):
+            usage_out.update(env["usage"])
+        _record_usage(env.get("usage"))
+        reply = env["result"]
+    else:
+        reply = raw
+    if not reply.strip():
+        return None, "empty reply"
+    return reply, None
+
+
 def call_model(prompt, model, allow_read=False, timeout_secs=None, stdin_prompt=False,
                no_tools=False, usage_out=None):
     """ONE sealed model call, behind one function so tests replace it with a stub.
+    model is a TIER: small | medium | large, resolved to a model id by model_ids.py.
+    For the small tier, the person's own pointer command is used when one is resolved
+    (SMALL_MODEL_CMD); medium and large have no pointer.
     allow_read=True hands the model the Read tool and nothing else (the captain).
     no_tools=True allows nothing at all (the whole-document read). stdin_prompt=True sends the
     prompt on stdin instead of argv (it is far too large for argv). usage_out, if given a dict,
     receives the call's usage counts. Returns (reply_text, None) or (None, error_message)."""
-    if model == "glm":
-        cmd = [GLM_LAUNCHER, REPO_ROOT, "--", "-p"]
-        if not stdin_prompt:
-            cmd += [prompt]
-        cmd += ["--output-format", "json"]
-        if allow_read:
-            cmd += ["--allowedTools", "Read"]
-        elif no_tools:
-            cmd += ["--allowedTools", ""]
-    elif model in ("opus", "sonnet"):
-        # "opus"/"sonnet" are the plan's names for the strong models; the ids come from the tier table.
-        cmd = ["claude", "-p"]
-        if not stdin_prompt:
-            cmd += [prompt]
-        cmd += ["--model", model_id("large" if model == "opus" else "medium"),
-                "--output-format", "json"]
-        if allow_read:
-            cmd += ["--allowedTools", "Read"]
-        elif no_tools:
-            cmd += ["--allowedTools", ""]
-    else:
-        return None, "unknown model: %s" % model
+    global LAST_ROUTE
+    if model not in TIERS:
+        return None, "unknown model tier: %s (want %s)" % (model, " | ".join(TIERS))
+    model_id_str = model_id(model)
+    if model == "small" and SMALL_MODEL_CMD:
+        return _call_pointer_command(SMALL_MODEL_CMD, model_id_str, prompt,
+                                     timeout_secs, usage_out)
+    cmd = ["claude", "-p"]
+    if not stdin_prompt:
+        cmd += [prompt]
+    cmd += ["--model", model_id_str, "--output-format", "json"]
+    if allow_read:
+        cmd += ["--allowedTools", "Read"]
+    elif no_tools:
+        cmd += ["--allowedTools", ""]
     out, err = _run_command(cmd, input_text=prompt if stdin_prompt else None,
                             timeout_secs=timeout_secs)
     if err:
         return None, err
+    LAST_ROUTE = "plugin"
     try:
         d = json.loads(out)
     except Exception:
         return None, "stdout was not JSON (%s...)" % (out or "")[:120]
     if usage_out is not None and isinstance(d.get("usage"), dict):
         usage_out.update(d["usage"])
+    _record_usage(d.get("usage"))
     if d.get("is_error"):
         return None, "is_error=true (%s)" % str(d.get("result", ""))[:200]
     reply = d.get("result")
@@ -486,6 +600,7 @@ def run_once(docs, question, out, section_model, final_model, workers, final_on=
             sections.append((sid, body, basename))
 
     ccv = claude_version()
+    reset_usage()
     run_id = "rh-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     ts = lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     safe_name = lambda sid: re.sub(r"[^A-Za-z0-9._:-]+", "_", sid) + ".txt"
@@ -604,6 +719,9 @@ def run_once(docs, question, out, section_model, final_model, workers, final_on=
                 final_lines += ["- " + l for l in unparsed]
         write_text_file(os.path.join(out, "final.md"), "\n".join(final_lines) + "\n")
 
+    print("route=%s model=%s tokens in=%d out=%d" % (
+        LAST_ROUTE or "plugin", section_model,
+        USAGE_TOTALS["input_tokens"], USAGE_TOTALS["output_tokens"]))
     if incomplete:
         print("INCOMPLETE: %d of %d sections are OFF-LIST or NO-OUTCOME" % (
             sum(1 for _sid, v, _k, _dp, _ok, _d in answered if v in ("OFF-LIST", "NO-OUTCOME")),
@@ -706,6 +824,7 @@ def captain_run(captain_path, plan_paths, doc_paths, out, model):
         return CANNOT_READ
 
     os.makedirs(out, exist_ok=True)
+    reset_usage()
     if len(reqs) > MAX_REQS_ONE_CALL:
         print("requirement list is %d requirements (over %d): splitting by document, one "
               "captain call per document" % (len(reqs), MAX_REQS_ONE_CALL))
@@ -788,6 +907,8 @@ def captain_run(captain_path, plan_paths, doc_paths, out, model):
         print(msg); print(msg, file=sys.stderr)
         return CANNOT_READ
 
+    print("route=%s model=%s tokens in=%d out=%d" % (
+        LAST_ROUTE or "plugin", model, USAGE_TOTALS["input_tokens"], USAGE_TOTALS["output_tokens"]))
     if counts["UNANSWERED"] or counts["NO-OUTCOME"]:
         print("INCOMPLETE: %d requirement(s) UNANSWERED, %d NO-OUTCOME" % (
             counts["UNANSWERED"], counts["NO-OUTCOME"]))
@@ -820,7 +941,7 @@ def append_run_log(mode, model, n_files, n_lines, seconds, usage, outcome):
     return line
 
 WHOLE_KINDS = ("CONFLICT", "UNMET", "STALE", "TENSION")
-WHOLE_MODELS = ("glm", "sonnet", "opus")
+WHOLE_MODELS = ("small", "medium", "large")
 WHOLE_TIMEOUT_SECS = 1800
 # Plan card 6.1(b): this line is carried verbatim in every whole-run check.
 HONESTY_LINE = "No model reliably notices what a plan leaves out; a result with no problems found is not proof that nothing is missing."
@@ -997,6 +1118,7 @@ def whole_run(plan_paths, doc_paths, task_path, model, out):
             return "could not write %s (%s: %s)" % (name, e.__class__.__name__, e)
 
     usage = {}
+    reset_usage()
     t0 = time.monotonic()
     reply, cerr = call_model(prompt, model, timeout_secs=WHOLE_TIMEOUT_SECS,
                              stdin_prompt=True, no_tools=True, usage_out=usage)
@@ -1133,9 +1255,10 @@ def whole_run(plan_paths, doc_paths, task_path, model, out):
     # Plan 6.1(d): the run log, one line.
     log_line = append_run_log("whole", model, len(files), total_lines, seconds, usage, outcome)
     print("whole run %s | model=%s files=%d lines=%d seconds=%.1f tokens in=%s out=%s "
-          "| untested-size=%s | run log: %s" % (
+          "| %s | untested-size=%s | run log: %s" % (
         outcome, model, len(files), total_lines, seconds,
         usage.get("input_tokens", "unknown"), usage.get("output_tokens", "unknown"),
+        route_line(),
         log_line.split("untested-size=")[1].split(" |")[0], LOG_PATH))
     return exit_code
 
@@ -1153,13 +1276,27 @@ def load_docs(paths):
     return docs, problems
 
 
+def _resolve_pointer_for_tiers(tiers):
+    """Resolve the small-model pointer when the run will use the small tier (spec card 6.2).
+    tiers: the tiers this run may call. Sets SMALL_MODEL_CMD; a broken pointer returns an
+    error message (the caller prints it and exits 4 -- never a silent fallback)."""
+    global SMALL_MODEL_CMD
+    if "small" not in tiers:
+        return None
+    cmd, perr = resolve_small_pointer()
+    if perr:
+        return perr
+    SMALL_MODEL_CMD = cmd
+    return None
+
+
 def main(argv):
     ap = argparse.ArgumentParser(prog="read_harness.py", add_help=True)
     ap.add_argument("--docs", nargs="*", default=None)
     ap.add_argument("--question")
     ap.add_argument("--out")
-    ap.add_argument("--section-model", default="glm")
-    ap.add_argument("--final-model", default="opus")
+    ap.add_argument("--section-model", default="small", choices=TIERS)
+    ap.add_argument("--final-model", default="large", choices=TIERS)
     ap.add_argument("--no-final", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--check-record")
@@ -1180,6 +1317,10 @@ def main(argv):
         if args.model not in WHOLE_MODELS:
             print("usage: the reader named with the model flag must be one of %s" % ", ".join(WHOLE_MODELS), file=sys.stderr)
             return 2
+        perr = _resolve_pointer_for_tiers((args.model,))
+        if perr:
+            print(perr); print(perr, file=sys.stderr)
+            return CANNOT_READ
         return whole_run(args.plans, args.docs, args.task, args.model, args.out)
 
     if args.captain:
@@ -1188,6 +1329,10 @@ def main(argv):
                                       ("--out", args.out)) if not v]
             print("usage: --captain requires %s" % ", ".join(missing), file=sys.stderr)
             return 2
+        perr = _resolve_pointer_for_tiers((args.final_model,))
+        if perr:
+            print(perr); print(perr, file=sys.stderr)
+            return CANNOT_READ
         return captain_run(args.captain, args.plans, args.docs, args.out, args.final_model)
 
     if args.check_record:
@@ -1215,6 +1360,10 @@ def main(argv):
     if problems:
         for m in problems:
             print(m); print(m, file=sys.stderr)
+        return CANNOT_READ
+    perr = _resolve_pointer_for_tiers((args.section_model, args.final_model))
+    if perr:
+        print(perr); print(perr, file=sys.stderr)
         return CANNOT_READ
     return run_once(docs, question, args.out, args.section_model, args.final_model,
                     args.workers, final_on=not args.no_final)

@@ -13,6 +13,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import read_harness as rh  # noqa: E402
 
+# The REAL call_model, captured before any test replaces it (the pointer tests exercise the
+# real function against a stub command, never a real model).
+REAL_CALL_MODEL = rh.call_model
+
 DOC1 = """Preamble text before the first heading.
 
 ## Alpha
@@ -386,13 +390,13 @@ def run_whole(stub):
     code, out, d, _stdout = run_whole_capture(stub)
     return code, out, d
 
-def run_whole_capture(stub):
+def run_whole_capture(stub, model="medium"):
     """Like run_whole, but also returns what the tool printed on stdout (card 6.1c)."""
     d, plan, doc, task = make_whole_env()
     out = os.path.join(d, "out")
     rh.call_model = stub
     code, stdout = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
-                             "--model", "sonnet", "--out", out])
+                             "--model", model, "--out", out])
     return code, out, d, stdout
 
 def read_file(out_dir, name):
@@ -499,9 +503,9 @@ check("q", "made-up quote REFUSED and counted; quoteless finding UNSUPPORTED", t
 check("r", "unparseable reply on both tries: exit 1, proven lines name it", test_r)
 check("s", "findings.md does not name the model", test_s)
 
-# ---- card 6.1: (a) the real glm-1 quote case; (b) no bare complete; (c) stdout; (d) run log ----
+# ---- card 6.1: (a) the real whole-run quote case; (b) no bare complete; (c) stdout; (d) run log ----
 
-# (t) built from the real case whole/glm-1 (2026-11-19): the file bolds text with ** markers and
+# (t) built from the real whole-run case measured 2026-11-19: the file bolds text with ** markers and
 #     the reply quotes it without them (finding 4) or keeps the trailing ones (finding 9); both
 #     are real quotes and must verify, not be refused. Placeholder text and paths.
 BOLD_PLAN = ("# Plan Chi\n"
@@ -526,7 +530,7 @@ def test_t():
              "CANON | 1 | docY.md | 3 | Skill-SOP items skipped, and why:** the forked test copies.\n")
     rh.call_model = lambda prompt, model, **kw: (reply, None)
     code, stdout = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
-                             "--model", "sonnet", "--out", os.path.join(d, "out")])
+                             "--model", "medium", "--out", os.path.join(d, "out")])
     assert code == 0, "exit %d, expected 0" % code
     ck = open(os.path.join(d, "out", "check.md"), encoding="utf-8").read()
     assert "proven: 2 of 2 quotes found" in ck, ck
@@ -551,12 +555,12 @@ def test_v():
         code, out, _d, stdout = run_whole_capture(
             lambda prompt, model, **kw: (honest_whole_reply(), None))
         assert code == 0, "exit %d, expected 0" % code
-        for part in ("model=sonnet", "files=2", "lines=", "seconds=", "tokens", "untested-size=no"):
+        for part in ("model=medium", "files=2", "lines=", "seconds=", "tokens", "untested-size=no"):
             assert part in stdout, stdout
         with open(rh.LOG_PATH, encoding="utf-8") as fh:
             lines = fh.read().rstrip("\n").split("\n")
         assert len(lines) == 1, "expected exactly one log line, got %d" % len(lines)
-        for part in ("mode=whole", "model=sonnet", "files=2", "seconds=", "tokens in=", "untested-size=no"):
+        for part in ("mode=whole", "model=medium", "files=2", "seconds=", "tokens in=", "untested-size=no"):
             assert part in lines[0], lines[0]
         # a second run appends, never overwrites
         run_whole(lambda prompt, model, **kw: (honest_whole_reply(), None))
@@ -582,7 +586,7 @@ def test_w():
         rh.call_model = lambda prompt, model, **kw: (
             led + "LEDGER | big.md | 1 | Big Doc\nLEDGER | big.md | 2 | Only Heading\nNO-FINDINGS\n", None)
         code, stdout = run_main(["--whole", "--plans", plan, "--docs", big_doc, "--task", task,
-                                 "--model", "sonnet", "--out", out])
+                                 "--model", "medium", "--out", out])
         assert code == 0, "exit %d, expected 0" % code
         assert "untested-size=yes" in stdout, stdout
         assert "UNTESTED SIZE" in read_file(out, "check.md"), "check.md lacks the untested-size flag"
@@ -592,9 +596,101 @@ def test_w():
     finally:
         rh.LOG_PATH = old_log
 
-check("t", "real glm-1 case: quotes of bolded text verify with or without the ** markers", test_t)
+check("t", "real whole-run case: quotes of bolded text verify with or without the ** markers", test_t)
 check("u", "findings and check printed on stdout as well as written", test_u)
 check("v", "handover facts printed and one run-log line appended per run", test_v)
 check("w", "run over the tested size is flagged untested size", test_w)
+
+# ---- card 6.2: the small-model pointer ----
+
+def set_pointer_env(path):
+    os.environ["LIFEHACK_SMALL_MODEL_CMD_FILE"] = path
+
+def clear_pointer_env():
+    os.environ.pop("LIFEHACK_SMALL_MODEL_CMD_FILE", None)
+
+# (x) no pointer: the pointer file is missing, so small is the plugin's own; the run prints
+#     route=plugin and the small tier reaches the call
+def test_x():
+    d = tempfile.mkdtemp(prefix="rh_ptr_")
+    set_pointer_env(os.path.join(d, "no-such-pointer-file"))
+    old_route, old_log = rh.LAST_ROUTE, rh.LOG_PATH
+    rh.LOG_PATH = os.path.join(d, "run", "log")
+    try:
+        cmd, err = rh.resolve_small_pointer()
+        assert err is None and cmd is None, (cmd, err)
+        seen = {}
+        def fake(prompt, model, **kw):
+            seen["model"] = model
+            return honest_whole_reply(), None
+        code, _out, _d2, stdout = run_whole_capture(fake, model="small")
+        assert code == 0, "exit %d, expected 0" % code
+        assert seen.get("model") == "small", seen
+        assert "route=plugin" in stdout, stdout
+    finally:
+        clear_pointer_env()
+        rh.LAST_ROUTE, rh.LOG_PATH = old_route, old_log
+
+# (y) a working pointer: the command is called <command> <model-id> <prompt-file> <out-file>
+#     and its reply file is the reply; the route is printed as pointer
+def test_y():
+    d = tempfile.mkdtemp(prefix="rh_ptr_")
+    stub = os.path.join(d, "stub-model.sh")
+    with open(stub, "w", encoding="utf-8") as fh:
+        fh.write('#!/bin/sh\n'
+                 '# <command> <model-id> <prompt-file> <out-file>\n'
+                 'printf \'TIER=%s\\nPROMPT-CHARS=%s\\nSMALL-STUB-REPLY\' "$1" "$(wc -c < "$2" | tr -d \' \')" > "$3"\n')
+    os.chmod(stub, 0o755)
+    ptr = os.path.join(d, "pointer")
+    with open(ptr, "w", encoding="utf-8") as fh:
+        fh.write(stub + "\n")
+    set_pointer_env(ptr)
+    old_route, old_cmd, old_call = rh.LAST_ROUTE, rh.SMALL_MODEL_CMD, rh.call_model
+    try:
+        cmd, err = rh.resolve_small_pointer()
+        assert err is None and cmd == stub, (cmd, err)
+        rh.SMALL_MODEL_CMD = cmd
+        rh.call_model = REAL_CALL_MODEL  # the real function, against the stub command
+        usage = {}
+        reply, cerr = rh.call_model("a short prompt for the small model", "small",
+                                    usage_out=usage)
+        assert cerr is None, cerr
+        assert "SMALL-STUB-REPLY" in reply, reply
+        assert "TIER=%s" % rh.model_id("small") in reply, reply
+        assert rh.LAST_ROUTE == "pointer", rh.LAST_ROUTE
+        rh.LAST_ROUTE = "pointer"
+        line = rh.route_line()
+        assert "route=pointer" in line, line
+    finally:
+        clear_pointer_env()
+        rh.LAST_ROUTE, rh.SMALL_MODEL_CMD, rh.call_model = old_route, old_cmd, old_call
+
+# (z) a broken pointer: the pointer names a command that does not exist -- exit 4, said
+#     loudly, no call made, no fallback
+def test_z():
+    d = tempfile.mkdtemp(prefix="rh_ptr_")
+    ptr = os.path.join(d, "pointer")
+    with open(ptr, "w", encoding="utf-8") as fh:
+        fh.write(os.path.join(d, "command-that-does-not-exist") + "\n")
+    set_pointer_env(ptr)
+    old_route = rh.LAST_ROUTE
+    try:
+        cmd, err = rh.resolve_small_pointer()
+        assert cmd is None and err and "missing or not executable" in err, (cmd, err)
+        d2, plan, doc, task = make_whole_env()
+        def forbidden(prompt, model, **kw):
+            raise AssertionError("no model call may happen with a broken pointer")
+        rh.call_model = forbidden
+        code, stdout = run_main(["--whole", "--plans", plan, "--docs", doc, "--task", task,
+                                 "--model", "small", "--out", os.path.join(d2, "out")])
+        assert code == 4, "exit %d, expected 4" % code
+        assert "missing or not executable" in stdout, stdout
+    finally:
+        clear_pointer_env()
+        rh.LAST_ROUTE = old_route
+
+check("x", "no pointer: small is the plugin's own, route=plugin printed", test_x)
+check("y", "working pointer: called with model-id, prompt-file, out-file; route=pointer", test_y)
+check("z", "broken pointer: exit 4, named loudly, no call, no fallback", test_z)
 
 sys.exit(0 if all(RESULTS) else 1)
