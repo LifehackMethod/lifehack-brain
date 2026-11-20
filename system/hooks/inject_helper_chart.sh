@@ -4,9 +4,9 @@ _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}"
 trap 'lhb_journal_fire "$?" "inject_helper_chart.sh" "PreToolUse" "Agent" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: helpers skim whole documents and report the read as complete — debt ledger §9 item 42
-#      ("the AI answers one section at a time"; 4 of 6 GLM readers skimmed long documents while
+#      ("the AI answers one section at a time"; 4 of 6 cheap-model readers skimmed long documents while
 #      reporting "read in full: yes") and §9 item 41 (reading verification for every helper;
-#      2 of 6 GLM readers silently skipped half a document, caught only by a code check). Canon
+#      2 of 6 cheap-model readers silently skipped half a document, caught only by a code check). Canon
 #      carries this as proposed failure mode 22, "the read nobody saw": a read is verified by
 #      what the reader OPENED, never by its word. The fix's lightest layer is the SIGN: the
 #      chart for choosing a helper, shown to the session the moment it first launches one, so
