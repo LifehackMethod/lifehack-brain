@@ -130,7 +130,10 @@ def render_validated_md(day, desk, draft, snap):
             continue  # a later-confirmed suggestion whose answers are missing cannot be a baseline line
         for sk, sn, fk, val in sg._ans_target(s):
             lines.append("- %s:%s %s = %s (confirmed by him on %s)" % (sk, sn, fk, val, snap.get("validated_on")))
-    if len(lines) == lines.index("## Picture") + 1:  # header only: nothing confirmed (every decision is later)
+    # the picture heading is read under BOTH names (D8/4P.3 fix a): this module still writes the old
+    # "## Picture" in a validated file, and the readers accept either name on any snapshot or validated md.
+    pic_i = next(i for i, ln in enumerate(lines) if ln in ("## Picture", "## World model"))
+    if len(lines) == pic_i + 1:  # header only: nothing confirmed (every decision is later)
         lines.append("- (nothing confirmed yet: his decisions on this draft are all 'later')")
     notcar = [(dec[s["id"]]["decision"], s["question"]) for s in draft["suggestions"]
               if dec.get(s["id"], {}).get("decision") in ("no", "later")]

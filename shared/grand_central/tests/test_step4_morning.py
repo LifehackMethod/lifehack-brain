@@ -311,7 +311,7 @@ class GradedCases(Base):
         out, m = self.case("01_paid_testreel", calls=1)
         rec = read(out["record_path"])
         self.assertIn("## What changed", rec)
-        self.assertLess(rec.index("## What changed"), rec.index("## Picture"))
+        self.assertLess(rec.index("## What changed"), rec.index("## World model"))  # 4P.3: the picture section is now "## World model"
 
     def test_case2_deadline_and_money_buried_in_message_9(self):
         out, m = self.case("02_deadline_money_buried", calls=1)
@@ -530,7 +530,7 @@ class Enforcement(Base):
         qs = rec.split("## Questions")[1]
         self.assertIn("All tryouts closed", qs)
         self.assertEqual([q["text"] for q in out["form"]["questions"]].__len__(), 1)
-        self.assertNotIn("All tryouts closed", rec.split("## Questions")[0].split("## Picture")[1])   # not restated as fact above
+        self.assertNotIn("All tryouts closed", rec.split("## Questions")[0].split("## World model")[1])   # not restated as fact above (4P.3: heading renamed)
 
     def test_the_old_note_cannot_come_back_as_fact_through_the_picture(self):
         bad = dict(GOOD["01_paid_testreel"], picture=[{"text": "Gigs is closed for now.", "basis": ["B1"]}])
@@ -571,7 +571,7 @@ class Enforcement(Base):
     def test_code_writes_the_unconfirmed_marker_even_if_the_model_says_nothing_about_a_carried_line(self):
         out, m = self.run_case("05_carried_guess_contradicted", GOOD["05_carried_guess_contradicted"])
         rec = read(out["record_path"])
-        pic = rec.split("## Picture")[1].split("## Questions")[0]
+        pic = rec.split("## World model")[1].split("## Questions")[0]  # 4P.3: heading renamed
         for line in pic.splitlines():
             if line.startswith("- "):
                 self.assertIn("(unconfirmed", line)            # every picture line came from a draft
@@ -1073,8 +1073,8 @@ class FullRead(Base):
                       read_info={"tasks_open": 5, "tasks_left_out": 4, "life_map": True})
         self.assertTrue(out["ok"], out)
         rec = read(out["record_path"])
-        order = [rec.index(h) for h in ("Read kind: full morning read", "## Your next 14 days", "## Open tasks that matter", "## What changed", "## Picture")]
-        self.assertEqual(order, sorted(order))
+        order = [rec.index(h) for h in ("Read kind: full morning read", "## Your next 14 days", "## Open tasks that matter", "## What changed", "## World model")]
+        self.assertEqual(order, sorted(order))  # 4P.3: heading renamed
         self.assertIn("calendar (1 items), tasks (1 shown of 5 open; 4 left out), Life Map (used) and 1 new emails", rec)
         self.assertIn("- 2026-11-20: Flight to Exampleland", rec)
         self.assertIn("- (due 2026-11-19) Pack for Exampleland", rec)
@@ -1103,7 +1103,8 @@ class FullRead(Base):
         self.assertTrue(out["ok"], out)
         rec = read(out["record_path"])
         self.assertIn("## Probably settled - confirm?\n- An old ride receipt", rec)
-        changed = rec.split("## What changed")[1].split("## Picture")[0]
+        changed = rec.split("## What changed")[1].split("## World model")[0]  # 4P.3: heading renamed
+        changed = changed.split("\n## ")[0]  # this section only: Probably settled (a section of its own) lists old threads to confirm
         self.assertNotIn("ride receipt", changed)
         self.assertRegex(m.prompts[0], r"%s thread=\S+ seen=full age_days=26 " % self.env.hx("msg-1"))
         self.assertRegex(m.prompts[0], r"%s thread=\S+ seen=full age_days=0 " % self.env.hx("msg-2"))
@@ -1125,7 +1126,9 @@ class FullRead(Base):
         self.assertEqual(rec.count("routine, nothing unusual"), 1)
         self.assertEqual(out["form"]["coverage"][self.env.hx("msg-1")], "sorted_out_by_triage")
         self.assertEqual(len(out["form"]["routine"]), 1)
-        self.assertNotIn("statement is ready", rec)                             # no email text in the record
+        import morning as _m_for_test
+        _prose = _m_for_test.UNCLASSIFIED_BLOCK_RE.sub("", rec)  # D8: subjects are verbatim DATA in the labelled block
+        self.assertNotIn("statement is ready", _prose)                          # no email text in the AI's own prose
 
     def test_not_autopay_always_surfaces_and_must_need_him(self):
         self.mail("1", "Example City <bill@examplecity.test>", "Your bill", "COLLEGE-BODY the amount due is posted this month")
@@ -1152,7 +1155,8 @@ class FullRead(Base):
         self.assertIn("EXAMPLE-RENEWAL-NEWS-CANARY", m.prompts[0])                        # only the renewal pattern routes
         rec = read(out["record_path"])
         self.assertIn("## For the Desk-c desk (logged, not briefed)\n- Example-Renewal renewal: 2026-11-15 08:00 (message %s)" % self.env.hx("msg-1")[:12], rec)
-        self.assertNotIn("renews soon", rec)
+        import morning as _m_for_test2
+        self.assertNotIn("renews soon", _m_for_test2.UNCLASSIFIED_BLOCK_RE.sub("", rec))  # D8: verbatim subjects in the labelled block
         self.assertEqual(out["form"]["desk_routes"]["desk-c"][0]["message_id"], self.env.hx("msg-1"))
 
     def test_an_expected_statement_that_never_came_is_called_out(self):

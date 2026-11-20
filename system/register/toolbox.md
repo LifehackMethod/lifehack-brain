@@ -73,6 +73,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/alarm.py` · alarm.py: the alarm's path (Grand Central V2, plan B2 step 5)
 - `/shared/grand_central/backup.py` · Backups for rig.db. Always the sqlite3 backup API, never a file copy (safe under WAL)
 - `/shared/grand_central/batch_reader.py` · the "AI reads everything" lane (plan task 1.5b)
+- `/shared/grand_central/capacity.py` · 4P.3 item 3: the Capacity section of the morning snapshot, computed by CODE, never a model
 - `/shared/grand_central/check_personal_values.py` · the LOCK: engine code must hold none of the owner's personal values
 - `/shared/grand_central/clock.py` · clock.py: the one place the rig reads the wall clock where liveness matters
 - `/shared/grand_central/common.py` · common.py: shared helpers for the engine steps
@@ -135,6 +136,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/signals/on_calendar_14d.py` · on_calendar_14d: the sender is an attendee of a calendar event starting in the next 14 days
 - `/shared/grand_central/signals/sender_history.py` · sender_history: how much this sender has written him and how much he wrote back (s_addr_signals)
 - `/shared/grand_central/signals/to_vs_cc.py` · to_vs_cc: he is in To (1.0), only in Cc (0.4), neither (0.0: list or bcc). 'Him' = the addresses in s_me
+- `/shared/grand_central/snapshot_layout.py` · 4P.3 item 5 (the fixed layout) and item 4 (the unclassified-emails rows), pure code
 - `/shared/grand_central/stamp_keys.py` · Phase 4 step 4.5 (closes 4.3's open join): the morning read stamps CODE-CERTAIN keys onto each staged item. - an email item -> its…
 - `/shared/grand_central/status_lights.py` · status_lights.py: the Grand Central status lights, written ONLY through the plugin's one writer (emit_status.py)
 - `/shared/grand_central/stitch.py` · stitch.py: step 3. Rule-based episodes. Certain joins first (same thread; same sender address within 14 days), then three triggers open an…
