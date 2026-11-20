@@ -8,7 +8,7 @@ trap 'lhb_journal_fire "$?" "inject_delegation_standing.sh" "UserPromptSubmit" "
 #        "Do not call the AgentTool unless the user requested it"
 #        "Do not use workflows or deep-research unless the user requested it"
 #      Version-bisected 2026-07-28 across three installed binaries in the donor system this hook
-#      was ported from (claudeops-config): 2.1.195 -> 0 hits, 2.1.218 (same day) -> 0, 2.1.219 ->
+#      was ported from (the operator's personal setup): 2.1.195 -> 0 hits, 2.1.218 (same day) -> 0, 2.1.219 ->
 #      3. MEASURED COST there: sub-agent use collapsed from 273/2372 = 11.5% of tool calls to
 #      6/1079 = 0.6% once the binary landed. It directly contradicts this repo's own
 #      build-conductor-sop.md ("the lead reaches for gear-2 sub-agents on its own... no trigger
@@ -33,7 +33,7 @@ trap 'lhb_journal_fire "$?" "inject_delegation_standing.sh" "UserPromptSubmit" "
 #      sign-off, and do not edit this wording in isolation.
 # FAIL_POSTURE: degrade-safe (any error -> exit 0 silently; a missing line costs a delegation
 #      opportunity, never a wrong action).
-# UPDATED: 2026-08-14 (ported from claudeops-config's inject_delegation_standing.sh, verbatim
+# UPDATED: 2026-08-14 (ported from the operator's personal hook of the same name, verbatim
 #      logic — nothing to fix path-wise, this hook writes no paths at all). ONE change from the
 #      donor: the runtime-injected text below dropped the donor's per-line "<name>, <date>"
 #      attribution that named the operator inline. This repo's other already-ported
@@ -43,7 +43,7 @@ trap 'lhb_journal_fire "$?" "inject_delegation_standing.sh" "UserPromptSubmit" "
 #      2026-10-30 (sop-cleanup Phase 2 ruling 4.2): UNREGISTERED from hooks/hooks.json and .claude/settings.json. The
 #      line is Enver's personal standing request, not a rule students agreed to, so it no longer ships to them. Enver's
 #      own copy now runs ONCE per session (SessionStart + compact) from his personal code folder:
-#      ~/.claude/skills/ClaudeOps/system/hooks/delegation_standing_once.sh, wired in ~/.claude/settings.json.
+#      the operator's personal hook, wired in their user settings.
 #      This file is kept (nothing is deleted outright) as the record of WHY the line exists.
 #      2026-11-05: REGISTERED AGAIN and back in system/hooks/, on Enver's word ("add it back in how it was before"). After the
 #      2026-10-30 move V2 windows stopped seeing it, because their launchers skip personal settings, and helpers began
