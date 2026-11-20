@@ -88,6 +88,10 @@ MANIFEST = [
     ("tests/test_step3_front_room.py", "unittest", False),  # plan B2 step 3: delta + scorecard
     ("tests/test_step5_alarm.py", "unittest", False),  # plan B2 step 5: the alarm path
     ("tests/test_step13_14_jobs.py", "unittest", False),
+    ("tests/test_p3door_readonly.py", "unittest", False),
+    ("tests/test_p3index_job.py", "unittest", False),
+    ("tests/test_p3d_ops.py", "unittest", False),
+    ("tests/test_p3w_wake.py", "unittest", False),
     ("tests/test_feeds.py", "unittest", False),  # 4P.0b: the named no-feed state, the gate, status --json  # phase 1 steps 1.3 and 1.4: fast clock, morning job, midnight job
     ("tests/test_step43_keys.py", "unittest", False),  # Phase 4 step 4.3: keys in every diary entry, planted cases
     ("tests/test_step4_morning.py", "unittest", False),  # plan B2 step 4: the morning read, midnight entry, hand-run (fake model)

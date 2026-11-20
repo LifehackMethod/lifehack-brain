@@ -137,7 +137,15 @@ class ClaudeCliModel(Model):
         except subprocess.TimeoutExpired:
             return None, "timeout"
         if p.returncode != 0:
-            return None, "exit_%d" % p.returncode
+            # 4P.3D item 11: the CLI's stderr names the failure ("model overloaded" ...). Keep the last 20
+            # lines, FILTERED so no prompt or email text can reach the log: any mail-boundary line, any
+            # "=== message" block header, anything over one sentence long, is dropped. Codes and short lines only.
+            tail = [ln for ln in p.stderr.decode("utf-8", "replace").splitlines()[-20:]
+                     if "<<<MAIL-" not in ln and "=== message" not in ln and len(ln) <= MAX_TEXT]
+            err = "exit_%d" % p.returncode
+            if tail:
+                err += ": " + " | ".join(tail)
+            return None, err
         return p.stdout.decode("utf-8", "replace").strip(), None
 
 
@@ -1639,7 +1647,29 @@ def records_context_dir(notes, desk):
     return os.path.join(notes, "desks", desk, "records", "context")
 
 
-def previous_picture(records_dir, desk):
+PICTURE_STALE_DAYS = 7 # 4P.3D item 6: a validated picture older than this is stale; rebuild from raw facts
+STALE_MARK = "went STALE" # the marker the caller (hand_run) and the tests look for
+
+def _validated_stale(vname, day):
+    """True when the validated picture's date prefix cannot be parsed, or is more than PICTURE_STALE_DAYS
+    older than the run's day (an unparseable prefix is treated as stale: the safe side)."""
+    try:
+        vday = datetime.date(int(vname[:4]), int(vname[5:7]), int(vname[8:10]))
+        rday = datetime.date(int(day[:4]), int(day[5:7]), int(day[8:10]))
+    except (ValueError, IndexError):
+        return True
+    return (rday - vday).days > PICTURE_STALE_DAYS
+
+def _stale_baseline_text(vname):
+    """The baseline text for a stale validated picture (4P.3D item 6). The first line reads as NOT
+    validated (parse_baseline) so nothing from the stale picture is carried as his; the bullet is what
+    the write-up shows, and the caller appends the Life Map lines so the rebuild is from raw facts."""
+    return ("# Baseline - his validated weekly picture of %s %s (older than %d days; NOT validated any "
+            "more): rebuilt from raw facts\n\n## Picture\n- The validated weekly picture of %s was more "
+            "than %d days old: stale, so this baseline was rebuilt from raw facts instead.\n"
+            % (vname[:10], STALE_MARK, PICTURE_STALE_DAYS, vname[:10], PICTURE_STALE_DAYS))
+
+def previous_picture(records_dir, desk, day=None):
     """The latest staged picture of this desk -> baseline markdown made of its Picture bullets. 4P.4b: the
     newest VALIDATED weekly picture (<day>-<desk>-validated.md) wins over any later draft -- his word is
     never superseded by a machine guess -- and the baseline says so; a draft only still comes back as a
@@ -1664,6 +1694,8 @@ def previous_picture(records_dir, desk):
         vbullets = [ln for ln in (vm.group(1).splitlines() if vm else [])
                     if ln.startswith("- ") and "(nothing to carry" not in ln and "not carried" not in ln.lower()]
         if vbullets:
+            if day is not None and _validated_stale(vname, day): # 4P.3D item 6: the drift guard
+                return _stale_baseline_text(vname), vname
             return "# Baseline - his validated weekly picture of %s\n\n## Picture\n%s\n" % (vname[:10], "\n".join(vbullets)), vname
         # a validated file with no Picture bullets carries nothing: fall through to the drafts
     latest = names[-1]
@@ -1933,9 +1965,22 @@ def hand_run(argv, model=None, out=print):
         say("2. delta, tasks and calendar: NOT AVAILABLE (%s); continuing without them" % type(e).__name__)
 
     # (3) the baseline
-    base_text, latest = (None, None) if a.all_mail_as_new else previous_picture(rec_dir, a.desk)
+    base_text, latest = (None, None) if a.all_mail_as_new else previous_picture(rec_dir, a.desk, day=day)
     life_map = None
-    if base_text:
+    if base_text and STALE_MARK in base_text.splitlines()[0]: # 4P.3D item 6: the validated picture went stale: rebuild from raw facts
+        say("3. baseline: the validated weekly picture (%s) went STALE (more than %d days old): rebuilt from raw facts, every line carried as unconfirmed" % (latest, PICTURE_STALE_DAYS))
+        base_text = _stale_baseline_text(latest) # the write-up names the staleness; nothing is carried as his
+        try:
+            import synthesize as _syn
+            lm = _syn.load_life_map(a.life_map) if a.life_map else _syn.load_life_map()
+        except local_first.DriveReadError:
+            raise # Drive unreadable and no local copy: loud, never a quietly empty Life Map
+        except Exception:
+            lm = []
+        life_map = "\n".join(lm) if lm else None
+        if lm:
+            base_text += "".join("- %s\n" % ln for ln in lm) # the raw facts the rebuild starts from
+    elif base_text:
         is_valid = "validated weekly picture" in base_text.splitlines()[0].lower()
         say("3. baseline: the %s (%s)%s" % ("validated weekly picture" if is_valid else "previous draft", latest,
             "" if is_valid else ", every line carried as unconfirmed"))
@@ -2004,6 +2049,24 @@ def hand_run(argv, model=None, out=print):
     for n in stale_notes:
         say("   NOTE: %s" % n)
     say("   coverage: %s" % res["proof_line"])
+    # 4P.3D item 13 (the owner's ruling): the morning run appends its own low-confidence entry to the day's
+    # diary page, exactly as the midnight job does for one day (same routing, same front-matter check,
+    # exclusive create; "exists" is reported, never overwritten). A failure here is said loudly and never
+    # un-stages the draft or fails the morning's proof line.
+    try:
+        import routing, diary_names
+        table = routing.load_table()
+        desks_cfg = diary_names.load()
+        roots = dict((diary_names.diary_name(d, desks_cfg), diary_names.diary_folder(notes, d))
+                     for d in desks_cfg["desks"] if os.path.isdir(os.path.join(notes, "desks", d)))
+        diary_form_dir = os.path.join(transcripts.catalogue_dir(), "morning")
+        import store
+        with store._read() as dcon:
+            rs = midnight_entries(day, find_staged(rec_dir, day, a.desk), roots, table, "tree", diary_form_dir, con=dcon)
+        for dn, dr in sorted(rs.items()):
+            say(" diary: %s %s" % (dn, dr["status"]))
+    except Exception as e:
+        say(" NOTE: the day's diary entry was NOT written (%s: %s); the staged draft stands" % (type(e).__name__, e))
     return 0
 
 

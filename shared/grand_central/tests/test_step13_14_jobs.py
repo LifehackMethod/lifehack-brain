@@ -28,10 +28,11 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 import gc_settings, gcjobs, morning, transcripts  # noqa: E402
 import test_step4_morning as t4  # noqa: E402  (its scratch front room, fake model and fixture helpers)
+gcjobs.MORNING_ATTEMPT_WAIT_S = 0 # 4P.3D slice W: the in-run retry wait is a test seam; tests never sleep
 
 # The rows' checks, copied from the ready-to-install list: the tests grade receipts with the SAME grep -E the runner uses.
 CHECKS = {
-    "gc-fast-clock": r"^gc-fast-clock ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} waiting=([0-9]+) cleared=\1 filed=[0-9]+ duplicate=[0-9]+ refused=[0-9]+ calendar=[fs][kre][a-z]+ tasks=[fs][kre][a-z]+ db=[dh][a-z]+ considered=[0-9]+ candidates=[0-9]+ morning=[a-z-]+ at=[0-9]{4}-",
+    "gc-fast-clock": r"^gc-fast-clock ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} waiting=([0-9]+) cleared=\1 filed=[0-9]+ duplicate=[0-9]+ refused=[0-9]+ calendar=[fs][kre][a-z]+ tasks=[fs][kre][a-z]+ db=[dh][a-z]+ considered=[0-9]+ candidates=[0-9]+ morning=[a-z-]+( once_snapshot=[a-z-]+ once_diary_index=[a-z-]+ once_daily=[a-z-]+)? at=[0-9]{4}-",
     "gc-morning": r"^gc-morning ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ new=([0-9]+) accounted=\1 examined=[0-9]+ draft=[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z-]+(-topup[0-9]+)?\.md sources=[a-z]+ at=[0-9]{4}-",
     "gc-midnight": r"^gc-midnight ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ staged_days=([0-9]+) settled=\1 written=[0-9]+ existing=[0-9]+ newest=[0-9-]+ at=[0-9]{4}-",
 }
@@ -103,6 +104,10 @@ class Scratch(unittest.TestCase):
     def fast(self, pull=None, login_ok=None, **kw):
         kw.setdefault("now_local", datetime.datetime(2026, 11, 16, 3, 0))        # before 05:00: the morning is not due
         kw.setdefault("launch", lambda desk, st: self.launched.append(desk))
+        self.envelope_pulls = [] # 4P.3D slice W: the envelope pull and the once-a-day launcher are stubbed per tick
+        kw.setdefault("envelope_pull", lambda after: self.envelope_pulls.append(after) or (0, "[pull] envelopes ok after %s" % after))
+        kw.setdefault("envelope_watermark", lambda: None)
+        kw.setdefault("once", lambda now_local: dict((j, "done") for j in gcjobs.ONCE_A_DAY_JOBS))
         return gcjobs.fast_clock(drop=self.drop, state=os.path.join(self.state, "gc-fast-clock"),
                                  pull=pull or (lambda mode: (0, self.FRESH)), login_ok=login_ok or (lambda: True),
                                  mailroom_uid=os.getuid(), status_light=self.light, out=self.say, **kw)
@@ -447,17 +452,18 @@ class MorningTrigger(Scratch):
         self.assertIn("morning=running", self.receipt("gc-fast-clock"))
 
     def test_a_morning_that_just_started_or_keeps_failing_is_not_hammered(self):
+        # 4P.3D slice W: the failed retries happen INSIDE the detached run; between detached launches the gap is
+        # 1800 s and the day's hard ceiling is 6 attempts (every attempt counts, in-run ones included).
         self.assertEqual(self.fast(now_local=self.at(6, 0)), 0)
         self.assertEqual(self.fast(now_local=self.at(6, 10)), 0)       # 10 minutes later, no draft, nothing running
         self.assertEqual(self.launched, ["desk-a"])
         self.assertIn("morning=backoff", self.receipt("gc-fast-clock"))
-        self.assertEqual(self.fast(now_local=self.at(6, 40)), 0)
-        self.assertEqual(self.fast(now_local=self.at(7, 20)), 0)
-        self.assertEqual(self.fast(now_local=self.at(8, 0)), 0)
-        self.assertEqual(len(self.launched), 3)
-        self.assertEqual(self.fast(now_local=self.at(9, 0)), 0)
-        self.assertEqual(len(self.launched), 3)
+        for hh, mm in ((6, 40), (7, 20), (8, 0), (8, 40), (9, 20)): # 1800 s apart: tries 2..6
+            self.assertEqual(self.fast(now_local=self.at(hh, mm)), 0)
+        self.assertEqual(len(self.launched), 6)
+        self.assertEqual(self.fast(now_local=self.at(9, 50)), 0) # 30 min later, but the ceiling is 6
         self.assertIn("morning=gave-up-today", self.receipt("gc-fast-clock"))
+        self.assertEqual(len(self.launched), 6)
 
     def test_a_staged_draft_for_today_means_done(self):
         rec = morning.records_context_dir(self.notes, "desk-a")
