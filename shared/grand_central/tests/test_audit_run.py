@@ -112,6 +112,16 @@ class Part1(unittest.TestCase):
         found = [i for i in items if i.category == "email (handed)" and i.hits]
         self.assertEqual(len(found), 1)
 
+    def test_an_email_mentioned_without_its_tag_is_a_defect_with_it_found(self):
+        untagged = DRAFT.replace("## The morning draft", "## The morning draft\nBob Missing wrote about the Quarterly widget invoice.")
+        items, (_p, n) = self.go(untagged)
+        self.assertEqual(n, 1)                                                  # sender and subject alone no longer count (F5)
+        tagged = DRAFT.replace("## The morning draft", "## The morning draft\nBob Missing wrote about the invoice [mail:%s]." % TB)
+        items, (_p, n) = self.go(tagged)
+        self.assertEqual(n, 0)
+        found = [i for i in items if i.category == "email (handed)" and "Quarterly" in i.label][0]
+        self.assertEqual(found.hits[0][1], "## The morning draft")
+
     def test_where_it_appears_is_a_section_heading_and_a_line_number(self):
         items, (path, n) = self.go()
         text = open(path, encoding="utf-8").read()

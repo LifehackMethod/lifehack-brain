@@ -1101,6 +1101,97 @@ class DiaryEntry(Base):
                                           [{"id": "x", "thread_id": None}], [{"source": "email", "id": "x", "life_part": "part-b", "keys": []}], None)
         self.assertEqual(res["Bravo-Diary"]["status"], "no_folder")
 
+    # ---- run-1 audit fixes (F1, F2, F5, the held casting line)
+    def _answer(self, subject_key, words, question="q", said="2026-11-13"):
+        self.con.execute("INSERT INTO kg_answers(question,words,asked_by,said_on,subject_key,recorded_at) VALUES(?,?,?,?,?,?)",
+                         (question, words, "w", said, subject_key, said + "T00:00:00Z"))
+        self.con.commit()
+
+    def test_f1_his_recorded_answers_are_a_labelled_file_with_the_header_and_the_rule_is_in_the_rules(self):
+        self._answer(self.key(self.eli), "Eli is only a client for the coaching goal this month.")
+        self._answer(None, "Saturday literature commitment is wrong; the Sunday one is right.", question="the Literature Commit entry")
+        events = [{"title": "Literature Commit", "start": "2026-11-21T09:30:00Z", "id": "EVT9"}]
+
+        handed = [{"id": self.mids["msg-A1"], "label": "read-a", "thread_id": hexid("th-A")}]
+
+        def files_of(reader):
+            text = reader(handed, events, [])
+            return dict(morning.build_files(DAY, "desk-a", None, None, None, None, [], events, [], None, answers_text=text))
+
+        def broken(emails, calendar, tasks):               # the broken copy: collects nothing
+            return None
+        self.assertNotIn("confirmed-answers", files_of(broken))          # caught: no answers file, nothing for the AI to respect
+        self.assertIn("confirmed-answers", files_of(morning._live_answers_reader(self.dbp)))
+        m = FakeModel(self.env, "What changed\n- The Saturday literature commitment may still stand [mail:th-A].")   # a draft that clashes with his answer
+        out = morning.run_morning(m, DAY, "desk-a", self.env.records, calendar=events, stamper=self.stamper(),
+                                  answers_reader=morning._live_answers_reader(self.dbp))
+        self.assertTrue(out["ok"], out)
+        self.assertTrue(out["answers_handed"])
+        p = m.prompts[0]
+        ans = file_text(p, "confirmed-answers")
+        self.assertIn("CONFIRMED BY HIM: these are his own words; never restate a guess against them; a clash with one becomes a question for the next session.", ans)
+        self.assertIn("Eli is only a client for the coaching goal this month.", ans)                  # found through the sender's person key
+        self.assertIn("Saturday literature commitment is wrong", ans)                                 # found through the event title
+        self.assertIn("Never restate a guess against them", morning.MORNING_RULES)
+        self.assertIn("a clash with one becomes a question for the next session", morning.MORNING_RULES)
+
+    def test_f5_the_rules_ask_for_a_tag_on_every_mentioned_email_and_numbers_as_given(self):
+        self.assertIn("Every email you mention carries its [mail:<label>] tag, even when you do not quote it", morning.MORNING_RULES)
+        self.assertIn("never re-rank or recompute them", morning.MORNING_RULES)
+
+    def _q_fixture(self):
+        import store_graph as sg
+        eli2 = sg.thing(self.con, "address", "eli.other@example.test")
+        sg.add_link(self.con, eli2, "address_of", self.eli, "code", "sure", "code")
+        self.con.commit()
+
+    QA = "You wrote to eli@partb.example on 2026-10-12 and no reply has come in 40 days (they usually answer within about 0.1): are you still expecting one?"
+    QB = "eli.other@example.test usually writes every ~3 days and has been silent 9 days: is that expected?"
+    QC = "New sender pat@planorg.example (first seen 2026-11-15): who are they, and does a project or part of your life already own them?"
+    QD = "New sender stranger@nowhere.example (first seen 2026-11-15): who are they, and does a project or part of your life already own them?"
+
+    def test_f2_one_question_per_person_no_duplicates_and_nothing_he_already_answered(self):
+        self._q_fixture()
+        self._answer(self.key(self.org), "Planorg is my accountant's firm.", question="who is pat")
+        qs = [self.QA, self.QB, self.QD, self.QD, self.QC, "Calendar: Dentist moved from Tuesday to Wednesday: still right?"]
+
+        def broken(questions, con):                          # the broken copy: hands everything on
+            return list(questions), {}
+        self.assertEqual(len(broken(qs, self.con)[0]), 6)                  # caught: 6 questions, two for one person, a duplicate, an answered one
+        kept, stats = morning.filter_questions(qs, self.con)
+        self.assertEqual(kept, [self.QA, self.QD, "Calendar: Dentist moved from Tuesday to Wednesday: still right?"])
+        self.assertEqual(stats, {"merged": 1, "duplicates": 1, "answered": 1})
+        # two addresses of ONE person -> ONE question; the person answered on one address is answered on the other
+        kept2, _s = morning.filter_questions([self.QA, self.QB], self.con)
+        self.assertEqual(kept2, [self.QA])
+        self._answer("address:eli.other@example.test", "Eli never replies, that is fine.")
+        kept3, s3 = morning.filter_questions([self.QA, self.QB], self.con)
+        self.assertEqual((kept3, s3["answered"]), ([], 2))
+
+    def test_held_casting_line_counts_held_items_from_casting_labels_and_says_how_it_decided(self):
+        self.con.execute("INSERT INTO labels(id,name,type) VALUES('Label_c','Casting-Notices','user')")
+        self.con.execute("INSERT INTO messages(id, from_addr, label_ids) VALUES('cc11cc11cc11','casting@example.test','[\"Label_c\"]')")
+        self.con.execute("INSERT INTO messages(id, from_addr, label_ids) VALUES('dd22dd22dd22','other@example.test','[\"INBOX\"]')")
+        self.con.commit()
+        facts = {"quarantined": 0, "held_after": 2, "delivered": 0, "written_at": "t", "held_messages_total": 2, "held_messages": [
+            {"message_id": "cc11cc11cc11", "thread_id": "1111cccc", "status": "held", "reason": "excluded_label"},
+            {"message_id": "dd22dd22dd22", "thread_id": "2222dddd", "status": "held", "reason": "scan_unjudged"}]}
+        items, _d = morning.held_items_from_facts(facts, self.con, ())
+        text = "\n".join(morning.render_held(morning.clean_held(items, [], mailroom_pass=facts)))
+        self.assertIn("Held (not read): 2, including 1 from casting labels (decided by: the label names the mailroom recorded", text)
+
+        def broken_render(held):                              # the broken copy: no casting line
+            return [ln for ln in morning.render_held(held) if not ln.startswith("Held (not read)")]
+        self.assertFalse(any("casting" in ln for ln in broken_render(morning.clean_held(items, [], mailroom_pass=facts))))
+        names, basis = morning.casting_labels(self.con)
+        self.assertEqual(names, {"casting-notices"})
+        # no casting label anywhere: the line still says 0 and why
+        self.con.execute("DELETE FROM labels")
+        self.con.commit()
+        items2, _d = morning.held_items_from_facts(facts, self.con, ())
+        t2 = "\n".join(morning.render_held(morning.clean_held(items2, [], mailroom_pass=facts)))
+        self.assertIn("including 0 from casting labels (decided by: no label says casting in his settings or in the mailbox)", t2)
+
     def test_store_diary_indexes_the_confidence(self):
         import store_diary
         out = self.read_all(FakeModel(self.env, reply()))

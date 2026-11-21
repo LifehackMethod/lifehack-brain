@@ -251,8 +251,14 @@ def audit(run, day, draft_text, desk=None, expected=None):
             continue
         cls, why = classify_mark(r, expected)
         classes[r["message_id"]] = cls
-        needles = ["mail:" + str(r.get("thread_id") or ""), str(r["message_id"])[:12], _addr(r.get("from")), _subject_key(r.get("subject"))]
-        hits = locate(draft, needles)
+        if cls == "handed":
+            # F5: every email the AI mentions carries its [mail:<thread>] tag, so a handed email counts as present only by that
+            # tag in the AI's part, or by its id in code's own lists (Needs him, Unclassified emails): not by sender or subject
+            hits = (locate(draft, ["mail:" + str(r.get("thread_id") or "")], section="The morning draft")
+                    + locate(draft, [str(r["message_id"])[:12]], section="Needs him")
+                    + locate(draft, [str(r["message_id"])[:12]], section="Unclassified emails"))
+        else:
+            hits = locate(draft, [str(r["message_id"])[:12], _addr(r.get("from")), _subject_key(r.get("subject"))])
         nm = (r.get("triage") or {}).get("needs_me") if isinstance(r.get("triage"), dict) else "none"
         label = "%s | %s | %s | %s | needs_me %s" % (str(r["message_id"])[:12], r.get("date"), _addr(r.get("from")) or _one_line(r.get("from"), 30),
                                                     _one_line(r.get("subject"), 50), nm)
