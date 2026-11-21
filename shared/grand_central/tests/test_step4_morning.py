@@ -1140,6 +1140,19 @@ class DiaryEntry(Base):
         self.assertIn(rule, morning.MORNING_RULES)
         self.assertNotIn("contradicts an older note of his", morning.MORNING_RULES)      # the narrow, notes-only wording is gone
 
+    def test_r5_the_dates_in_codes_lists_are_whole_and_readable(self):
+        line = morning.needs_him_lines([{"date": "Fri, 20 Nov 2026 09:55:12 -0500", "sender": "A <a@x.test>", "subject": "S", "message_id": "abcdef123456",
+                                         "triage": {"needs_me": "yes", "do_or_know": "do", "how_soon": "now"}}])[0]
+        self.assertTrue(line.startswith("- Fri 20 Nov 2026 09:55 | A <a@x.test>"), line)
+        self.assertNotIn("09:|", line.replace(" ", ""))
+        self.assertEqual(morning._readable_date("2026-11-20T09:55:00Z"), "Fri 20 Nov 2026 09:55")
+        self.assertEqual(morning._readable_date("2026-11-20"), "2026-11-20")
+        self.assertEqual(morning._readable_date("sometime last week, honestly not sure"), "sometime last week, honestly not sure")
+        rec = morning.render_record("2026-11-21", "desk-a", "stem", "label", "x", None, {"unclassified": [
+            {"sender": "N", "date": "Fri, 20 Nov 2026 09:55:12 -0500", "subject": "S", "guess": "g"}]})
+        self.assertIn("| Fri 20 Nov 2026 09:55 |", rec)
+        self.assertNotIn("09: |", rec)
+
     def test_f5_the_rules_ask_for_a_tag_on_every_mentioned_email_and_numbers_as_given(self):
         self.assertIn("Every email you mention carries its [mail:<label>] tag, even when you do not quote it", morning.MORNING_RULES)
         self.assertIn("never re-rank or recompute them", morning.MORNING_RULES)

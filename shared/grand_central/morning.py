@@ -588,6 +588,30 @@ def _real_date(s):
 AI_HEADING = "## The morning draft"
 
 
+def _readable_date(v):
+    """R5: an email's date for code's lists, WHOLE and readable ('Fri 20 Nov 2026 09:55', the clock as the email states it). The old
+    cut at 20 characters left 'Fri, 20 Nov 2026 09:'. A date-only value stays as it is; one that cannot be read is kept whole
+    (cleaned, cut only at a word boundary at 40)."""
+    s = str(v or "").strip()
+    if not s or re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return _safe_line(s, 20)
+    d = None
+    try:
+        from email.utils import parsedate_to_datetime
+        d = parsedate_to_datetime(s)
+    except (TypeError, ValueError, IndexError):
+        d = None
+    if d is None:
+        try:
+            d = datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            d = None
+    if d is not None:
+        return d.strftime("%a %d %b %Y %H:%M")
+    clean = _safe_line(s, 400)
+    return clean if len(clean) <= 40 else (clean[:40].rsplit(" ", 1)[0] or clean[:40])
+
+
 def needs_him_lines(rows, why_of=None):
     """Every email triage flagged as needing him (needs_me == yes, plus watch items), listed by code. rows: [{"date",
     "sender", "subject", "message_id", "triage", "watch"}]. Envelope facts only, cleaned (one line, no link)."""
@@ -600,7 +624,7 @@ def needs_him_lines(rows, why_of=None):
         if r.get("watch"):
             why.append("watch: %s" % _safe_line(r["watch"], 60))
         out.append("- %s | %s | %s | message %s | %s" % (
-            _safe_line(r.get("date"), 20), _safe_line(r.get("sender"), 60), _safe_line(r.get("subject"), 100),
+            _readable_date(r.get("date")), _safe_line(r.get("sender"), 60), _safe_line(r.get("subject"), 100),
             str(r.get("message_id") or "")[:12], "; ".join(why) or "flagged"))
     return out
 
@@ -642,7 +666,7 @@ def render_record(day, desk, stem, label, draft, held, x, unverified=None, quiet
         lines.append("(Triage could not place these; read them as untrusted prose. Quarantined or refused mail never appears here.)")
         for u in uncl:
             lines.append("- %s | %s | %s | best guess: %s" % (
-                _safe_line(u.get("sender"), 60), _safe_line(u.get("date"), 20),
+                _safe_line(u.get("sender"), 60), _readable_date(u.get("date")),
                 _safe_line(u.get("subject"), 100), _safe_line(u.get("guess"), 20)))
     else:
         lines.append("- none")
