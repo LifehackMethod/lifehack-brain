@@ -28,9 +28,13 @@ import tempfile
 import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+import sys  # noqa: E402
+if os.path.dirname(HERE) not in sys.path:
+    sys.path.append(os.path.dirname(HERE))
 import transcripts  # noqa: E402
 import gc_settings  # noqa: E402
 import local_first  # noqa: E402
+import desk_list  # noqa: E402
 import morning  # noqa: E402
 
 PROMPT_DIR = os.path.join(HERE, "lens_prompts")
@@ -52,36 +56,48 @@ class LensError(Exception):
 
 # ================================================================ inputs the lenses need
 
-def lanes_path():
-    """Where the person's lanes file is: gc.json "lanes_file" (relative to the notes root, or absolute) when set, else the
-    default desk's lanes file beside its Life Map (gc_settings.life_map_path). Never a literal personal path."""
-    conf = None
+def planning_desk_dir():
+    """<notes>/desks/<planning desk folder>, the folder found through desk_list.planning_desk_folder() (never a literal name).
+    -> (path or None, error or None)."""
     try:
-        conf = gc_settings.load("gc.json").get("lanes_file")
+        folder, err = desk_list.planning_desk_folder()
+        if err or not folder:
+            return None, "no planning desk"
+        return os.path.join(gc_settings.configured_notes_root(), "desks", folder), None
     except Exception:
-        conf = None
-    if conf:
-        p = os.path.expanduser(str(conf))
-        return p if os.path.isabs(p) else os.path.join(gc_settings.configured_notes_root(), p)
-    return os.path.join(os.path.dirname(gc_settings.life_map_path()), "lanes.md")
+        return None, "no planning desk"
+
+
+def lanes_paths():
+    """-> (lanes.md path, Life Map path) of the planning desk, or (None, None). The Life Map is the desk's life-map.md at the
+    place the engine's layout puts it (gc_settings.notes_subpaths()["life_map"] with the planning desk as the desk)."""
+    d, _err = planning_desk_dir()
+    if not d:
+        return None, None
+    try:
+        lm = os.path.join(gc_settings.configured_notes_root(), gc_settings.notes_subpaths()["life_map"].format(desk=os.path.basename(d)))
+    except Exception:
+        lm = None
+    return os.path.join(d, "lanes.md"), lm
 
 
 def load_lanes():
-    """-> (text or None, note). None = the Lanes lens is skipped and the note says why (it goes in the snapshot)."""
-    try:
-        p = lanes_path()
-    except Exception:
-        return None, "no lanes file"
-    try:
-        text = local_first.read_text(p)
-    except FileNotFoundError:
-        return None, "no lanes file"
-    except Exception:
-        return None, "lanes file unreadable"
-    text = (text or "").strip()
-    if not text:
-        return None, "lanes file is empty"
-    return text[:LANES_MAX_CHARS], None
+    """-> (text or None, note). The planning desk's lanes.md when it exists; otherwise that desk's whole Life Map (the AI finds
+    the lanes in it; code parses nothing). None = the Lanes lens is skipped and the note says why (it goes in the snapshot)."""
+    lanes_p, lm_p = lanes_paths()
+    if not lanes_p:
+        return None, "no planning desk, so no lanes.md and no Life Map"
+    for p in (lanes_p, lm_p):
+        if not p:
+            continue
+        try:
+            text = local_first.read_text(p)
+        except Exception:
+            continue
+        text = (text or "").strip()
+        if text:
+            return text[:LANES_MAX_CHARS], None
+    return None, "no lanes.md and no Life Map"
 
 
 def load_life_map_text():

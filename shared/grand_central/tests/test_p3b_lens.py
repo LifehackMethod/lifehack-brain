@@ -476,20 +476,58 @@ class Stage(unittest.TestCase):
         for gone in ("finding_id", "weaker", "REPEAT", "pre-drafted"):
             self.assertNotIn(gone, blk + snap)
 
-    def test_lanes_file_is_found_through_gc_settings(self):
+    def desk(self, lanes=None, life_map=None, row=True):
+        """a temp notes folder with a fake planning desk; lens.desk_list / gc_settings pointed at it"""
         d = tempfile.mkdtemp(prefix="p3b-n-")
         self.addCleanup(shutil.rmtree, d, True)
-        old = lens.gc_settings.life_map_path
-        lens.gc_settings.life_map_path = lambda: _o.path.join(d, "life-map.md")
-        try:
-            self.assertEqual(lens.load_lanes(), (None, "no lanes file"))
-            with open(_o.path.join(d, "lanes.md"), "w", encoding="utf-8") as f:
-                f.write("# Lanes\n- body\n- work\n")
-            text, note = lens.load_lanes()
-            self.assertIn("work", text)
-            self.assertIsNone(note)
-        finally:
-            lens.gc_settings.life_map_path = old
+        _o.makedirs(_o.path.join(d, "desks", "myplan"))
+        for name, text in (("lanes.md", lanes), ("life-map.md", life_map)):
+            if text is not None:
+                with open(_o.path.join(d, "desks", "myplan", name), "w", encoding="utf-8") as f:
+                    f.write(text)
+        cache = tempfile.mkdtemp(prefix="p3b-c-")          # local_first keeps a copy per relative path; one per test
+        self.addCleanup(shutil.rmtree, cache, True)
+        old_cache = lens.local_first.cache_root
+        lens.local_first.cache_root = lambda: cache
+        self.addCleanup(setattr, lens.local_first, "cache_root", old_cache)
+        olds = (lens.desk_list.planning_desk_folder, lens.gc_settings.configured_notes_root)
+        lens.desk_list.planning_desk_folder = (lambda env=None: ("myplan", None)) if row else (lambda env=None: (None, "no row"))
+        lens.gc_settings.configured_notes_root = lambda: d
+        self.addCleanup(lambda: (setattr(lens.desk_list, "planning_desk_folder", olds[0]), setattr(lens.gc_settings, "configured_notes_root", olds[1])))
+        return d
+
+    def test_lanes_md_in_the_planning_desk_is_used(self):
+        self.desk(lanes="# Lanes\n- body\n- work\n", life_map="# Map\nunrelated deep phrase")
+        text, note = lens.load_lanes()
+        self.assertIn("- work", text)
+        self.assertNotIn("unrelated deep phrase", text)
+        self.assertIsNone(note)
+
+    def test_no_lanes_md_hands_in_the_whole_life_map(self):
+        body = "# Map\n" + "filler line\n" * 200 + "the deep phrase: rank 3 is boats\n"
+        self.desk(life_map=body)
+        text, note = lens.load_lanes()
+        self.assertIn("the deep phrase: rank 3 is boats", text)
+        self.assertIn("# Map", text)
+        self.assertIsNone(note)
+        st = lens.run_lenses(DAY, [], (), None, (r := FakeRunner()), {"lanes": text, "life_map": "x"})
+        self.assertIn("the deep phrase: rank 3 is boats", [c for c in r.calls if c["kind"] == "lanes"][0]["prompt"])
+
+    def test_neither_file_skips_with_the_reason(self):
+        self.desk()
+        self.assertEqual(lens.load_lanes(), (None, "no lanes.md and no Life Map"))
+        self.desk(row=False)
+        text, note = lens.load_lanes()
+        self.assertIsNone(text)
+        self.assertTrue(note)
+
+    def test_the_lanes_prompt_carries_the_no_lanes_instruction(self):
+        p = lens.lens_prompt("lanes", DAY, "F", lanes="whole life map text")
+        for want in ("whole Life Map", "find the lanes", "no lanes, say so in one plain line and stop"):
+            self.assertIn(want.lower(), p.lower())
+
+    def test_there_is_no_gc_json_lanes_route(self):
+        self.assertNotIn("lanes_file", open(lens.__file__, encoding="utf-8").read())
 
 
 if __name__ == "__main__":
