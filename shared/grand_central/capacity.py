@@ -186,3 +186,108 @@ def capacity(calendar_rows, day, days=7, travel_labels=None):
                 b2b += 1
         out[i]["back_to_backs"] = b2b
     return out
+
+
+# ================================================================ time relations (code, never the model)
+# Which events overlap, which fall inside a travel window, which sit in a layover: all worked out here on real
+# instants (the zone each stored start/end string carries), then handed to the read as a plain-words list.
+
+import datetime as _dt
+import os as _os
+import re as _re
+
+TRAVEL_LEG_RE = _re.compile(r"\b(flights?|airports?|trains?)\b", _re.I)   # a leg of a journey (hotel is a place, not a leg)
+LEG_GAP_MAX_H = 24    # two legs closer than this make the gap between them a layover
+
+
+def local_zone():
+    """His local zone: env GC_LOCAL_TZ if set, else America/New_York (the zone daily.py already uses)."""
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo(_os.environ.get("GC_LOCAL_TZ") or "America/New_York")
+    except Exception:
+        return _dt.timezone.utc
+
+
+def parse_instant(s, tz):
+    """a mirror start/end string -> aware datetime, using the zone the string states (Z, +hh:mm, +hhmm); a string with no
+    zone is read as local `tz`. A bare date (all-day) or anything unreadable -> None."""
+    s = str(s or "").strip()
+    if len(s) < 11:
+        return None
+    s = s.replace("Z", "+00:00").replace("z", "+00:00")
+    s = _re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", s) if _re.search(r"T?\d{2}:\d{2}(:\d{2})?[+-]\d{4}$", s) else s
+    try:
+        d = _dt.datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=tz)
+
+
+def _ov(a, b):
+    (s1, e1), (s2, e2) = a, b
+    if s1 == e1:
+        return s2 <= s1 < e2 or (s2 == e2 and s1 == s2)
+    if s2 == e2:
+        return s1 <= s2 < e1
+    return s1 < e2 and s2 < e1
+
+
+def _fmt_span(ev, tz):
+    s, e = ev["s"].astimezone(tz), ev["e"].astimezone(tz)
+    txt = "%s %s" % (s.strftime("%a %d %b"), s.strftime("%H:%M") if s == e else "%s-%s" % (s.strftime("%H:%M"), e.strftime("%H:%M")))
+    if e.date() != s.date() and s != e:
+        txt = "%s %s - %s %s" % (s.strftime("%a %d %b"), s.strftime("%H:%M"), e.strftime("%a %d %b"), e.strftime("%H:%M"))
+    if ev["s"].utcoffset() != s.utcoffset() or ev["e"].utcoffset() != e.utcoffset():
+        so, eo = ev["s"], ev["e"]
+        txt += " [stored as %s %s to %s %s]" % (so.strftime("%H:%M"), so.strftime("%z"), eo.strftime("%H:%M"), eo.strftime("%z"))
+    return '"%s", %s' % (ev["title"], txt)
+
+
+def time_relations(calendar_rows, day, days=7, tz=None):
+    """-> plain-words lines: the pairs of events that overlap, each travel window (flight, airport, train in the title or
+    place) with the events inside it, and events in the layover between two legs; next `days` days from `day`, times in his
+    local zone `tz`. All-day rows have no times and are left out. Pure code, no model."""
+    tz = tz or local_zone()
+    try:
+        base = _dt.date(int(day[:4]), int(day[5:7]), int(day[8:10]))
+    except (ValueError, TypeError):
+        return ["(not computed: the run day is not a date)"]
+    evs = []
+    for row in calendar_rows or []:
+        if not isinstance(row, dict):
+            continue
+        s = parse_instant(row.get("start"), tz)
+        if s is None:
+            continue
+        e = parse_instant(row.get("end"), tz) or s
+        if e < s:
+            continue
+        if not (0 <= (s.astimezone(tz).date() - base).days < days):
+            continue
+        title = " ".join(str(row.get("title") or row.get("summary") or "untitled event").split())[:100]
+        place = str(row.get("location") or "")
+        evs.append({"s": s, "e": e, "title": title, "leg": bool(TRAVEL_LEG_RE.search(title) or TRAVEL_LEG_RE.search(place))})
+    evs.sort(key=lambda v: (v["s"], v["e"], v["title"]))
+    head = "Time relations (computed by code) for the next %d days from %s; every time is in his local zone (%s):" % (
+        days, base.isoformat(), getattr(tz, "key", None) or "UTC")
+    lines = [head]
+    pairs = [(a, b) for i, a in enumerate(evs) for b in evs[i + 1:] if not a["leg"] and not b["leg"] and _ov((a["s"], a["e"]), (b["s"], b["e"]))]
+    lines.append("Overlapping events:")
+    lines += ["- %s  OVERLAPS  %s" % (_fmt_span(a, tz), _fmt_span(b, tz)) for a, b in pairs] or ["- none overlap"]
+    legs = [v for v in evs if v["leg"]]
+    lines.append("Travel windows:")
+    if not legs:
+        lines.append("- none")
+    for leg in legs:
+        inside = [v for v in evs if v is not leg and not v["leg"] and _ov((v["s"], v["e"]), (leg["s"], leg["e"]))]
+        lines.append("- TRAVEL %s" % _fmt_span(leg, tz))
+        lines += ["    inside this travel window: %s" % _fmt_span(v, tz) for v in inside] or ["    nothing else falls inside it"]
+    for a, b in zip(legs, legs[1:]):
+        gap = (b["s"] - a["e"]).total_seconds()
+        if 0 <= gap <= LEG_GAP_MAX_H * 3600:
+            lay = [v for v in evs if not v["leg"] and _ov((v["s"], v["e"]), (a["e"], b["s"]))]
+            lines.append("- LAYOVER between \"%s\" (ends %s) and \"%s\" (starts %s)" % (
+                a["title"], a["e"].astimezone(tz).strftime("%a %d %b %H:%M"), b["title"], b["s"].astimezone(tz).strftime("%a %d %b %H:%M")))
+            lines += ["    in the layover: %s" % _fmt_span(v, tz) for v in lay] or ["    nothing else falls in the layover"]
+    return lines

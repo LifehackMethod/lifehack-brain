@@ -98,6 +98,7 @@ MANIFEST = [
     ("tests/test_claude_child.py", "unittest", False),  # the model children run the windows' hooks: one helper, fakes only
     ("tests/test_audit_run.py", "unittest", False),  # the audit's Part 1: every input listed, found or reasoned, else a DEFECT
     ("tests/test_step4_morning.py", "unittest", False),  # plan B2 step 4: the rebuilt morning read: quote check, code lists, batching, lenses, diary entry, hand-run (fake model)
+    ("tests/test_time_relations.py", "unittest", False),  # code hands the read its time relations: overlaps, travel windows, layovers (validation run 5 audit)
     ("tests/test_step12_equal_weight.py", "unittest", False),  # phase 1 step 1.2: calendar, tasks, email equal weight
     ("tests/test_step4_synthesize_bad_case.py", "unittest", False),  # plan B2 step 4: old synthesize.py fails case 1 (no model)
     ("tests/test_encrypted_backup.py", "unittest", False),  # plan B2 step 4b: encrypted backup (throwaway test passphrases)
