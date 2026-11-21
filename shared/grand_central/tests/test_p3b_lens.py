@@ -35,7 +35,10 @@ import transcripts  # noqa: E402
 
 DAY = "2026-11-20"
 PRE_NAME = "_pre_slB_morning.py"
-pre_src = _sp.run(["git", "-C", ROOT, "show", "55b0ca4:shared/grand_central/morning.py"], check=True, capture_output=True).stdout.decode("utf-8")
+# Committed fixture, NOT a git-history lookup: the exact morning.py of pre-rebase commit 55b0ca4 (current twin: df7538a). That hash
+# exists only in one local clone's object store, so a `git show` failed on any other clone or export.
+with open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "fixtures", "morning_pre_4p3r.py.txt"), encoding="utf-8") as _f:
+    pre_src = _f.read()
 pre_path = _o.path.join(ROOT, PRE_NAME)
 with open(pre_path, "w", encoding="utf-8") as f:
     f.write(pre_src)

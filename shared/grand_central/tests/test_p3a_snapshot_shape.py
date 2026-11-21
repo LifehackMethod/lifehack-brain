@@ -40,7 +40,10 @@ DAY = "2026-11-20"
 PRE_NAME = "_pre_slA_morning.py"
 
 # ---------------------------------------------------------------- the PRE-change renderer, from d35066d (the commit before slice A)
-pre_src = _sp.run(["git", "-C", ROOT, "show", "d35066d:shared/grand_central/morning.py"], check=True, capture_output=True).stdout.decode("utf-8")
+# Committed fixture, NOT a git-history lookup: the exact morning.py of pre-rebase commit d35066d (current twin: b537acd). That hash
+# exists only in one local clone's object store, so a `git show` failed on any other clone or export.
+with open(_o.path.join(_o.path.dirname(_o.path.abspath(__file__)), "fixtures", "morning_pre_p3a.py.txt"), encoding="utf-8") as _f:
+    pre_src = _f.read()
 pre_path = _o.path.join(ROOT, PRE_NAME)
 with open(pre_path, "w", encoding="utf-8") as f:
     f.write(pre_src)
