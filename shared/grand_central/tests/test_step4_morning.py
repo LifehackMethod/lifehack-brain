@@ -1248,6 +1248,24 @@ class DiaryEntry(Base):
             morning.org_keys_of_person = orig
         self.assertEqual((kept2, bad), ([self.QA], [self.QA]))                  # lookup error: kept and counted
 
+    def test_r10_an_answer_keyed_to_the_senders_domain_drops_the_question_by_key_and_a_failed_lookup_keeps_it(self):
+        self.con.execute("INSERT INTO kg_answers(question,words,asked_by,said_on,subject_kind,subject_key,recorded_at) "
+                         "VALUES('domain','that sender is a newsletter','w','2026-11-12','domain','domain:quietdomain.example','2026-11-12T00:00:00Z')")
+        self.con.commit()
+        QD = "Membership@QuietDomain.example usually writes every ~3 days and has been silent 9 days: is that expected?"
+        QO = "info@otherdomain.example usually writes every ~3 days and has been silent 9 days: is that expected?"
+        kept, stats = morning.filter_questions([QD, QO], self.con)
+        self.assertEqual(kept, [QO])                                            # the domain has an answer row, no address/person/org row: dropped
+        self.assertEqual(stats["answered"], 1)                                  # a sender at a domain with no answer row stays
+        orig = morning.sender_domain_key
+        morning.sender_domain_key = lambda addr: (_ for _ in ()).throw(ValueError("bad"))
+        try:
+            bad = []
+            kept2, _s = morning.filter_questions([QD], self.con, None, bad)
+        finally:
+            morning.sender_domain_key = orig
+        self.assertEqual((kept2, bad), ([QD], [QD]))                            # lookup error: kept and counted
+
     def test_held_casting_line_counts_held_items_from_casting_labels_and_says_how_it_decided(self):
         self.con.execute("INSERT INTO labels(id,name,type) VALUES('Label_c','Casting-Notices','user')")
         self.con.execute("INSERT INTO messages(id, from_addr, label_ids) VALUES('cc11cc11cc11','casting@example.test','[\"Label_c\"]')")

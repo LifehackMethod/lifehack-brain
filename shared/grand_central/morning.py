@@ -2112,6 +2112,11 @@ def org_keys_of_person(con, person_key):
         "WHERE f.key=? AND f.kind='person' AND l.kind IN ('member_of','works_at') AND t.retired_at IS NULL", (person_key,))}
 
 
+def sender_domain_key(addr):
+    """R10: the kg_answers subject_key a domain answer is recorded under: 'domain:' + the lower-cased domain part of the address."""
+    return "domain:" + addr.rsplit("@", 1)[1].strip().lower()
+
+
 def filter_questions(questions, con, subjects=None, unkeyed=None):
     """F2: the email questions handed to the model: ONE per PERSON (addresses that resolve to the same PRM person merge into
     one), exact duplicate texts dropped, and nothing about anyone he has ALREADY ANSWERED (a kg_answers row on that person, on
@@ -2147,6 +2152,11 @@ def filter_questions(questions, con, subjects=None, unkeyed=None):
         if m and con is not None:
             addr = m.group(0).lower()
             keys.add(sg.thing_key("address", addr))
+            try:
+                keys.add(sender_domain_key(addr))                  # R10: his answer about the sender's domain covers the sender, by key
+            except (IndexError, ValueError, TypeError):
+                if unkeyed is not None:
+                    unkeyed.append(q)                              # a failed lookup keeps the question and is counted
             pk = stamp_keys.sender_key(con, addr)
             if pk:
                 keys.add(pk)
