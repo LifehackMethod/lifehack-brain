@@ -84,24 +84,17 @@ sys.exit(0 if [e["Hour"] for e in cal] == [0, 12] else 1)
 PY
 [ $? -eq 0 ] && pass "p3-43200s-calendar-12h" || fail "p3-43200s-calendar-12h" "12h calendar changed"
 
-# ── 4) day-based intervals keep the OLD DAILY-trigger behaviour ──
-run_install "$(JOBS "$(ROW j86400 86400)")"
-python3 - "$T/la/ai.lifehack.j86400.plist" <<'PY'
+# ── 4) day-based intervals: NO clock-time trigger (owed, not scheduled): hourly heartbeat StartInterval, RunAtLoad kept ──
+for pair in "j86400 86400" "j604800 604800"; do
+  set -- $pair
+  run_install "$(JOBS "$(ROW "$1" "$2")")"
+  python3 - "$T/la/ai.lifehack.$1.plist" <<'PY'
 import plistlib, sys
 d = plistlib.load(open(sys.argv[1], "rb"))
-cal = d.get("StartCalendarInterval")
-sys.exit(0 if [e["Hour"] for e in cal] == [0] else 1)
+sys.exit(0 if ("StartCalendarInterval" not in d and d.get("StartInterval") == 3600 and d.get("RunAtLoad") is True) else 1)
 PY
-[ $? -eq 0 ] && pass "p4-86400s-daily" || fail "p4-86400s-daily" "daily calendar changed"
-
-run_install "$(JOBS "$(ROW j604800 604800)")"
-python3 - "$T/la/ai.lifehack.j604800.plist" <<'PY'
-import plistlib, sys
-d = plistlib.load(open(sys.argv[1], "rb"))
-cal = d.get("StartCalendarInterval")
-sys.exit(0 if [e["Hour"] for e in cal] == [0] else 1)
-PY
-[ $? -eq 0 ] && pass "p4-604800s-weekly-daily-trigger" || fail "p4-604800s-weekly-daily-trigger" "weekly daily-trigger changed"
+  [ $? -eq 0 ] && pass "p4-$2s-heartbeat-no-calendar" || fail "p4-$2s-heartbeat-no-calendar" "daily-or-longer row still has a clock trigger, or lost heartbeat/RunAtLoad"
+done
 
 # ── 5) refusals: under 60 s, zero, and non-numbers still fail loudly, no plist ──
 for case_v in 59 0 abc; do
