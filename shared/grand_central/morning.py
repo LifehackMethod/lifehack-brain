@@ -353,6 +353,7 @@ MORNING_RULES = """HOW TO WRITE THE MORNING DRAFT (plain words; no JSON, no tabl
 - Deadlines, money and commitments you find in emails: write them as plain words with a quote. They are guesses until he confirms them.
 - Write the lens findings as low-confidence observations, never as settled facts.
 - If anything you would write clashes with an answer he has given or a note he has written, do not settle it: write it as a question for the next session. Never retire or rewrite his line yourself.
+- Tasks are an input equal to email and calendar.
 - Email, calendar and tasks weigh equally. A moved event or a dropped task deserves its place next to the mail; if a source has nothing new, say so in one sentence.
 - When there is no earlier picture, a thread whose newest message is older than 7 days is not news: say so in one sentence.
 - Quote what matters, never whole transcripts.
@@ -532,7 +533,11 @@ def build_files(day, desk, confirmed, unconfirmed, direction, life_map, tasks, c
         if not (confirmed or unconfirmed):
             text += "\n\nThere is no earlier picture: build one from his direction, the Life Map, the tasks and the calendar; every picture sentence is a guess.\nLIFE MAP:\n%s" % (life_map or "(not supplied)")
         files.append(("direction", text))
-    files.append(("tasks", "his open tasks that matter (%d shown%s):\n%s" % (len(tasks or []), "; " + tasks_note if tasks_note else "", json.dumps(_no_ids(tasks), indent=1, sort_keys=True))))
+    od = overdue_tasks(tasks, day)
+    soon = [t for t in tasks or [] if isinstance(t, dict) and isinstance(t.get("due"), str) and _real_date(t["due"][:10]) and day <= t["due"][:10] <= (
+        datetime.date.fromisoformat(day) + datetime.timedelta(days=7)).isoformat()] if _real_date(day) else []
+    head = "OVERDUE: %d open task(s) past their due date; DUE IN THE NEXT 7 DAYS: %d. Both come first below, oldest first; code lists every overdue task in its own section.\n" % (len(od), len(soon))
+    files.append(("tasks", head + "his open tasks that matter (%d shown%s):\n%s" % (len(tasks or []), "; " + tasks_note if tasks_note else "", json.dumps(_no_ids(tasks), indent=1, sort_keys=True))))
     files.append(("calendar", "his next 14 days (%d items):\n%s" % (len(calendar or []), json.dumps(calendar_for_prompt(calendar), indent=1, sort_keys=True))))
     files.append(("questions", "\n".join("D%d: %s" % (i, q) for i, q in enumerate(questions, 1)) if questions else "(no questions from the delta)"))
     if lens_block:
@@ -602,7 +607,7 @@ def needs_him_lines(rows, why_of=None):
 
 def render_record(day, desk, stem, label, draft, held, x, unverified=None, quiet_note=None, skipped_rows=None):
     """The staged snapshot. CODE's lists first, in a fixed order: the unverified-quotes line, held and quarantined mail,
-    ## Needs him, ## Capacity, ## Unclassified emails, then code's own accounting; then the AI's part (## The morning
+    ## Needs him, ## Capacity, ## Unclassified emails, then code's own accounting, ## Overdue tasks; then the AI's part (## The morning
     draft) last. `draft` is the AI's plain-words text (None when nothing was read)."""
     x = x or {}
     lines = ["# Morning write-up %s - %s desk (%s)" % (day, desk, stem), "",
@@ -660,6 +665,8 @@ def render_record(day, desk, stem, label, draft, held, x, unverified=None, quiet
         lines += ["- Open question from the delta: %s" % _safe_line(q, MAX_TEXT) for q in x.get("delta_questions") or []]
     for mid, why in sorted((skipped_rows or {}).items()):
         lines.append("- Skipped (with a reason; ids only): %s: %s" % (mid, why))
+    lines += ["", "## Overdue tasks", "(Every open task whose due date is before %s, oldest first, listed by code whatever the draft says.)" % day]
+    lines += ["- %s" % o for o in x.get("overdue") or []] or ["- none overdue"]
     lines += ["", AI_HEADING, "(Written by the AI: suggestions, never facts.)"]
     lines.append(draft.strip() if draft else "- %s" % (quiet_note or "Nothing new needed reading; the picture is carried forward."))
     return "\n".join(lines) + "\n"
@@ -865,6 +872,14 @@ def select_tasks(tasks, day, cap=TASK_CAP):
     return opens[:cap], max(0, len(opens) - cap), len(opens)
 
 
+def overdue_tasks(tasks, day):
+    """R4: EVERY open task whose due date is before the day, oldest first (no cap, no quota). -> list of task dicts"""
+    out = [t for t in (tasks or []) if isinstance(t, dict) and t.get("status") != "completed"
+           and isinstance(t.get("due"), str) and _real_date(t["due"][:10]) and t["due"][:10] < day]
+    out.sort(key=lambda t: (t["due"][:10], str(t.get("title") or "")))
+    return out
+
+
 def load_expected(path=None):
     """setup/expected.json: HIS list of expected patterns (proposed; he confirms). Missing file = no patterns, said so by
     the caller. -> dict or None"""
@@ -971,7 +986,7 @@ def run_morning(model, day, desk, records_dir, baseline_text=None, tasks=None, c
                 delta_questions=None, life_map=None, budget=PROMPT_BUDGET_CHARS, held_items=None, mailroom_pass=None,
                 dry_run=False, questions_not_asked=0, expected=None, read_info=None, treat_all_as_new=False,
                 source_delta=None, source_first_look=False, stamper=None, lens_runner=None, prm_reader=None, lens_inputs=None,
-                unconfirmed_text=None, answers_reader=None):
+                unconfirmed_text=None, answers_reader=None, overdue=None):
     """One morning read. -> dict: ok, stem, record_path, proof_line, accounting, problems, prompt_chars, attempts (model
     calls), new_ids, handed_threads, draft, quotes, lenses, handed (the emails put in a mail file), stamped. Writes only to
     records_dir (the snapshot) and the front room's catalogue/used-in-draft.jsonl; never anywhere else.
@@ -1113,6 +1128,8 @@ def run_morning(model, day, desk, records_dir, baseline_text=None, tasks=None, c
     x = {"cal_items": [calendar_line(c) for c in (calendar or []) if isinstance(c, dict)],
          "task_items": [("(due %s) %s" % (str(t.get("due"))[:10], _safe_line(t.get("title"), 100))) if t.get("due") else
                         ("(no due date) %s" % _safe_line(t.get("title"), 100)) for t in (tasks or []) if isinstance(t, dict)],
+         "overdue": ["(due %s) %s" % (t["due"][:10], _safe_line(t.get("title"), 100)) for t in
+                     (overdue if overdue is not None else overdue_tasks(tasks, day))],
          "read_info": ri, "routine": routine_log, "desk": desk_log, "missing": missing}
 
     if dry_run:     # everything up to the model call; no model call, no record, no form, no used-marks. Counts only.
@@ -1771,6 +1788,7 @@ def hand_run(argv, model=None, out=print):
     since_ms = int(newest * 1000) if newest else now_ms - int(a.since_days * 86400000)
     con = None
     tasks, calendar, not_asked, t_left, t_open = [], [], 0, 0, 0
+    overdue_all = None
     source_delta, first_look, cur_snap = None, False, None
     try:
         import store
@@ -1823,6 +1841,7 @@ def hand_run(argv, model=None, out=print):
             calendar.sort(key=lambda c: str(c.get("start")))
             cal_total = len(calendar)
             calendar = calendar[:CAL_CAP]
+            overdue_all = overdue_tasks(tasks, day)        # before the cap: every overdue task, not only the shown ones
             tasks, t_left, t_open = select_tasks(tasks, day)
             say("   tasks: %d open, %d shown, %d left out; calendar items in the next 14 days: %d, %d shown (read-only)" % (
                 t_open, len(tasks), t_left, cal_total, len(calendar)))
@@ -1907,7 +1926,7 @@ def hand_run(argv, model=None, out=print):
                       dry_run=a.dry_run, questions_not_asked=not_asked, expected=expected, treat_all_as_new=a.all_mail_as_new,
                       read_info={"tasks_open": t_open, "tasks_left_out": t_left, "life_map": bool(life_map)},
                       source_delta=source_delta, source_first_look=first_look and cur_snap is not None, unconfirmed_text=unconf_text,
-                      stamper=_live_stamper(a.db), answers_reader=_live_answers_reader(a.db),
+                      stamper=_live_stamper(a.db), answers_reader=_live_answers_reader(a.db), overdue=overdue_all,
                       lens_runner=(mdl.lens_runner() if hasattr(mdl, "lens_runner") else None),
                       prm_reader=_lens_prm_reader(a.db, mdl))
     if a.dry_run:

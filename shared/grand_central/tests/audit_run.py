@@ -79,7 +79,7 @@ def _subject_key(subject):
 
 # The headings code itself writes. A section runs from its heading to the NEXT of these (or the end of the file): the AI's own
 # '#'/'##' headings inside "## The morning draft" do not end it (validation run 2: 7 of 9 tagged emails were missed).
-CODE_HEADINGS = ("needs him", "capacity", "unclassified emails", "what code read and counted", "the morning draft")
+CODE_HEADINGS = ("needs him", "capacity", "overdue tasks", "unclassified emails", "what code read and counted", "the morning draft")
 
 
 class Draft(object):
