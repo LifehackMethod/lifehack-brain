@@ -281,6 +281,39 @@ def new_messages(meta, already_used):
 
 # ================================================================ the prompt: files with stable labels, plain-words rules
 
+def _tz_of(stamp):
+    """the time zone the calendar mirror's own start/end string carries (its UTC offset): 'UTC', '-05:00', 'all-day (no time)', or 'not stated'"""
+    s = str(stamp or "").strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return "all-day (no time)"
+    m = re.search(r"(Z|[+-]\d{2}:?\d{2})$", s)
+    return "not stated" if not m else ("UTC" if m.group(1) == "Z" else m.group(1))
+
+
+def calendar_for_prompt(calendar):
+    """R1 (validation run 2): each event goes to the model with its real START, END, TIME ZONE and LOCATION, straight from the
+    calendar mirror (no ids). A missing location is the plain words 'not stated', never a blank the model could fill in."""
+    out = []
+    for c in _no_ids(calendar):
+        if not isinstance(c, dict):
+            out.append(c)
+            continue
+        d = dict(c)
+        d["tz"] = _tz_of(c.get("start"))
+        d["location"] = str(c.get("location") or "").strip() or "not stated"
+        d["end"] = c.get("end") or "not stated"
+        out.append(d)
+    return out
+
+
+def calendar_line(c):
+    """the code's 'Your next 14 days' line for one event: date, title, then start-end, zone and place from the mirror"""
+    loc = str(c.get("location") or "").strip()
+    return "%s: %s (%s to %s, time zone %s, place: %s)" % (
+        str(c.get("start"))[:10], _safe_line(c.get("title"), 100), c.get("start") or "not stated", c.get("end") or "not stated",
+        _tz_of(c.get("start")), _safe_line(loc, 100) if loc else "not stated")
+
+
 def _no_ids(items):
     """the model sees titles and dates; the ids are for the code's own accounting"""
     return [dict((k, v) for k, v in i.items() if k not in ("id", "_tid")) if isinstance(i, dict) else i for i in (items or [])]
@@ -327,6 +360,7 @@ MORNING_RULES = """HOW TO WRITE THE MORNING DRAFT (plain words; no JSON, no tabl
 - Every email you mention carries its [mail:<label>] tag, even when you do not quote it.
 - Quote code's numbers (counts, hours, days, dates) exactly as given; never re-rank or recompute them.
 - The file confirmed-answers (when present) holds his own recorded words about the people, events and tasks in today's inputs. Never restate a guess against them; a clash with one becomes a question for the next session.
+- A time, place or route that is not in your input is never written; if it matters, ask.
 - Use no tools. Everything you need is in this prompt."""
 
 REPAIR_TASK = """You wrote the morning draft below. Code checked every quote against the file it names and could not find the
@@ -499,7 +533,7 @@ def build_files(day, desk, confirmed, unconfirmed, direction, life_map, tasks, c
             text += "\n\nThere is no earlier picture: build one from his direction, the Life Map, the tasks and the calendar; every picture sentence is a guess.\nLIFE MAP:\n%s" % (life_map or "(not supplied)")
         files.append(("direction", text))
     files.append(("tasks", "his open tasks that matter (%d shown%s):\n%s" % (len(tasks or []), "; " + tasks_note if tasks_note else "", json.dumps(_no_ids(tasks), indent=1, sort_keys=True))))
-    files.append(("calendar", "his next 14 days (%d items):\n%s" % (len(calendar or []), json.dumps(_no_ids(calendar), indent=1, sort_keys=True))))
+    files.append(("calendar", "his next 14 days (%d items):\n%s" % (len(calendar or []), json.dumps(calendar_for_prompt(calendar), indent=1, sort_keys=True))))
     files.append(("questions", "\n".join("D%d: %s" % (i, q) for i, q in enumerate(questions, 1)) if questions else "(no questions from the delta)"))
     if lens_block:
         files.append(("lenses", lens_block.strip()))
@@ -1076,7 +1110,7 @@ def run_morning(model, day, desk, records_dir, baseline_text=None, tasks=None, c
         pass
     tasks_note = ("%d more open tasks left out (kept: overdue and due within 14 days first, then later-dated, then undated)" % ri["tasks_left_out"]
                   if ri["tasks_left_out"] else None)
-    x = {"cal_items": ["%s: %s" % (str(c.get("start"))[:10], _safe_line(c.get("title"), 100)) for c in (calendar or []) if isinstance(c, dict)],
+    x = {"cal_items": [calendar_line(c) for c in (calendar or []) if isinstance(c, dict)],
          "task_items": [("(due %s) %s" % (str(t.get("due"))[:10], _safe_line(t.get("title"), 100))) if t.get("due") else
                         ("(no due date) %s" % _safe_line(t.get("title"), 100)) for t in (tasks or []) if isinstance(t, dict)],
          "read_info": ri, "routine": routine_log, "desk": desk_log, "missing": missing}

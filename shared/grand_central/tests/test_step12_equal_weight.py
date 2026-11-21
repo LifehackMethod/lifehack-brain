@@ -185,6 +185,22 @@ class Prompt(t4.Base):
         self.assertIn("Event number 00", p)
 
 
+    def test_r1_the_prompt_carries_each_events_start_end_zone_and_location_and_the_no_invention_rule(self):
+        ev = [{"title": "Studio session", "start": "2026-11-22T10:00:00-05:00", "end": "2026-11-22T11:30:00-05:00",
+               "location": "Room 4, the Annex", "id": "c1"}]
+        files = morning.build_files(DAY, "desk-a", None, None, None, None, [], ev, [], None)
+        p = morning._rh().whole_prompt(morning.MORNING_TASK, files, rules=morning.MORNING_RULES)
+        for need in ("2026-11-22T10:00:00-05:00", "2026-11-22T11:30:00-05:00", "-05:00", "Room 4, the Annex"):
+            self.assertIn(need, p)
+        self.assertIn('"tz": "-05:00"', p)
+        self.assertIn("A time, place or route that is not in your input is never written; if it matters, ask.", p)
+        line = morning.calendar_line(ev[0])
+        self.assertTrue(line.startswith("2026-11-22: Studio session"))
+        for need in ("10:00:00-05:00", "11:30:00-05:00", "time zone -05:00", "Room 4, the Annex"):
+            self.assertIn(need, line)
+        self.assertIn("place: not stated", morning.calendar_line({"title": "X", "start": "2026-11-22", "end": "2026-11-23", "location": None}))
+
+
 class Accounting(t4.Base):
     def setUp(self):
         t4.Base.setUp(self)
