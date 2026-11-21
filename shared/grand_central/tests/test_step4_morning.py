@@ -1014,6 +1014,42 @@ class DiaryEntry(Base):
         self.assertEqual(read(p), after_first)                                                        # nothing added the second time
         self.assertEqual(os.listdir(os.path.dirname(p)), ["15.md"])                                   # no stray temp file
 
+    def test_an_online_only_page_read_through_local_first_still_gets_the_entry_appended(self):
+        # A Drive day page that a scheduled job cannot open directly (online-only): only local_first.read_text can read
+        # it. The morning entry must still be appended (read= passed to shared/diary_page.append_entry).
+        from unittest import mock
+        out = self.read_all(FakeModel(self.env, NOBASE))
+        root = os.path.join(self.tmp, "online-only")
+        p = morning.diary_entry_path(root, DAY, "desk-a")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        page = "---\nmentions: []\nconfidence: high\n---\n# His session\n- his own line\n"
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(page)
+        dp = morning._diary_page()
+
+        def offline(path):                                     # a direct open of an online-only file fails
+            raise OSError("Resource deadlock avoided (online-only Drive file)")
+
+        def run(append_entry):
+            with mock.patch.object(dp, "_read", offline), \
+                 mock.patch.object(morning.local_first, "read_text", lambda path: page), \
+                 mock.patch.object(dp, "append_entry", append_entry):
+                return morning.write_diary_entry(DAY, "desk-a", root, out["staged_ids"], out["handed"], out["stamped"],
+                                                 out["diary_counts"], con=self.con)
+
+        real = dp.append_entry
+
+        def no_read(*a, **k):                                  # the broken copy: the caller's read= is dropped
+            k.pop("read", None)
+            return real(*a, **k)
+        with self.assertRaises(Exception):                     # fails on the broken copy (the plain read cannot open it)
+            run(no_read)
+        self.assertEqual(read(p), page)                        # and nothing was written
+        self.assertEqual(run(real)["status"], "appended")      # passes on the real one
+        text = read(p)
+        self.assertTrue(text.endswith("\n") and "# His session\n- his own line\n" in text and text.count("# Morning read") == 1)
+        self.assertIn("confidence: high", text.split("---")[1])  # his page stays high
+
     def test_a_page_with_no_front_matter_keeps_every_line_and_gains_a_block(self):
         out = self.read_all(FakeModel(self.env, NOBASE))
         p = morning.diary_entry_path(os.path.join(self.tmp, "d"), DAY, "desk-a")

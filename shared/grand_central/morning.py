@@ -219,8 +219,6 @@ def parse_baseline(text):
     return Baseline(kind, date, lines, label)
 
 
-
-
 # ================================================================ what is new, what triage hands over
 
 def _used_path():
@@ -872,7 +870,6 @@ def _safe_line(v, n=60):
     return " ".join(("[link removed]" if (URL_RE.search(w) or "://" in w) else w) for w in v.split())[:n]
 
 
-
 def _excl_write(path, text):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
@@ -1246,72 +1243,22 @@ def find_staged(records_dir, day, desk):
     return [os.path.join(records_dir, n) for n in names]
 
 
-
 # ================================================================ the morning run's own diary entry
 
-_FM_TOP = re.compile(r"\A---\n(.*?)\n---\n", re.S)
+
+_DP = None
 
 
-def _json_list(s):
-    try:
-        v = json.loads(s)
-        return v if isinstance(v, list) and all(isinstance(x, str) for x in v) else None
-    except ValueError:
-        return None
-
-
-def _merge_front_matter(text, mentions, staged, confidence="low"):
-    """Merge into the page's TOP front matter: mentions = union, staged = union, confidence kept when it already says
-    high or medium (else low); every other line of the block is left exactly as it is. A page with no top block gets one
-    in front (nothing existing is changed). -> the page text with the merged block."""
-    m = _FM_TOP.match(text)
-    if not m:
-        import diary_keys
-        return diary_keys.front_matter(mentions, staged, confidence) + text
-    out, seen = [], set()
-    for ln in m.group(1).split("\n"):
-        if ln.startswith("mentions: ") and _json_list(ln[10:]) is not None:
-            old = _json_list(ln[10:])
-            ln = "mentions: %s" % json.dumps(old + [k for k in mentions if k not in old], ensure_ascii=True)
-            seen.add("mentions")
-        elif ln.startswith("staged: ") and _json_list(ln[8:]) is not None:
-            old = _json_list(ln[8:])
-            ln = "staged: %s" % json.dumps(old + [k for k in staged if k not in old], ensure_ascii=True)
-            seen.add("staged")
-        elif ln.startswith("confidence:"):
-            seen.add("confidence")
-            if ln.split(":", 1)[1].strip().lower() not in ("high", "medium", "low"):
-                ln = "confidence: %s" % confidence
-        out.append(ln)
-    if "mentions" not in seen:
-        out.append("mentions: %s" % json.dumps(list(mentions), ensure_ascii=True))
-    if "staged" not in seen and staged:
-        out.append("staged: %s" % json.dumps(list(staged), ensure_ascii=True))
-    if "confidence" not in seen:
-        out.append("confidence: %s" % confidence)
-    return "---\n" + "\n".join(out) + "\n---\n" + text[m.end():]
-
-
-def _replace_atomic_drive(path, text):
-    """temp file in the same folder, then rename; the local working copy is written too (local_first)."""
-    import tempfile
-    d = os.path.dirname(path)
-    fd, tmp = tempfile.mkstemp(prefix=".diary-", dir=d)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(text)
-            f.flush()
-            os.fsync(f.fileno())
-        os.chmod(tmp, 0o600)
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-    local_first.write_local_copy(path, text)
-
+def _diary_page():
+    """shared/diary_page.py: the ONE diary append of the plugin (append_entry). Imported on first use."""
+    global _DP
+    if _DP is None:
+        shared = os.path.dirname(HERE)
+        if shared not in sys.path:
+            sys.path.insert(0, shared)
+        import diary_page
+        _DP = diary_page
+    return _DP
 
 def _entry_heading(day, desk, staged_ids):
     return "# Morning read %s - %s desk (%s)" % (day, desk, ", ".join(staged_ids))
@@ -1342,22 +1289,18 @@ def write_diary_entry(day, desk, diary_root, staged_ids, handed, stamped, counts
              "- Counts: emails handed %d (to this diary); quotes verified %d, unverified %d; lenses ok %d, failed %d. Low confidence, never validated "
              "(only his planning session validates); the staged snapshot holds the draft." % (
                  len(handed or []), int(c.get("verified", 0)), int(c.get("unverified", 0)), int(c.get("lenses_ok", 0)), int(c.get("lenses_failed", 0))), ""]
-    if os.path.exists(path):
-        existing = local_first.read_text(path)
-        if any(ln.strip() == heading for ln in existing.splitlines()):
-            return {"status": "exists", "path": path, "mentions": [], "dropped": []}
-        merged = _merge_front_matter(existing, mentions, list(staged_ids))
-        if not merged.endswith("\n"):
-            merged += "\n"
-        _replace_atomic_drive(path, merged + "\n" + "\n".join(lines))
-        return {"status": "appended", "path": path, "mentions": mentions, "dropped": dropped}
-    body = [diary_keys.front_matter(mentions, list(staged_ids), "low").rstrip("\n")] + lines
+    diary_page = _diary_page()
+
+    def _local_copy(p):
+        with open(p, encoding="utf-8") as f:
+            local_first.write_local_copy(p, f.read())
+
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    try:
-        _excl_write_drive(path, "\n".join(body))
-    except FileExistsError:
-        return write_diary_entry(day, desk, diary_root, staged_ids, handed, stamped, counts, con, layout)
-    return {"status": "written", "path": path, "mentions": mentions, "dropped": dropped}
+    status = diary_page.append_entry(path, "\n".join(lines), mentions, list(staged_ids), "low", heading=heading,
+                                     after_write=_local_copy, read=local_first.read_text)
+    if status == "exists":
+        return {"status": "exists", "path": path, "mentions": [], "dropped": []}
+    return {"status": status, "path": path, "mentions": mentions, "dropped": dropped}
 
 
 def write_diary_entries(day, desk, diary_roots, table, staged_ids, handed, stamped, counts=None, con=None, layout="tree"):
@@ -1900,7 +1843,6 @@ def _live_stamper(db=None, labels=None):
             return stamp_keys.stamp_items(con, emails, calendar,
                                           [{"id": t.get("_tid")} for t in tasks or [] if isinstance(t, dict)], lab)
     return go
-
 
 
 def main(argv=None):
