@@ -77,13 +77,18 @@ def _subject_key(subject):
 
 # ================================================================ the draft: lines and sections
 
+# The headings code itself writes. A section runs from its heading to the NEXT of these (or the end of the file): the AI's own
+# '#'/'##' headings inside "## The morning draft" do not end it (validation run 2: 7 of 9 tagged emails were missed).
+CODE_HEADINGS = ("needs him", "capacity", "unclassified emails", "what code read and counted", "the morning draft")
+
+
 class Draft(object):
     def __init__(self, text):
         self.lines = text.split("\n")
-        self.section = []           # section heading in force at each line
+        self.section = []           # code's section heading in force at each line
         cur = "(top)"
         for ln in self.lines:
-            if ln.startswith("## "):
+            if ln.startswith("## ") and ln[3:].strip().lower() in CODE_HEADINGS:
                 cur = ln.strip()
             self.section.append(cur)
         self.low = [ln.lower() for ln in self.lines]
@@ -302,12 +307,16 @@ def audit(run, day, draft_text, desk=None, expected=None):
     # ---- held and quarantined, through the same functions as the run
     facts = facts_of(run)
     held_items = []
+    # ids already shown in an EARLIER draft: the run copy's held-shown file, rows before the audited day only (the run itself
+    # appends rows with day == the audited day)
+    seen_before = set(r.get("message_id") for r in _jsonl(os.path.join(run, "front-room", "catalogue", "held-shown.jsonl"))
+                      if str(r.get("day") or "") < day and r.get("message_id"))
     if facts:
         if has_db(run):
             with DB(run) as con:
-                held_items, _dropped = morning.held_items_from_facts(facts, con, ())
+                held_items, _dropped = morning.held_items_from_facts(facts, con, seen_before)
         else:
-            held_items, _dropped = morning.held_items_from_facts(facts, None, ())
+            held_items, _dropped = morning.held_items_from_facts(facts, None, seen_before)
     more = 0
     m_more = re.search(r"\.\.\.and (\d+) more", draft_text)
     if m_more:

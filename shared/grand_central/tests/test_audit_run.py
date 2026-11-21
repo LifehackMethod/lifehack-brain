@@ -163,6 +163,42 @@ class Part1(unittest.TestCase):
         self.assertIn("excluded label", held[0].reason)
         self.assertEqual(n, 1)
 
+    def test_a_tag_under_the_ais_own_sub_headings_is_found_in_the_morning_draft_section(self):
+        # validation run 2: the AI writes its own '#'/'##' headings under "## The morning draft"; a section runs to code's NEXT OWN heading
+        d = DRAFT.replace('Alice wants the venue contract: "sign by Friday" [mail:a1a1a1a1a1a1a1a1].',
+                          '# Morning draft X\nAlice wants the venue contract [mail:a1a1a1a1a1a1a1a1].\n\n## What changed\nBob wrote about the invoice [mail:%s].' % TB)
+        items, (_p, n) = self.go(d)
+        self.assertEqual(n, 0)
+        found = [i for i in items if i.category == "email (handed)" and "Quarterly" in i.label][0]
+        self.assertEqual(found.hits[0][1], "## The morning draft")
+        # a code heading ends the scope: a tag after the next code heading is not in "The morning draft"
+        d2 = DRAFT + "\n## Capacity\nBob [mail:%s]\n" % TB
+        self.assertEqual(audit_run.Draft(d2).find(["mail:" + TB], section="The morning draft"), [])
+
+    def _held_case(self, earlier_row):
+        mid = "eeee55550005"
+        facts = {"quarantined": 0, "held_after": 1, "delivered": 0, "written_at": "t", "held_messages_total": 1,
+                 "held_messages": [{"message_id": mid, "thread_id": "5555eeee", "status": "held", "reason": "no_outcome"}]}
+        with open(os.path.join(self.run, "drop", "facts", "_reader_pass.json"), "w", encoding="utf-8") as f:
+            json.dump(facts, f)
+        rows = [{"message_id": mid, "day": DAY}]                                # the run itself appends today's row: never counts
+        if earlier_row:
+            rows.append({"message_id": mid, "day": "2026-11-20"})
+        with open(os.path.join(self.run, "front-room", "catalogue", "held-shown.jsonl"), "w", encoding="utf-8") as f:
+            f.write("".join(json.dumps(r) + "\n" for r in rows))
+        draft = DRAFT.replace("New held or quarantined since the last draft: none.",
+                              "New held or quarantined since the last draft: none.\nStill held or quarantined from earlier: 1")
+        items, (_p, n) = self.go(draft)
+        return [i for i in items if i.category == "held/quarantined"][0], n
+
+    def test_a_held_item_shown_in_an_earlier_draft_is_reasoned_and_without_an_earlier_row_a_defect(self):
+        it, n = self._held_case(True)
+        self.assertIn("held from an earlier draft", it.reason)
+        self.assertEqual(n, 1)                                                  # only the absent invoice
+        it, n = self._held_case(False)
+        self.assertFalse(it.reason)
+        self.assertEqual(n, 2)
+
     def test_the_reader_inputs_are_plain_text_files_and_no_body_text_is_copied(self):
         rc = audit_run.main(["--run", self.run, "--day", DAY, "--draft", self._draft_file(), "--out", self.out])
         self.assertEqual(rc, 0)
