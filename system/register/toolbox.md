@@ -69,6 +69,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/cal_config.py` · the one place a calendar or task-list identifier is read from
 - `/shared/desk_door.py` · the desk door's checks (canon/desk-building-sop.md section 5) as one code check
 - `/shared/desk_list.py` · the ONE reader of YOUR desk list, kept in your notes folder next to your desks (and, since CR-9 step 2a, the ONE writer of a new desk's…
+- `/shared/diary_page.py` · the ONE desk-neutral diary append: whoever produces an entry on a day's page APPENDS its own (Spec 3.10)
 - `/shared/disk_preflight.py` · THE disk-low preflight: refuse to START a rig/exam run or the full test suite on a nearly full disk
 - `/shared/grand_central/alarm.py` · alarm.py: the alarm's path (Grand Central V2, plan B2 step 5)
 - `/shared/grand_central/backup.py` · Backups for rig.db. Always the sqlite3 backup API, never a file copy (safe under WAL)
