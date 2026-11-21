@@ -76,6 +76,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/batch_reader.py` · the "AI reads everything" lane (plan task 1.5b)
 - `/shared/grand_central/capacity.py` · 4P.3 item 3: the Capacity section of the morning snapshot, computed by CODE, never a model
 - `/shared/grand_central/check_personal_values.py` · the LOCK: engine code must hold none of the owner's personal values
+- `/shared/grand_central/claude_child.py` · One shared helper for the argv the front room's `claude -p` children get, so they run the same hooks his windows do (coordinator 38, route…
 - `/shared/grand_central/clock.py` · clock.py: the one place the rig reads the wall clock where liveness matters
 - `/shared/grand_central/common.py` · common.py: shared helpers for the engine steps
 - `/shared/grand_central/coverage.py` · the front room's checks on its own work

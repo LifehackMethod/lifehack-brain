@@ -89,7 +89,15 @@ class ClaudeCliModel(Model):
                "--output-format", "text"]
         if self.model:
             cmd += ["--model", self.model]
+        cmd += self.window_flags()
         return self._spawn(cmd, prompt, None)
+
+    @staticmethod
+    def window_flags():
+        """coordinator 38 route A: the windows' hook flags, through the one shared helper (claude_child). The warning, if any,
+        is printed by the hand-run (step 4c)."""
+        import claude_child
+        return claude_child.window_flags()[0]
 
     def lens_runner(self):
         """4P.3 slice B: the sibling adapter for the four read-only lens passes (same login, same child environment)."""
@@ -160,6 +168,7 @@ class ClaudeLensModel(ClaudeCliModel):
                "--strict-mcp-config", "--no-session-persistence", "--output-format", "text"]
         if self.model:
             cmd += ["--model", self.model]
+        cmd += self.window_flags()
         return cmd
 
     def complete_in(self, prompt, folder):
@@ -1844,6 +1853,13 @@ def hand_run(argv, model=None, out=print):
     say("4b. expected patterns (setup/expected.json): %s" % ("%d routine, %d not-autopay, %d desk routes" % (
         len(expected.get("routine") or []), len(expected.get("not_autopay") or []), len(expected.get("desk_routes") or []))
         if expected else "FILE MISSING, nothing treated as routine"))
+    try:
+        import claude_child
+        _flags, _warn = claude_child.window_flags()
+    except Exception as e:
+        _warn = "window flags missing: helper failed (%s)" % type(e).__name__
+    if _warn:
+        say("4c. " + _warn + " (the model children run without the windows' hooks)")
     # (5) + (6)
     if a.dry_run:
         mdl = model or Model()

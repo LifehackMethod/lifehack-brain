@@ -545,6 +545,7 @@ def claude_ai(prompt, timeout=900):
     sys.path.insert(0, os.path.join(gc_settings.plugin_root(), "shared", "tools"))
     from model_ids import model_id   # the ONE model table: ask for a tier, never an id
     argv = [br.CLAUDE_BIN, "-p", "--model", model_id("medium"), "--output-format", "json", "--tools", "", "--strict-mcp-config"]
+    argv += br._window_flags()       # coordinator 38 route A: the windows' hook flags (claude_child), [] when anything is missing
     with tempfile.TemporaryDirectory() as cwd:
         try:
             r = subprocess.run(argv, input=prompt, capture_output=True, text=True, timeout=timeout, env=br._claude_env(), cwd=cwd)

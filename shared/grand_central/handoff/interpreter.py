@@ -66,9 +66,14 @@ def call_reader(prompt):
     env = dict(os.environ)
     for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"):
         env.pop(k, None)
+    _gc = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if _gc not in sys.path:
+        sys.path.append(_gc)
+    import claude_child     # coordinator 38 route A: the windows' hook flags, one helper
+    env = claude_child.child_env(env)
     try:
         r = subprocess.run([_claude_bin(), "-p", prompt, "--model", model_id("medium"),
-                            "--tools", "", "--strict-mcp-config", "--output-format", "text"],
+                            "--tools", "", "--strict-mcp-config", "--output-format", "text"] + claude_child.window_flags()[0],
                            capture_output=True, text=True, timeout=TIMEOUT_S, env=env)
     except subprocess.TimeoutExpired:
         return None, "interpreter timed out"

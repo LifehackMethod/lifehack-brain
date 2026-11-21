@@ -13,6 +13,8 @@
 #   GC_RUN_ROOT    a LOCAL owner-only folder for the copies (refused if under a synced folder) required
 #   GC_OUT         where the draft is handed (a file path that must not exist yet)           required
 #   GC_DROP_SRC    the mailroom drop folder                                                  required
+#   GC_CHILD_SETTING_SOURCES, GC_CHILD_SETTINGS   optional: the window flags for the model children (claude_child.py reads
+#                  them from the environment; this script only inherits them, it clears nothing)
 #   GC_LIFE_MAP    the statement of direction      (default $GC_NOTES/desks/$GC_PLANNING/life-map.md)
 #   GC_CODE_DIR    the plugin tree to run          (default: the tree this script is in)
 set -euo pipefail
