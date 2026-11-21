@@ -1221,6 +1221,30 @@ class DiaryEntry(Base):
         kept, stats = morning.filter_questions([q], self.con, subjects)
         self.assertEqual((kept, stats["answered"]), ([q], 0))                           # kept: fail toward asking
 
+    def test_r6_an_answer_recorded_at_the_organisation_drops_the_persons_question_by_id_and_a_failed_lookup_keeps_it(self):
+        import store_graph as sg
+        org2 = sg.thing(self.con, "organization", "Tenmgmt Agency")
+        org3 = sg.thing(self.con, "organization", "Quietco Holdings")
+        zed = sg.thing(self.con, "person", "Zed Quietperson")
+        placed = self.con.execute("INSERT INTO kg_answers(question,words,asked_by,said_on,recorded_at) VALUES('placement','he placed them','w','2026-11-12','2026-11-12T00:00:00Z')").lastrowid
+        sg.add_link(self.con, self.eli, "member_of", org2, "owner", "sure", "answer", None, placed)       # membership is his word only
+        sg.add_link(self.con, zed, "member_of", org3, "owner", "sure", "answer", None, placed)
+        sg.add_link(self.con, sg.thing(self.con, "address", "zed@quiet.example"), "address_of", zed, "code", "sure", "code")
+        self.con.commit()
+        QZ = "zed@quiet.example usually writes every ~3 days and has been silent 9 days: is that expected?"
+        self._answer(self.key(org2), "Tenmgmt is my agent's office; silence from them is normal.", question="who is tenmgmt")   # the ORG has the row, the person has none
+        kept, stats = morning.filter_questions([self.QA, QZ], self.con)
+        self.assertEqual(kept, [QZ])                                            # Eli's question dropped via his org; Zed's org has no answer: kept
+        self.assertEqual(stats["answered"], 1)
+        orig = morning.org_keys_of_person
+        morning.org_keys_of_person = lambda con, k: (_ for _ in ()).throw(ValueError("bad"))
+        try:
+            bad = []
+            kept2, _s = morning.filter_questions([self.QA], self.con, None, bad)
+        finally:
+            morning.org_keys_of_person = orig
+        self.assertEqual((kept2, bad), ([self.QA], [self.QA]))                  # lookup error: kept and counted
+
     def test_held_casting_line_counts_held_items_from_casting_labels_and_says_how_it_decided(self):
         self.con.execute("INSERT INTO labels(id,name,type) VALUES('Label_c','Casting-Notices','user')")
         self.con.execute("INSERT INTO messages(id, from_addr, label_ids) VALUES('cc11cc11cc11','casting@example.test','[\"Label_c\"]')")

@@ -1838,7 +1838,7 @@ def hand_run(argv, model=None, out=print):
                 _stand = lambda addr: 0.0   # noqa: E731
             questions, not_asked = rank_questions(all_q, _stand, a.max_questions)
             _subj, _unkeyed = question_subject_keys(d.get("calendar_tasks"), con)
-            questions, qstats = filter_questions(questions, con, _subj)
+            questions, qstats = filter_questions(questions, con, _subj, _unkeyed)
             if any(qstats.values()):
                 say("   questions tidied: %d merged into one per person, %d exact duplicate(s), %d already answered by him (dropped)" % (
                     qstats["merged"], qstats["duplicates"], qstats["answered"]))
@@ -2104,12 +2104,20 @@ def question_subject_keys(source_delta, con):
     return out, unkeyed
 
 
-def filter_questions(questions, con, subjects=None):
+def org_keys_of_person(con, person_key):
+    """R6: the organisation key(s) a person belongs to, by current links only (member_of / works_at, person -> organization). By id, never text."""
+    return {k for (k,) in con.execute(
+        "SELECT t.key FROM kg_things f JOIN kg_current_links l ON l.from_id=f.id JOIN kg_things t ON t.id=l.to_id AND t.kind='organization' "
+        "WHERE f.key=? AND f.kind='person' AND l.kind IN ('member_of','works_at') AND t.retired_at IS NULL", (person_key,))}
+
+
+def filter_questions(questions, con, subjects=None, unkeyed=None):
     """F2: the email questions handed to the model: ONE per PERSON (addresses that resolve to the same PRM person merge into
     one), exact duplicate texts dropped, and nothing about anyone he has ALREADY ANSWERED (a kg_answers row on that person, on
     any of their addresses, or naming the address). Calendar and task questions are dropped only when `subjects` (their entry's own
     keys, question_subject_keys) match a kg_answers subject_key, never by their text; the order is kept.
     -> (kept, {"merged": n, "duplicates": n, "answered": n})"""
+    import sqlite3
     import stamp_keys
     sg = stamp_keys.sg
     stats = {"merged": 0, "duplicates": 0, "answered": 0}
@@ -2142,6 +2150,11 @@ def filter_questions(questions, con, subjects=None):
             if pk:
                 keys.add(pk)
                 keys.update(_sibling_address_keys(con, pk))
+                try:
+                    keys.update(org_keys_of_person(con, pk))       # R6: his answer about the person's organisation covers the person
+                except (sqlite3.Error, KeyError, ValueError, TypeError):
+                    if unkeyed is not None:
+                        unkeyed.append(q)                          # a failed lookup keeps the question and is counted
                 group = pk
             else:
                 group = "address:" + addr
