@@ -469,7 +469,7 @@ class Core(Base):
         self.assertTrue(out["ok"], out)
         rec = read(out["record_path"])
         top = rec.split("## Needs him")[0]
-        self.assertIn("Held or quarantined since the last draft: 2", top)
+        self.assertIn("New held or quarantined since the last draft: 2", top)
         self.assertIn("quarantined by the scan", top)
         self.assertNotIn("evil.test", rec)
         self.assertNotIn("​", rec)
@@ -479,7 +479,7 @@ class Core(Base):
         self.env = Env()
         self.env.load_case("04_quiet_week")
         out = morning.run_morning(FakeModel(self.env, reply()), DAY, "desk-b", self.env.records, baseline_text=baseline("04_quiet_week"))
-        self.assertIn("Held or quarantined since the last draft: none.", read(out["record_path"]))
+        self.assertIn("New held or quarantined since the last draft: none.", read(out["record_path"]))
 
     def test_handed_status_is_set_by_code_not_the_ai(self):
         out = self.run_case("01_paid_testreel", FakeModel(self.env, "I read nothing in particular."))
@@ -766,6 +766,75 @@ class Core(Base):
 
 
 # ================================================================ pieces
+
+class HeldList(Base):
+    """The held list at the top: NEW items in full, earlier ones as ONE count, excluded-label mail only counted."""
+
+    @staticmethod
+    def item(mid, reason, new=True, **kw):
+        d = {"sender": "Odd <%s@x.test>" % mid, "subject": "subject %s" % mid, "date": "2026-11-15", "message_id": mid,
+             "reason": ("NEW, " if new else "seen in an earlier draft, ") + "held: " + reason, "reason_code": reason, "_new": new}
+        d.update(kw)
+        return d
+
+    def render(self, items, **kw):
+        return "\n".join(morning.render_held(morning.clean_held(items, [], **kw)))
+
+    def check(self, render):
+        """True when every rule holds for the standard fixture set."""
+        items = [self.item("aaaa11110001", "attack"), self.item("bbbb22220002", "suspicious", new=False),
+                 self.item("cccc33330003", "excluded_label"), self.item("dddd44440004", "excluded_label", new=False)]
+        text = render(items)
+        listed = [ln for ln in text.splitlines() if ln.startswith("- ")]
+        head = [ln for ln in text.splitlines() if ln.startswith("New held or quarantined")] or [""]
+        head = head[0]
+        return (len(listed) == 1 and "subject aaaa11110001" in text and "New held or quarantined since the last draft: 1" in head
+                and "subject bbbb22220002" not in text and "Still held or quarantined from earlier: 1" in text
+                and "subject cccc33330003" not in text and "subject dddd44440004" not in text
+                and "In labels you chose not to open: 2" in text)
+
+    def test_new_listed_old_counted_excluded_only_counted_and_the_heading_matches(self):
+        def broken(items, **kw):             # the old behaviour: list everything, no counts
+            return "Held or quarantined since the last draft: %d\n" % len(items) + "\n".join("- subject %s" % i["message_id"] for i in items)
+        self.assertFalse(self.check(broken))                                    # fails on the broken copy
+        self.assertTrue(self.check(self.render))                                # passes on the real one
+
+    def test_a_new_quarantined_item_is_listed_in_full(self):
+        text = self.render([self.item("aaaa11110001", "attack")])
+        self.assertIn("New held or quarantined since the last draft: 1", text)
+        self.assertIn("2026-11-15 | Odd <aaaa11110001@x.test> | subject aaaa11110001 | NEW, held: attack", text)
+        self.assertNotIn("Still held", text)
+        self.assertNotIn("In labels", text)
+
+    def test_nothing_new_says_none_and_the_excluded_line_is_dropped_at_zero(self):
+        text = self.render([self.item("bbbb22220002", "suspicious", new=False)])
+        self.assertIn("New held or quarantined since the last draft: none.", text)
+        self.assertIn("Still held or quarantined from earlier: 1", text)
+        self.assertNotIn("In labels you chose not to open", text)
+
+    def test_the_heading_count_equals_what_is_listed_even_past_the_cap(self):
+        items = [self.item("%012x" % (0xa00000000000 + i), "attack") for i in range(25)]
+        h = morning.clean_held(items, [], cap=20)
+        self.assertEqual((h["new_count"], len(h["items"]), h["more"]), (25, 20, 5))
+        text = "\n".join(morning.render_held(h))
+        self.assertIn("New held or quarantined since the last draft: 25", text)
+        self.assertEqual(len([ln for ln in text.splitlines() if ln.startswith("- 2026")]), 20)
+        self.assertIn("...and 5 more", text)
+
+    def test_end_to_end_marks_come_only_after_staging_and_split_new_from_seen(self):
+        facts = {"quarantined": 1, "held_after": 2, "delivered": 0, "written_at": "t", "held_messages_total": 3, "held_messages": [
+            {"message_id": "aaaa11110001", "thread_id": "1111aaaa", "status": "quarantined", "reason": "attack"},
+            {"message_id": "bbbb22220002", "thread_id": "2222bbbb", "status": "held", "reason": "scan_unjudged"},
+            {"message_id": "cccc33330003", "thread_id": "3333cccc", "status": "held", "reason": "excluded_label"}]}
+        items, _d = morning.held_items_from_facts(facts, None, seen={"bbbb22220002"})
+        h = morning.clean_held(items, [], mailroom_pass=facts)
+        self.assertEqual((h["new_count"], h["still"], h["excluded"]), (1, 1, 1))
+        text = "\n".join(morning.render_held(h))
+        self.assertIn("aaaa11110001", text)
+        self.assertNotIn("bbbb22220002", text)
+        self.assertNotIn("cccc33330003", text)
+        self.assertEqual(morning.held_seen(), set())                    # marks are written by hand_run after staging only
+
 
 class Pieces(Base):
     def test_accounting_function_is_pure_and_strict(self):
@@ -1213,7 +1282,7 @@ class HandRun(Base):
         rec_dir = os.path.join(self.notes, "desks", "desk-a", "records", "context")
         self.assertEqual(os.listdir(rec_dir), ["%s-desk-a.md" % DAY])
         rec = read(os.path.join(rec_dir, "%s-desk-a.md" % DAY))
-        self.assertIn("Held or quarantined since the last draft: 3", rec.split("## What changed")[0])
+        self.assertIn("Still held or quarantined from earlier: 3", rec.split("## Needs him")[0])      # the mailroom published no ids: counted, not listed
         self.assertIn("Life Map", text)                                    # first run: said so
         self.assertIn("Ship the proposal.", m.prompts[0])                  # Life Map reached the prompt
         self.assertIn('"title": "Send proposal"', m.prompts[0])            # task read from the scratch db
@@ -1257,8 +1326,8 @@ class HandRun(Base):
         self.assertEqual(rc, 0, text)
         self.assertIn("2 matched" if False else "ids published: 2 (1 matched to an envelope row, 1 unknown; 2 new since an earlier draft; 1 rows dropped by the validator)", text)
         rec = read(os.path.join(self.notes, "desks", "desk-a", "records", "context", "%s-desk-a.md" % DAY))
-        top = rec.split("## What changed")[0]
-        self.assertIn("Held or quarantined since the last draft: 2", top)
+        top = rec.split("## Needs him")[0]
+        self.assertIn("New held or quarantined since the last draft: 2", top)
         self.assertIn("2025-11-15 | Odd Sender <odd@x.test> | Act now [link removed] please | NEW, quarantined: attack", top)
         self.assertIn("unknown sender (id ffff2222cccc) |", top)
         self.assertIn("NEW, held: scan_unjudged", top)
@@ -1290,8 +1359,11 @@ class HandRun(Base):
         m2 = FakeModel(self.env, reply())
         rc, text = self.hand(m2, "--i-know-this-calls-the-real-model", "--day", "2026-11-16")
         self.assertEqual(rc, 0, text)
-        top = read(os.path.join(self.notes, "desks", "desk-a", "records", "context", "2026-11-16-desk-a.md")).split("## What changed")[0]
-        self.assertLess(top.index("NEW, quarantined: suspicious"), top.index("seen in an earlier draft, quarantined: attack"))
+        top = read(os.path.join(self.notes, "desks", "desk-a", "records", "context", "2026-11-16-desk-a.md")).split("## Needs him")[0]
+        self.assertIn("New held or quarantined since the last draft: 1", top)
+        self.assertIn("NEW, quarantined: suspicious", top)
+        self.assertNotIn("quarantined: attack", top)                          # seen in an earlier draft: only counted
+        self.assertIn("Still held or quarantined from earlier: 1", top)
         self.assertIn("1 new since an earlier draft", text)
 
     def test_at_most_15_questions_new_and_changed_first_then_missing_by_standing_and_the_rest_counted(self):

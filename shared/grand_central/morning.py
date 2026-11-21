@@ -613,20 +613,34 @@ def render_record(day, desk, stem, label, draft, held, x, unverified=None, quiet
 # ================================================================ quarantined / held mail must never vanish silently
 
 def clean_held(items, refused=None, cap=20, mailroom_pass=None):
-    """The draft's top shows what was quarantined or held since the last draft: envelope facts only (sender, subject,
-    date, reason), never the text. `items` come from the caller (the mailroom's register joined to the envelope check);
+    """The draft's top shows what is NEW among the held or quarantined mail since the last draft: envelope facts only
+    (sender, subject, date, reason), never the text. `items` come from the caller (the mailroom's register joined to the
+    envelope check); an item carries `_new` (False = already shown in an earlier draft; absent = new) and its reason.
+    - NEW items are listed in full (up to `cap`);
+    - everything still held from an earlier draft is ONE count ("still");
+    - mail held only because it sits in an excluded label (reason excluded_label) is not suspicious, never listed,
+      only counted ("excluded"), new or not.
     `refused` = transcripts.refused_records() (ids and closed reasons: the front room refused a delivery). Fields are
     stranger-written, so each is cleaned here (one line, bounded, no URL / hidden characters) and they go ONLY into the
-    code-rendered record and the form, never into the model's prompt. -> {"count": n, "items": [...], "refused_at_ingest": k}"""
-    out = []
+    code-rendered record, never into the model's prompt.
+    -> {"count": all of it, "new_count": K listed (plus "more"), "items": [...], "more", "still": N, "excluded": E,
+        "refused_at_ingest": k, "mailroom_last_pass": ...}"""
+    rows, still, excluded = [], 0, 0
     for it in items or []:
+        reason_raw = str((it or {}).get("reason") or "")
+        if (it or {}).get("reason_code") == "excluded_label" or reason_raw.endswith("excluded_label"):
+            excluded += 1
+            continue
+        if (it or {}).get("_new") is False:
+            still += 1
+            continue
         row = {}
         for k in ("sender", "subject", "date", "reason"):
             v = str((it or {}).get(k) or "")
             v = "".join(ch for ch in v if unicodedata.category(ch) not in ("Cc", "Cf", "Cs", "Zl", "Zp", "Co"))
             v = " ".join("[link removed]" if (URL_RE.search(w) or "://" in w) else w for w in v.split())[:120]
             row[k] = v
-        out.append(row)
+        rows.append(row)
     mp = None
     if isinstance(mailroom_pass, dict):
         mp = dict((k, mailroom_pass.get(k)) for k in ("quarantined", "quarantined_total", "held_after", "delivered", "written_at", "held_messages_total")
@@ -637,27 +651,31 @@ def clean_held(items, refused=None, cap=20, mailroom_pass=None):
     mp_n = (q + mp.get("held_after", 0)) if mp and isinstance(q, int) and isinstance(mp.get("held_after", 0), int) else 0
     if mp and isinstance(mp.get("held_messages_total"), int):
         mp_n = max(mp_n, mp["held_messages_total"])
-    n = max(len(out), mp_n) + len(refused or [])        # the mailroom's own count wins when it is larger than the list
-    return {"count": n, "items": out[:cap], "more": max(0, len(out) - cap),
+    n_items = len(items or [])
+    unpublished = max(0, mp_n - n_items)               # the mailroom counts mail it published no id for: earlier, unknown
+    return {"count": max(n_items, mp_n) + len(refused or []), "new_count": len(rows), "items": rows[:cap], "more": max(0, len(rows) - cap),
+            "still": still + unpublished, "excluded": excluded,
             "refused_at_ingest": len(refused or []), "mailroom_last_pass": mp}
 
 
 def render_held(held):
-    if not held or not held["count"]:
-        return ["Held or quarantined since the last draft: none.", ""]
-    lines = ["Held or quarantined since the last draft: %d (envelope facts only; the text is never shown)." % held["count"]]
-    for it in held["items"]:
-        lines.append("- %s | %s | %s | %s" % (it["date"], it["sender"], it["subject"], it["reason"]))
-    if held.get("more"):
-        lines.append("- ...and %d more" % held["more"])
-    mp = held.get("mailroom_last_pass")
-    listed = len(held["items"]) + held.get("more", 0)
-    if mp and listed < held["count"] - held.get("refused_at_ingest", 0):
-        lines.append("- The mailroom's last pass (%s) reports %s quarantined and %s held unread; %d of them are not listed above "
-                     "(no ids published for them): look at them in the mailroom's quarantine review." % (mp.get("written_at", "time unknown"), mp.get("quarantined_total", mp.get("quarantined", "?")), mp.get("held_after", "?"),
-                        held["count"] - held.get("refused_at_ingest", 0) - listed))
-    if held.get("refused_at_ingest"):
-        lines.append("- %d delivery(ies) refused by the front room at ingest (ids in refused-at-ingest.jsonl)." % held["refused_at_ingest"])
+    held = held or {}
+    k = held.get("new_count", 0)
+    lines = []
+    if not k and not held.get("refused_at_ingest"):
+        lines.append("New held or quarantined since the last draft: none.")
+    else:
+        lines.append("New held or quarantined since the last draft: %d (envelope facts only; the text is never shown)." % k)
+        for it in held.get("items") or []:
+            lines.append("- %s | %s | %s | %s" % (it["date"], it["sender"], it["subject"], it["reason"]))
+        if held.get("more"):
+            lines.append("- ...and %d more" % held["more"])
+        if held.get("refused_at_ingest"):
+            lines.append("- %d delivery(ies) refused by the front room at ingest (ids in refused-at-ingest.jsonl)." % held["refused_at_ingest"])
+    if held.get("still"):
+        lines.append("Still held or quarantined from earlier: %d" % held["still"])
+    if held.get("excluded"):
+        lines.append("In labels you chose not to open: %d" % held["excluded"])
     return lines + [""]
 
 
@@ -1555,10 +1573,10 @@ def held_items_from_facts(facts, con, seen=()):
                 date = datetime.datetime.fromtimestamp(int(row[3]) / 1000, datetime.timezone.utc).date().isoformat()
             except (TypeError, ValueError, OverflowError, OSError):
                 date = ""
-            out.append({"sender": sender, "subject": row[2] or "", "date": date, "reason": reason, "message_id": mid, "_new": new})
+            out.append({"sender": sender, "subject": row[2] or "", "date": date, "reason": reason, "reason_code": it["reason"], "message_id": mid, "_new": new})
         else:
             out.append({"sender": "unknown sender (id %s)" % mid[:12], "subject": "", "date": "", "reason": reason,
-                        "message_id": mid, "_new": new})
+                        "message_id": mid, "_new": new, "reason_code": it["reason"]})
     out.sort(key=lambda r: not r["_new"])          # stable: new first, the mailroom's newest-first order kept inside each group
     return out, dropped
 
