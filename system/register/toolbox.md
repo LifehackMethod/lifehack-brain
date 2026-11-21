@@ -94,19 +94,18 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/gather.py` · gather.py: step 1. Picks the items in the window and writes one kg_scores row each (signal 'window', value 1, reason = why it is in)
 - `/shared/grand_central/gc.py` · gc: Grand Central's one command. Read-only unless the subcommand says otherwise
 - `/shared/grand_central/gc_settings.py` · shared/grand_central/gc_settings.py: the ONE settings loader of the Grand Central engine
-- `/shared/grand_central/gcjobs.py` · gcjobs.py: the three scheduled jobs of Grand Central's Phase 1 (plan 1.3 and 1.4)
+- `/shared/grand_central/gcjobs.py` · gcjobs.py: the scheduled jobs of Grand Central's Phase 1 (plan 1.3 and 1.4)
 - `/shared/grand_central/handoff/handoff.py` · Phase H, the hand-off folder. An .eml the owner downloads from Gmail and asks for by name
 - `/shared/grand_central/handoff/interpreter.py` · the TOOL-LESS interpreter for the hand-off folder (Phase H3)
 - `/shared/grand_central/handoff/worker.py` · the untrusted-content half of the hand-off reader
 - `/shared/grand_central/jobs/gc-diary-index-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.3 item 10)…
 - `/shared/grand_central/jobs/gc-fast-clock-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.0b / 4P.8)…
-- `/shared/grand_central/jobs/gc-midnight-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.0b / 4P.8)…
 - `/shared/grand_central/jobs/gc-morning-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.0b / 4P.8)…
 - `/shared/grand_central/jobs/gc-snapshot-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.0b / 4P.8)…
 - `/shared/grand_central/local_first.py` · the ONE way a scheduled job reads a file that lives on Google Drive
 - `/shared/grand_central/migrate.py` · migrate.py: apply the migrations to rig.db
 - `/shared/grand_central/model_check.py` · model_check.py: `gc rebuild` and `gc check` (Phase 2 step 2.6; Vision 3.7.4 rules 5 and 6, 3.17 health check)
-- `/shared/grand_central/morning.py` · the morning read (plan B1 "The stages" item 3; B2 step 4)
+- `/shared/grand_central/morning.py` · the morning read (plan 4P.3R: rebuilt to the Spec)
 - `/shared/grand_central/mover/limits.py` · Google's ceilings for a consumer Apps Script account
 - `/shared/grand_central/mover/mover_request.py` · build a mover request from a JSON list of actions and (optionally) write it
 - `/shared/grand_central/mover/mover_schema.py` · the strict request schema + refusal rules, in Python

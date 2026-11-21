@@ -177,6 +177,11 @@ _MORNING = re.compile(
     r"used (?P<used>\d+), sorted out by triage (?P<sorted>\d+), skipped with a reason (?P<skip>\d+)")
 
 
+# 4P.3R: the proof line may end with the rebuilt read's own counts (older lines have none; both are read).
+_MORNING_COUNTS = re.compile(r"handed (?P<handed>\d+) emails; quotes verified (?P<qv>\d+), unverified (?P<qu>\d+); "
+                             r"lenses ok (?P<lok>\d+), failed (?P<lfail>\d+)")
+
+
 def morning_light(proof, problem, now, rhythm_s=DAILY_S):
     """proof: the proof line (str) or the same as a JSON object with new per-source fields (tolerated, passed through)."""
     if proof is None:
@@ -195,6 +200,13 @@ def morning_light(proof, problem, now, rhythm_s=DAILY_S):
     day = _parse_ts(m.group("day"))
     payload = {"day": m.group("day"), "new": n["new"], "examined": n["exam"], "used": n["used"],
                "sorted_by_triage": n["sorted"], "skipped_with_reason": n["skip"], "proof_line": line[:600]}
+    mc = _MORNING_COUNTS.search(line)
+    counts_text = ""
+    if mc:
+        payload.update({"emails_handed": int(mc.group("handed")), "quotes_verified": int(mc.group("qv")),
+                        "quotes_unverified": int(mc.group("qu")), "lenses_ok": int(mc.group("lok")), "lenses_failed": int(mc.group("lfail"))})
+        counts_text = "; %s handed, quotes %s verified / %s unverified, lenses %s ok / %s failed" % (
+            mc.group("handed"), mc.group("qv"), mc.group("qu"), mc.group("lok"), mc.group("lfail"))
     for k, v in extra.items():
         payload.setdefault("src_" + str(k), v)       # new per-source fields ride along, never crash
     if "NOT ACCOUNTED" in line or "every new email accounted for" not in line:
@@ -206,7 +218,7 @@ def morning_light(proof, problem, now, rhythm_s=DAILY_S):
     if n["exam"] == 0:
         return _light("NEEDS_REVIEW", "morning read examined nothing (%s)" % m.group("day"), payload)
     tail = "nothing new" if n["new"] == 0 else "%d new, %d used, %d sorted out, %d skipped with a reason" % (n["new"], n["used"], n["sorted"], n["skip"])
-    return _light("OK", "morning read %s: %d examined, %s, all accounted for" % (m.group("day"), n["exam"], tail), payload)
+    return _light("OK", "morning read %s: %d examined, %s, all accounted for%s" % (m.group("day"), n["exam"], tail, counts_text), payload)
 
 
 MORNING_FAIL_TRIES = 3 # the failed flag in the launch ledger (slice W item B)

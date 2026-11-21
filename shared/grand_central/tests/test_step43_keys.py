@@ -119,26 +119,26 @@ class T(unittest.TestCase):
                          ["retired_or_merged_key_written:" + self.k(self.gone)])
         self.assertTrue(dk.check_entry("# no front matter\n", [], self.con))
 
-    def test_5_midnight_entry_writes_and_reader_parses_back(self):
-        rec = os.path.join(self.tmp, "rec"); fd = os.path.join(self.tmp, "forms"); diary = os.path.join(self.tmp, "diary")
-        os.makedirs(rec); os.makedirs(fd)
-        md = os.path.join(rec, "%s-desk-b.md" % DAY)
-        with open(md, "w", encoding="utf-8") as f:
-            f.write("# staged\n")
-        form = self.form([self.k(self.old), self.k(self.dana)])
-        with open(os.path.join(fd, "%s-desk-b.form.json" % DAY), "w", encoding="utf-8") as f:
-            json.dump(form, f)
-        res = morning.midnight_entry(DAY, "desk-b", [md], diary, "tree", fd, con=self.con)
+    def test_5_morning_diary_entry_writes_and_reader_parses_back(self):
+        diary = os.path.join(self.tmp, "diary")
+        stamped = [{"source": "email", "id": "m1", "keys": [self.k(self.old), self.k(self.dana)]}]
+        handed = [{"id": "m1", "thread_id": self.thread}]
+        res = morning.write_diary_entry(DAY, "desk-b", diary, [DAY + "-desk-b"], handed, stamped,
+                                        None, con=self.con)
+        self.assertEqual(res["status"], "written")
         with open(res["path"], encoding="utf-8") as f:
             text = f.read()
         got = dk.read_front_matter(text)
-        self.assertEqual(sorted(got["keys"]), sorted([self.k(self.new), self.k(self.dana)]))
+        self.assertEqual(sorted(got["keys"]), sorted([self.k(self.new), self.k(self.dana)]))     # the merged key becomes its survivor
         self.assertEqual(got["conversations"], [self.thread])
-        self.assertEqual(dk.check_entry(text, dk.staged_from_form(form)[0], self.con, [self.thread]), [])
-        self.assertNotIn("Wren", text)
+        self.assertEqual(got["confidence"], "low")
+        form = {"thing_keys": [self.k(self.old), self.k(self.dana)], "thread_ids": [self.thread]}
+        self.assertEqual(dk.check_entry(text, dk.staged_from_form(form)[0], self.con, [self.thread], [DAY + "-desk-b"]), [])
+        self.assertNotIn(self.k(self.wren), got["keys"])                  # named in the AI text only: never a key
         # no database handed in: still an entry, keys are never written unchecked
-        res2 = morning.midnight_entry("2026-11-14", "desk-b", [md], diary, "tree", fd)
+        res2 = morning.write_diary_entry("2026-11-14", "desk-b", diary, [DAY + "-desk-b"], handed, stamped, None)
         self.assertEqual(res2["status"], "written")
+        self.assertEqual(dk.read_front_matter(open(res2["path"], encoding="utf-8").read())["keys"], [])
 
 
 if __name__ == "__main__":

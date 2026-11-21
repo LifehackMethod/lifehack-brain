@@ -177,10 +177,10 @@ class Prompt(t4.Base):
         b = morning.source_budgets(300000, 500, 90000)
         self.assertEqual((b["share"], b["email"]), (100000, 300000 - 500 - 90000))
 
-    def test_the_instructions_name_the_three_as_equal_and_ids_stay_out_of_the_prompt(self):
-        self.assertIn("EQUAL WEIGHT", morning.INSTRUCTIONS)
-        self.assertIn("calendar, his tasks and his email count the same", morning.INSTRUCTIONS)
-        p = morning.build_prompt(DAY, "desk-a", morning.parse_baseline(None), task_items(2), cal_items(2), None, [], [], [])
+    def test_the_rules_name_the_three_as_equal_and_ids_stay_out_of_the_prompt(self):
+        self.assertIn("Email, calendar and tasks weigh equally", morning.MORNING_RULES)
+        files = morning.build_files(DAY, "desk-a", None, None, None, None, task_items(2), cal_items(2), [], None)
+        p = morning._rh().whole_prompt(morning.MORNING_TASK, files, rules=morning.MORNING_RULES)
         self.assertNotIn('"id"', p)
         self.assertIn("Event number 00", p)
 

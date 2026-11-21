@@ -1,10 +1,11 @@
 """snapshot_layout.py - 4P.3 item 5 (the fixed layout) and item 4 (the unclassified-emails rows), pure code.
 
-The morning snapshot's four load-bearing sections appear in ONE fixed order, as level-2 headings
-exactly as named in SECTIONS; the snapshot's other sections are kept but never appear between these
-four. check_layout(text) -> a list of problems (missing section, wrong name, wrong order, sections
- wedged in between), empty when the layout is right. The same four are mirrored as keys in the
- .form.json (see morning.py's form assembly).
+The morning snapshot (4P.3R) is CODE's fixed-layout lists first, then the AI's part last: the four
+load-bearing sections appear in ONE fixed order, as level-2 headings exactly as named in SECTIONS
+(Needs him, Capacity, Unclassified emails, then the AI's "The morning draft", always the LAST
+heading); code's other lists sit between Unclassified emails and the AI's part, never between
+the first three. check_layout(text) -> a list of problems (missing section, wrong name, wrong order,
+sections wedged in between, the AI's part not last), empty when the layout is right.
 
 unclassified_rows(rows) -> the catalogue rows triage could not place: needs_me "cant_tell", or no
 triage guess at all. Quarantined or refused mail (verdict != "safe") NEVER appears here - it stays
@@ -15,7 +16,7 @@ Python 3.9 compatible. Pure functions; no I/O.
 
 import re
 
-SECTIONS = ("## World model", "## Questions", "## Capacity", "## Unclassified emails")
+SECTIONS = ("## Needs him", "## Capacity", "## Unclassified emails", "## The morning draft")
 
 HEADING_RE = re.compile(r"^## .*$", re.MULTILINE)
 
@@ -37,11 +38,13 @@ def check_layout(text):
     seen = [p for p in pos if p is not None]
     if len(seen) == len(SECTIONS) and seen != sorted(seen):
         problems.append("sections out of order: expected %s" % " -> ".join(SECTIONS))
-    first, last = pos[0], pos[-1]
-    if first is not None and last is not None and first < last:
-        between = [h for off, h in headings if first < off < last and h not in SECTIONS]
+    first, third = pos[0], pos[2]
+    if first is not None and third is not None and first < third:
+        between = [h for off, h in headings if first < off < third and h not in SECTIONS]
         if between:
-            problems.append("sections between the four load-bearing ones: %s" % ", ".join(between))
+            problems.append("sections between the load-bearing ones: %s" % ", ".join(between))
+    if pos[3] is not None and headings and headings[-1][1] != SECTIONS[3]:
+        problems.append("the AI's part (%s) is not the last section" % SECTIONS[3])
     return problems
 
 

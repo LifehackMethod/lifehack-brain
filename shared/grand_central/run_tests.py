@@ -69,7 +69,6 @@ MANIFEST = [
     ("tests/test_diary_names.py", "unittest", False),  # diary names: one pattern + setup/desks.json, no hard-coded desk diary name
     ("tests/test_gc_org_onboarding.py", "unittest", False),  # gc org shows type with certainty; onboarding sheet needs --out
     ("tests/test_step44_diary_index.py", "unittest", False),  # Phase 4.4: diary index, migration 028
-    ("tests/test_step45_midnight.py", "unittest", False),  # Phase 4.5: one entry per diary, keys stamped by the morning read
     ("tests/test_step47_diary_on_pages.py", "unittest", False),  # Phase 4.7: diary entries on person/org/upcoming pages
     ("tests/test_step46_fixes_backfill.py", "unittest", False),  # Phase 4.6: fixes + 7-day backfill on a test copy
     ("tests/test_step38_levels_scoring.py", "unittest", False),  # Phase 3 step 3.8: levels as a scoring input, planted cases
@@ -93,9 +92,9 @@ MANIFEST = [
     ("tests/test_p3d_ops.py", "unittest", False),
     ("tests/test_p3w_wake.py", "unittest", False),
     ("tests/test_p3a_snapshot_shape.py", "unittest", False),
-    ("tests/test_feeds.py", "unittest", False),  # 4P.0b: the named no-feed state, the gate, status --json  # phase 1 steps 1.3 and 1.4: fast clock, morning job, midnight job
+    ("tests/test_feeds.py", "unittest", False),  # 4P.0b: the named no-feed state, the gate, status --json  # phase 1 steps 1.3 and 1.4: fast clock, morning job
     ("tests/test_step43_keys.py", "unittest", False),  # Phase 4 step 4.3: keys in every diary entry, planted cases
-    ("tests/test_step4_morning.py", "unittest", False),  # plan B2 step 4: the morning read, midnight entry, hand-run (fake model)
+    ("tests/test_step4_morning.py", "unittest", False),  # plan B2 step 4: the rebuilt morning read: quote check, code lists, batching, lenses, diary entry, hand-run (fake model)
     ("tests/test_step12_equal_weight.py", "unittest", False),  # phase 1 step 1.2: calendar, tasks, email equal weight
     ("tests/test_step4_synthesize_bad_case.py", "unittest", False),  # plan B2 step 4: old synthesize.py fails case 1 (no model)
     ("tests/test_encrypted_backup.py", "unittest", False),  # plan B2 step 4b: encrypted backup (throwaway test passphrases)

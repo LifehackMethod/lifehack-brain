@@ -262,7 +262,7 @@ class MorningReadsValidated(Base):
         self.assertIn("NOT validated", base)
         self.assertTrue(all(ln["carried"] for ln in bl.lines))
 
-    def test_find_staged_and_midnight_point_at_the_validated_picture(self):
+    def test_find_staged_picks_up_the_validated_picture(self):
         rc, out, err = self.stage(s1=("yes", "yes it is"), s2=("no", ""))
         self.assertEqual(rc, 0, err)
         self.draft_writeup()
@@ -270,9 +270,6 @@ class MorningReadsValidated(Base):
         names = [os.path.basename(p) for p in staged]
         self.assertIn("%s-%s-validated.md" % (DAY, DESK), names)
         self.assertIn("%s-%s.md" % (DAY, DESK), names)
-        res = morning.midnight_entry(DAY, DESK, staged, os.path.join(self.notes, "diary"))
-        self.assertEqual(res["status"], "written")
-        self.assertTrue(any(p.endswith("%s-%s-validated.md" % (DAY, DESK)) for p in res["pointers"]), res["pointers"])
 
 
 if __name__ == "__main__":

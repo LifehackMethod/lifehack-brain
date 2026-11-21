@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""gcjobs.py: the three scheduled jobs of Grand Central's Phase 1 (plan 1.3 and 1.4). Front room, generic.
+"""gcjobs.py: the scheduled jobs of Grand Central's Phase 1 (plan 1.3 and 1.4). Front room, generic.
 
   fast-clock   every 600 s. ONE job: (1) file what the mailroom dropped in <drop>/deliveries (transcripts.ingest),
                (2) the source pull, calendar and tasks only (pull.py --sources-only, a subprocess: the only place
                Google is reached, through the shared calendar/tasks doors), (3) alarm CANDIDATES (a list, nothing
                sent: the real triggers, the quiet-hours rule and the phone are his later rulings).
   morning      daily. morning.py hand_run for the default desk's day (that desk's records).
-  midnight     daily 00:00. morning.midnight_entry for every recent day that has a staged write-up and no diary
-               entry yet (the main diary, named in setup/desks.json). Created exclusively: a second run changes nothing.
-        Nothing staged in the whole window is a good run with nothing to write (receipt staged_days=0,
-        exit 0), never a stand-down: rc 75 on a `yes` row texts "paused" after 2x the interval (4P.0b).
+  (the gc-midnight job is retired, 4P.3R: the morning run writes its own diary entry; the diary index is refreshed by
+  diary_index_job.py once a day.)
 
 This file does NO outside read of its own: no Gmail, no curl, no urllib. Mail text arrives by the one-way drop;
 calendar and tasks arrive only through pull.py. Each job ends by writing a one-line proof (receipt) AFTER it has
@@ -18,11 +16,10 @@ cron SOP: 0 proof written, 75 stood down (nothing configured, not signed in, not
 1 failed. The receipt is the only thing that makes a run a success; every failed or stood-down run leaves the
 earlier receipt untouched, so a stale proof ages and the runner's missed-run alert fires.
 
-  python3 gcjobs.py fast-clock | morning | midnight   [--desk DESK] [--day YYYY-MM-DD]   (default desk: gc.json default_desk)
+  python3 gcjobs.py fast-clock | morning   [--desk DESK] [--day YYYY-MM-DD]   (default desk: gc.json default_desk)
 Env for tests: GC_SETUP_DIR (the setup folder), GC_DROP (drop folder, fast clock and morning), GC_STATE_ROOT (receipts),
 AGE_FRONT_ROOM, AGE_NOTES_ROOT, AGE_MAILROOM_USER, GC_DATA_ROOT, RIG_DB. Every personal value comes through gc_settings.
 Python 3.9 compatible."""
-import contextlib
 import datetime
 import json
 import os
@@ -50,7 +47,6 @@ RIG_HOME = gc_settings.data_root()
 RIG_LOGIN = os.path.expanduser("~/.config/gws-rig")
 PULL_TIMEOUT_S = 1500                      # under the 600 s clock x2.5; job-run's own watchdog is the outer limit
 SOURCES = ("calendar", "tasks")
-LOOKBACK_DAYS = 7                          # midnight: how far back it will catch up a missed night
 NY_TZ = ZoneInfo("America/New_York") # the envelope window is an America/New_York day, like daily.py
 SIGNED_OUT = re.compile(r"not logged in|not signed in|login required|invalid_grant|unauthenticated|no_token|"
                         r"credentials? (are |is )?(missing|expired|invalid)|refresh token", re.I)
@@ -734,179 +730,16 @@ def _morning_locked(day, desk, state, hand_run, status_light, extra_argv, out, p
     status_light("morning")
     return 1
 
-def midnight_job(desk=None, today=None, lookback=LOOKBACK_DAYS, state=None, status_light=None, out=print, index_refresh=None):
-    """For each of the last `lookback` days before today that has a staged write-up: write that day's diary entry if it
-    has none (midnight_entry creates exclusively and never opens an earlier entry). Catching up means a night the Mac
-    slept through is written on wake. Nothing staged in the whole window = a good run with nothing to write (receipt staged_days=0, exit 0;
-a stand-down here would text "paused" every quiet night, 4P.0b)."""
-    import morning
-    desk = desk or gc_settings.default_desk()
-    status_light = status_light or status_lights_call
-    today = today or datetime.date.today()
-    notes = morning.notes_root()
-    rec_dir = morning.records_context_dir(notes, desk)
-    import routing, diary_names
-    table = routing.load_table()
-    desks_cfg = diary_names.load()
-    # every desk's diary, by its name (the pattern and the desk list live in setup/, never here); a desk with no folder is skipped
-    roots = dict((diary_names.diary_name(d, desks_cfg), diary_names.diary_folder(notes, d)) for d in desks_cfg["desks"]
-                 if os.path.isdir(os.path.join(notes, "desks", d)))
-    form_dir = os.path.join(transcripts.catalogue_dir(), "morning")
-    staged_days, written, existing, newest, problems, entries = 0, 0, 0, None, [], 0
-    for k in range(1, lookback + 1):
-        day = (today - datetime.timedelta(days=k)).isoformat()
-        staged = morning.find_staged(rec_dir, day, desk)
-        if not staged:
-            continue
-        staged_days += 1
-        with _read_con() as con:
-            rs = morning.midnight_entries(day, staged, roots, table, "tree", form_dir, con=con)
-        for name, r in sorted(rs.items()):
-            if r["status"] == "written":
-                entries += 1
-            elif r["status"] != "exists":
-                problems.append("%s:%s:%s" % (day, name, r["status"]))
-            if r["status"] in ("written", "exists") and not os.path.isfile(r["path"]):
-                problems.append("%s:%s:entry_missing_after_write" % (day, name))
-        if any(r["status"] == "written" for r in rs.values()):
-            written += 1
-        elif rs and all(r["status"] == "exists" for r in rs.values()):
-            existing += 1
-        elif not rs:
-            problems.append("%s:nothing_staged" % day)
-        newest = newest or day
-        out("[midnight] %s: %s" % (day, ", ".join("%s %s" % (n, r["status"]) for n, r in sorted(rs.items()))))
-    if not staged_days and not problems:
-        # 4P.0b: nothing staged in the window is a GOOD RUN with nothing to write, not a stand-down.
-        # rc 75 on a `yes` row texts "paused" after 2x the interval (cron SOP section 4), and with no
-        # feeds the daily diary job ends here every night -- the very text the rulings forbid. The
-        # receipt is honest real content that varies (date, desk, counts, time), which the row's
-        # check reads as a good run; it is not a presence check.
-        # Build window review: the SAME shape as a working night (staged_days=N settled=N ... newest=...), so one
-        # row check (no `|` allowed in a check) reads both; newest=- marks the quiet night.
-        line = ("gc-midnight ok date=%s desk=%s staged_days=0 settled=0 written=0 existing=0 newest=- at=%s"
-                % (today.isoformat(), desk, now_iso()))
-        write_receipt("gc-midnight", line, state)
-        out("[midnight] no morning write-up in the last %d days: nothing to write (receipt written)" % lookback)
-        return 0
-    if problems or written + existing != staged_days:
-        out("[midnight] FAIL, no proof line written: " + ", ".join(problems or ["not_settled"]))
-        return 1
-    if index_refresh:     # 4.4: the diary index follows the files, one refresh per diary; a failure is said, never a reason to lose the night's entry
-        for name, root in sorted(roots.items()):
-            try:
-                out("[midnight] diary index %s: %s" % (name, index_refresh(name, root, notes)))
-            except Exception as e:
-                out("[midnight] diary index NOT refreshed for %s: %s" % (name, e))
-        import local_first
-        for n in local_first.take_notes():
-            out("[midnight] NOTE: %s: %s" % (n["path"], n["why"]))
-    line = "gc-midnight ok date=%s desk=%s staged_days=%d settled=%d written=%d existing=%d newest=%s at=%s entries=%d" % (
-        today.isoformat(), desk, staged_days, written + existing, written, existing, newest, now_iso(), entries)
-    write_receipt("gc-midnight", line, state)
-    out(line)
-    # no light is defined for the diary yet (status_lights.py has mailroom, intake, morning, backup): none called.
-    return 0
-
-# ================================================================ 4.6 the 7-day backfill
-BACKFILL_DAYS = 7
-BACKFILL_STAMP = "stamp: machine draft, backfilled, unconfirmed"
-LIVE_DB = gc_settings.db_path()
-
-
-def _check_window(first, last, today):
-    """Refuse (ValueError) anything outside the 7 days BEFORE today: a bad date, last before first, more than 7 days,
-    today itself (the midnight job never writes today, coordinator ruling 2026-11-17) or a day after it."""
-    try:
-        a, b, t = (datetime.date.fromisoformat(x) for x in (first, last, today))
-    except ValueError:
-        raise ValueError("bad date")
-    if b < a:
-        raise ValueError("last day is before the first")
-    if (b - a).days + 1 > BACKFILL_DAYS:
-        raise ValueError("more than %d days" % BACKFILL_DAYS)
-    if b > t:
-        raise ValueError("a day in the future")
-    if b == t:
-        raise ValueError("today: the midnight job writes only days before today")
-    if (t - a).days > BACKFILL_DAYS:
-        raise ValueError("starts more than %d days back" % BACKFILL_DAYS)
-
-
-def backfill(first, last, notes, db, desk=None, today=None, records_dir=None, form_dir=None, out=print, real=False):
-    """4.6: the SAME machinery as the midnight job (morning.midnight_entries) for the days first..last (at most the last 7),
-    each entry stamped 'machine draft, backfilled, unconfirmed'. An existing day is skipped (exclusive create; never opened for
-    writing). Index refreshed on `db` (a sqlite file) afterwards. The real notes folder or the live database needs real=True.
-    Reports per day and per diary: written / skipped (existing) / nothing. -> 0 ok, 2 refused or problem."""
-    import morning, routing, diary_names
-    import store, store_diary
-    desk = desk or gc_settings.default_desk()
-    today = today or datetime.date.today().isoformat()
-    try:
-        _check_window(first, last, today)
-    except ValueError as e:
-        out("[backfill] REFUSED: %s (window: the last %d days, ending today)" % (e, BACKFILL_DAYS))
-        return 2
-    is_real = os.path.realpath(notes) == os.path.realpath(gc_settings.configured_notes_root()) or os.path.realpath(db) == os.path.realpath(LIVE_DB)
-    if is_real and not real:
-        out("[backfill] REFUSED: that is the real notes folder or the live database; pass --real to mean it")
-        return 2
-    table = routing.load_table()
-    cfg = diary_names.load()
-    roots = dict((diary_names.diary_name(d, cfg), diary_names.diary_folder(notes, d)) for d in cfg["desks"]
-                 if os.path.isdir(os.path.join(notes, "desks", d)))
-    rec_dir = records_dir or morning.records_context_dir(notes, desk)
-    form_dir = form_dir or os.path.join(transcripts.catalogue_dir(), "morning")
-    prev_path = store._path
-    store.set_path(db)                      # every database touch below is the COPY named by --db, through the front door
-    problems = 0
-    try:
-        with store._read() as con:
-            day = datetime.date.fromisoformat(first)
-            while day <= datetime.date.fromisoformat(last):
-                d = day.isoformat()
-                staged = morning.find_staged(rec_dir, d, desk)
-                rs = morning.midnight_entries(d, staged, roots, table, "tree", form_dir, con=con, stamp=BACKFILL_STAMP) if staged else {}
-                for name in sorted(roots):
-                    r = rs.get(name)
-                    if r is None:
-                        out("[backfill] %s %s: nothing %s" % (d, name, "routed here" if staged else "staged"))
-                    elif r["status"] == "written":
-                        out("[backfill] %s %s: written" % (d, name))
-                    elif r["status"] == "exists":
-                        out("[backfill] %s %s: skipped (existing)" % (d, name))
-                    else:
-                        problems += 1
-                        out("[backfill] %s %s: %s %s" % (d, name, r["status"], r.get("problems", "")))
-                day += datetime.timedelta(days=1)
-        with store._write() as w:
-            for name, root in sorted(roots.items()):
-                out("[backfill] diary index %s: %s" % (name, store_diary.refresh_index(w, name, root, notes)))
-    finally:
-        store.set_path(prev_path)
-    return 2 if problems else 0
-
 
 def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser(prog="gcjobs.py")
-    ap.add_argument("job", choices=("fast-clock", "morning", "midnight", "backfill"))
-    ap.add_argument("--from", dest="first", default=None)
-    ap.add_argument("--to", dest="last", default=None)
-    ap.add_argument("--notes", default=None, help="backfill: notes root to write into (a test copy)")
-    ap.add_argument("--db", default=None, help="backfill: the sqlite file (a copy) to read keys from and refresh the index in")
-    ap.add_argument("--real", action="store_true", help="backfill: allow the real notes folder or the live database")
+    ap.add_argument("job", choices=("fast-clock", "morning"))
     ap.add_argument("--desk", default=None, help="the desk (default: gc.json default_desk)")
     ap.add_argument("--day", default=None)
     ap.add_argument("--drop", default=None, help="drop folder (default: $GC_DROP, else gc.json drop_dir)")
     ap.add_argument("--any-time", action="store_true")
     a = ap.parse_args(sys.argv[1:] if argv is None else argv)
-    if a.job == "backfill":
-        import morning
-        if not (a.first and a.last and a.db):
-            print("[backfill] needs --from, --to and --db")
-            return 2
-        return backfill(a.first, a.last, a.notes or morning.notes_root(), a.db, desk=a.desk, real=a.real)
     if a.job == "fast-clock":
         return fast_clock(drop=a.drop or default_drop())
     if a.job == "morning":
@@ -916,44 +749,7 @@ def main(argv=None):
             print("[morning] stood down: before %02d:00 local (the fast clock starts the morning read after that)" % MORNING_AFTER_HOUR)
             return 75
         return morning_job(day=a.day, desk=a.desk, extra_argv=(["--drop", a.drop] if a.drop else []))
-    return midnight_job(desk=a.desk, index_refresh=_live_index_refresh(a.desk))
-
-
-@contextlib.contextmanager
-def _read_con():
-    """A read-only database connection (through store) for the keys check, or None when there is none (keys are then never written unchecked)."""
-    try:
-        import store
-        cm = store._read()
-        con = cm.__enter__()
-    except Exception:
-        yield None
-        return
-    try:
-        yield con
-    finally:
-        cm.__exit__(None, None, None)
-
-
-def _live_index_refresh(desk):
-    """The refresh the real midnight run does on the live database, once per diary (tests pass their own or none)."""
-    def go(diary_name, diary_root, notes):
-        import store, store_diary
-        with store._write() as c:
-            return store_diary.refresh_index(c, diary_name, diary_root, notes)
-    return go
-
-
-def _diary_display(desk):
-    """The default desk's diary is the main diary (setup/routing.json main_diary, '<name>-Diary'); any other desk is '<Desk>-Diary'."""
-    try:
-        with open(gc_settings.setup_path("routing.json"), encoding="utf-8") as f:
-            r = json.load(f)
-        if desk == r.get("main_desk") or (not r.get("main_desk") and desk == gc_settings.default_desk()):
-            return r["main_diary"][:-len("-Diary")]
-    except (OSError, KeyError, ValueError):
-        pass
-    return desk.capitalize()
+    return 2
 
 
 if __name__ == "__main__":

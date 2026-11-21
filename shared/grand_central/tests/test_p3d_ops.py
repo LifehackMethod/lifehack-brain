@@ -215,11 +215,12 @@ class Item6And13HandRun(t13.MorningJob):
         with open(os.path.join(rec, "2026-11-05-desk-a-validated.md"), "w", encoding="utf-8") as f:
             f.write("# Weekly snapshot\n\n## Picture\n- his old line\n")
         self.put_case()
-        rc = self.job(t4.FakeModel(self.env, t4.NOBASE))
+        m = t4.FakeModel(self.env, t4.NOBASE)
+        rc = self.job(m)
         self.assertEqual(rc, 0, self.lines)
         self.assertTrue(any(morning.STALE_MARK in l for l in self.lines), self.lines)
-        record = t4.read(os.path.join(rec, "%s-desk-a.md" % t4.DAY))
-        self.assertIn("rebuilt from raw facts", record) # the write-up says the validated picture was stale
+        self.assertIn("rebuilt from raw facts", t4.file_text(m.prompts[0], "baseline-unconfirmed")) # the AI is told the picture went stale
+        self.assertNotIn("FILE baseline-confirmed", m.prompts[0])                                  # and nothing is rolled forward as his
 
     def test_PLANTED_the_morning_writes_the_day_s_low_confidence_diary_entry(self):
         self.put_case()
@@ -229,7 +230,7 @@ class Item6And13HandRun(t13.MorningJob):
         text = t4.read(self.diary_path(t4.DAY))
         self.assertIn("confidence: low", text)
 
-    def test_PLANTED_a_pre_existing_entry_is_left_byte_identical(self):
+    def test_PLANTED_a_pre_existing_entry_gets_the_morning_entry_appended_his_text_unchanged(self):
         path = self.diary_path(t4.DAY)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -237,17 +238,18 @@ class Item6And13HandRun(t13.MorningJob):
         self.put_case()
         rc = self.job(t4.FakeModel(self.env, t4.NOBASE))
         self.assertEqual(rc, 0, self.lines)
-        self.assertEqual(t4.read(path), "his entry, written earlier\n")
-        self.assertTrue(any("exists" in l for l in self.lines), self.lines)
+        text = t4.read(path)
+        self.assertIn("\nhis entry, written earlier\n# Morning read", text.replace("\n\n#", "\n#"))
+        self.assertTrue(any("appended" in l for l in self.lines), self.lines)
 
     def test_PLANTED_a_diary_write_failure_is_said_loudly_and_never_unstages(self):
-        orig = morning.midnight_entries
+        orig = morning.write_diary_entry
 
         def boom(*a, **k):
             raise RuntimeError("diary folder gone")
 
-        morning.midnight_entries = boom
-        self.addCleanup(setattr, morning, "midnight_entries", orig)
+        morning.write_diary_entry = boom
+        self.addCleanup(setattr, morning, "write_diary_entry", orig)
         self.put_case()
         rc = self.job(t4.FakeModel(self.env, t4.NOBASE))
         self.assertEqual(rc, 0, self.lines) # the run does not fail

@@ -113,7 +113,7 @@ class MorningInRunRetries(t13.MorningJob):
 
     def test_PLANTED_three_consecutive_in_run_failures_light_retrying_within_the_hour(self):
         self.put_case()
-        rc = self.job(t4.FakeModel(self.env, "this is not json at all"))
+        rc = self.job(t4.Dead("timeout"))
         self.assertEqual(rc, 1)
         led = self.ledger()
         self.assertEqual(led["fail_streak"], 3, "each in-run attempt counts")
@@ -134,15 +134,14 @@ class MorningInRunRetries(t13.MorningJob):
         self.assertEqual(led["attempts"], 1)
         self.assertFalse(led.get("failed"))
 
-    def test_PLANTED_a_text_shape_failure_gets_one_repair_call_inside_the_same_attempt(self):
+    def test_PLANTED_an_unverifiable_quote_gets_one_repair_call_inside_the_same_attempt(self):
         self.put_case()
-        long_line = "x" * 5000  # _clean_text: over MAX_TEXT -> "text_shape"
-        bad = t4.reply(what_changed=[long_line])
+        bad = t4.draft("What changed", '- "a made-up sentence nobody wrote" [mail:th-101]')
         m = t4.FakeModel(self.env, bad, t4.NOBASE)
         rc = self.job(m)
         self.assertEqual(rc, 0, self.lines)
-        self.assertEqual(len(m.prompts), 2, "exactly ONE repair call after the bad reply")
-        self.assertIn("corrected JSON", m.prompts[1], "the second prompt asks for the corrected reply")
+        self.assertEqual(len(m.prompts), 2, "exactly ONE repair call after the bad quote")
+        self.assertIn("Quotes that failed", m.prompts[1], "the second prompt lists the failing quotes")
         led = self.ledger()
         self.assertEqual(led["attempts"], 1, "the repair happens INSIDE the attempt: it still counts once")
 

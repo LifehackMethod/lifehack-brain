@@ -71,10 +71,12 @@ def mentions_for_forms(con, forms):
     return sorted(seen) + [CONV + c for c in sorted(convs)], dropped
 
 
-def front_matter(mentions, staged=None):
-    """The entry's header: one mentions line, plus (when given) one staged line with the ids of the staged records it rests on."""
+def front_matter(mentions, staged=None, confidence=None):
+    """The entry's header: one mentions line, plus (when given) one staged line with the ids of the staged records it rests on,
+    plus (when given) one `confidence: low|medium|high` line (store_diary indexes it)."""
     st = "staged: %s\n" % json.dumps(list(staged), ensure_ascii=True) if staged else ""
-    return "---\nmentions: %s\n%s---\n" % (json.dumps(list(mentions), ensure_ascii=True), st)
+    cf = "confidence: %s\n" % confidence if confidence else ""
+    return "---\nmentions: %s\n%s%s---\n" % (json.dumps(list(mentions), ensure_ascii=True), st, cf)
 
 
 def read_front_matter(text):
@@ -83,13 +85,16 @@ def read_front_matter(text):
     if not m:
         raise ValueError("no front matter")
     lines = [ln for ln in m.group(1).split("\n") if ln.strip()]
+    conf = None
+    if lines and lines[-1].startswith("confidence: "):
+        conf = lines.pop()[len("confidence: "):].strip()
     if not lines or not lines[0].startswith("mentions: ") or len(lines) > 2 or (len(lines) == 2 and not lines[1].startswith("staged: ")):
-        raise ValueError("front matter is not one mentions line (and at most one staged line)")
+        raise ValueError("front matter is not one mentions line (and at most one staged line, then at most one confidence line)")
     ms = json.loads(lines[0][len("mentions: "):])
     st = json.loads(lines[1][len("staged: "):]) if len(lines) == 2 else []
     if not isinstance(ms, list) or not all(isinstance(x, str) for x in ms) or not isinstance(st, list) or not all(isinstance(x, str) for x in st):
         raise ValueError("mentions or staged is not a list of strings")
-    return {"mentions": ms, "staged": st,
+    return {"mentions": ms, "staged": st, "confidence": conf,
             "keys": [x for x in ms if not x.startswith(CONV)],
             "conversations": [x[len(CONV):] for x in ms if x.startswith(CONV)]}
 

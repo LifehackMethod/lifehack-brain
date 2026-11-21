@@ -34,7 +34,6 @@ gcjobs.MORNING_ATTEMPT_WAIT_S = 0 # 4P.3D slice W: the in-run retry wait is a te
 CHECKS = {
     "gc-fast-clock": r"^gc-fast-clock ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} waiting=([0-9]+) cleared=\1 filed=[0-9]+ duplicate=[0-9]+ refused=[0-9]+ calendar=[fs][kre][a-z]+ tasks=[fs][kre][a-z]+ db=[dh][a-z]+ considered=[0-9]+ candidates=[0-9]+ morning=[a-z-]+( once_snapshot=[a-z-]+ once_diary_index=[a-z-]+ once_daily=[a-z-]+)? at=[0-9]{4}-",
     "gc-morning": r"^gc-morning ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ new=([0-9]+) accounted=\1 examined=[0-9]+ draft=[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z-]+(-topup[0-9]+)?\.md sources=[a-z]+ at=[0-9]{4}-",
-    "gc-midnight": r"^gc-midnight ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ staged_days=([0-9]+) settled=\1 written=[0-9]+ existing=[0-9]+ newest=[0-9-]+ at=[0-9]{4}-",
 }
 
 
@@ -290,9 +289,9 @@ class MorningJob(Scratch):
         self.assertEqual(gcjobs.default_drop(), gc_settings.drop_dir())
 
     def test_PLANTED_a_morning_that_stages_nothing_leaves_no_proof(self):
-        """The model reply is junk: nothing staged, the read says FAILED, and the job writes no success line."""
+        """The model call fails: nothing staged, the read says FAILED, and the job writes no success line."""
         self.put_case()
-        rc = self.job(t4.FakeModel(self.env, "this is not json at all"))
+        rc = self.job(t4.Dead("timeout"))
         self.assertEqual(rc, 1)
         self.assertIsNone(self.receipt("gc-morning"))
         self.assertEqual(os.path.exists(os.path.join(self.notes, "desks", "desk-a", "records", "context", "%s-desk-a.md" % t4.DAY)), False)
@@ -346,77 +345,7 @@ class MorningJob(Scratch):
         self.assertEqual(rc, 75)
 
 
-# ================================================================ 1.4 the midnight job
-class MidnightJob(Scratch):
-    def stage(self, day):
-        rec = morning.records_context_dir(self.notes, "desk-a")
-        os.makedirs(rec, exist_ok=True)
-        with open(os.path.join(rec, "%s-desk-a.md" % day), "w", encoding="utf-8") as f:
-            f.write("# draft\n")
-        fdir = os.path.join(self.front, "catalogue", "morning")
-        os.makedirs(fdir, exist_ok=True)
-        with open(os.path.join(fdir, "%s-desk-a.form.json" % day), "w", encoding="utf-8") as f:
-            json.dump({"coverage": {"a00001": "used"}, "deadlines": [{"date": "2026-11-20"}], "money": [], "needs_him": [{}],
-                       "questions": [], "project_updates": []}, f)
-
-    def run_job(self, today=datetime.date(2026, 11, 16), **kw):
-        return gcjobs.midnight_job(desk="desk-a", today=today, state=os.path.join(self.state, "gc-midnight"), out=self.say, **kw)
-
-    def diary(self, day):
-        return morning.diary_entry_path(os.path.join(self.notes, "desks", "desk-a", "diary"), day, "desk-a", "tree")
-
-    def test_writes_yesterdays_entry_and_the_proof_passes_the_check(self):
-        self.stage("2026-11-15")
-        self.assertEqual(self.run_job(), 0, self.lines)
-        self.assertTrue(os.path.isfile(self.diary("2026-11-15")))
-        line = self.receipt("gc-midnight")
-        self.assertIn("staged_days=1 settled=1 written=1 existing=0 newest=2026-11-15", line)
-        self.assertTrue(check_passes("gc-midnight", line), line)
-
-    def test_PLANTED_the_same_day_run_twice_makes_no_duplicate_and_no_overwrite(self):
-        self.stage("2026-11-15")
-        self.assertEqual(self.run_job(), 0)
-        before = slurp(self.diary("2026-11-15"))
-        mtime = os.path.getmtime(self.diary("2026-11-15"))
-        with open(self.diary("2026-11-15"), "a", encoding="utf-8") as f:           # a later hand edit must survive a second run
-            f.write("added by hand\n")
-        self.assertEqual(self.run_job(), 0, self.lines)
-        self.assertIn("written=0 existing=1", self.receipt("gc-midnight"))
-        self.assertEqual(slurp(self.diary("2026-11-15")), before + "added by hand\n")
-        d = os.path.dirname(self.diary("2026-11-15"))
-        self.assertEqual(os.listdir(d), ["15.md"])               # one entry for the day, nothing else
-        self.assertGreaterEqual(os.path.getmtime(self.diary("2026-11-15")), mtime)
-
-    def test_a_night_the_mac_slept_through_is_caught_up_on_the_next_run(self):
-        self.stage("2026-11-14")
-        self.stage("2026-11-15")
-        self.assertEqual(self.run_job(), 0)
-        self.assertIn("staged_days=2 settled=2 written=2", self.receipt("gc-midnight"))
-        self.assertTrue(os.path.isfile(self.diary("2026-11-14")) and os.path.isfile(self.diary("2026-11-15")))
-
-    def test_today_is_never_written_early(self):
-        # CHANGED by 4P.0b: today's write-up alone means nothing staged IN THE WINDOW, which is now a good
-        # run with nothing to write (receipt, exit 0), not a stand-down (rc 75 texts "paused"). Today's
-        # entry is still never written early.
-        self.stage("2026-11-16")
-        self.assertEqual(self.run_job(), 0)
-        self.assertFalse(os.path.exists(self.diary("2026-11-16")))
-        self.assertIn("staged_days=0 settled=0 written=0 existing=0 newest=-", self.receipt("gc-midnight"))
-        self.assertTrue(check_passes("gc-midnight", self.receipt("gc-midnight")))
-
-    def test_nothing_staged_writes_an_honest_zero_receipt_exit_0_never_75(self):
-        # CHANGED by 4P.0b (was: 75 and no receipt): the quiet-night run must not count as a stand-down on a
-        # `yes` row, or the runner texts "paused" after 2x the interval (cron SOP section 4). The receipt
-        # carries real varying content (date, desk, counts, at=), not a presence check.
-        self.assertEqual(self.run_job(), 0)
-        line = self.receipt("gc-midnight")
-        self.assertRegex(line, r"^gc-midnight ok date=2026-11-16 desk=desk-a staged_days=0 settled=0 written=0 "
-                               r"existing=0 newest=- at=2026-")
-        self.assertTrue(check_passes("gc-midnight", line))            # the ONE row check reads the quiet night
-        # PLANTED (restored, build window review): forged proofs still fail the row's own check
-        self.assertFalse(check_passes("gc-midnight", line.replace("settled=0", "settled=1")))   # unsettled day
-        self.assertFalse(check_passes("gc-midnight", line.replace(" at=", " ")))                # no run time
-        self.assertFalse(check_passes("gc-midnight", line.replace("date=2026-11-16 ", "")))     # no date
+# (the 1.4 midnight job is retired, 4P.3R: the morning run writes its own diary entry; see test_step4_morning.DiaryEntry)
 
 
 # ================================================================ coordinator conditions, 2026-11-16
