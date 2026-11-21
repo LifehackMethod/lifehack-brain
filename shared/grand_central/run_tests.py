@@ -95,6 +95,7 @@ MANIFEST = [
     ("tests/test_p3b_lens.py", "unittest", False),  # 4P.3R (g): the four lens passes in plain words, the uncapped question list
     ("tests/test_feeds.py", "unittest", False),  # 4P.0b: the named no-feed state, the gate, status --json  # phase 1 steps 1.3 and 1.4: fast clock, morning job
     ("tests/test_step43_keys.py", "unittest", False),  # Phase 4 step 4.3: keys in every diary entry, planted cases
+    ("tests/test_audit_run.py", "unittest", False),  # the audit's Part 1: every input listed, found or reasoned, else a DEFECT
     ("tests/test_step4_morning.py", "unittest", False),  # plan B2 step 4: the rebuilt morning read: quote check, code lists, batching, lenses, diary entry, hand-run (fake model)
     ("tests/test_step12_equal_weight.py", "unittest", False),  # phase 1 step 1.2: calendar, tasks, email equal weight
     ("tests/test_step4_synthesize_bad_case.py", "unittest", False),  # plan B2 step 4: old synthesize.py fails case 1 (no model)
