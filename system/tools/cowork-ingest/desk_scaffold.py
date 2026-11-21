@@ -59,14 +59,15 @@ STUB = {
         "# wakes; the model never sees it. Jobs belong to the job list; status notes self-register in\n"
         "# <brain>/status/; access grants to the capability registry. One fact, one place.\n"
         "name: {desk}\ncanon: canon/canon.md\ndiary: diary\n"),
-    "diary/README.md": ("# {DiaryName}\n\nThis desk's diary. One entry per day at `YYYY/MM/DD.md`.\n"
+    "diary/README.md": ("# {DiaryName}\n\nThis desk's diary. One page per day at `YYYY/MM/DD.md`.\n"
+        "Each run that has something to record adds its own entry when it runs, and the person's sessions add theirs; no job is tied to a clock time.\n"
         "How this diary is written: see canon/desk-building-sop.md §6.\n"),
     "CLAUDE.md": ("# {Desk} — desk identity (the glasses)\n\n**Purpose:** {purpose}\n\n"
         "**Read order:** `canon/canon.md` → `canon/purpose.md` → `open-loops.md` → the diary tree "
         "(`diary/YYYY/MM/DD.md`, {diary_name}).\n\n**Scope:** {desk}-domain work only; route other "
         "subjects to their desk.\n\n**Write rules:** canon = human-blessed only (`/save` stops and shows "
-        "you each canon line before it writes); records = raw and undated; the diary = not written by "
-        "hand (how it is written: canon/desk-building-sop.md §6). There is no `state/` here: where-we-are is read out of the diary "
+        "you each canon line before it writes); records = raw and undated; the diary: "
+        "each run that has something to record adds its own entry when it runs, and the person\'s sessions add theirs; no job is tied to a clock time. (how it is written: canon/desk-building-sop.md §6). There is no `state/` here: where-we-are is read out of the diary "
         "tree, never stored.\n\n**Memory routing:** durable fact→canon (human promotes) · raw material→"
         "records/ · started-not-finished→open-loops.md · what happened→the diary.\n"),
 }
