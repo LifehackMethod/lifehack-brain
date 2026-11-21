@@ -374,6 +374,29 @@ class Stage(unittest.TestCase):
         self.assertIn("prm/upcoming.json", r.calls[0]["files"])
         self.assertTrue(all(self.by(st)[n]["status"] == "ok" for n in ("lanes", "body", "delta")))
 
+    def test_empty_export_is_failed_no_input_never_ok(self):
+        for threads in ([], [hx("th-never-ingested")]):
+            r = FakeRunner()
+            st = self.go(r, threads=threads)
+            self.assertEqual(r.calls, [])
+            self.assertEqual([(x["status"], x["reason"]) for x in st["results"]], [("failed", "no input")] * 4)
+            self.assertEqual(st["export"]["exported"], [])
+
+    def test_a_lens_that_could_not_open_its_files_is_failed_not_ok(self):
+        st = self.go(FakeRunner({"body": "CANNOT_READ", "conflicts": "cannot_read\n"}))
+        by = self.by(st)
+        self.assertEqual((by["body"]["status"], by["conflicts"]["status"]), ("failed", "failed"))
+        self.assertEqual(by["body"]["reason"], "cannot read its folder")
+        self.assertEqual(by["delta"]["status"], "ok")
+        self.assertIn("CANNOT_READ", lens.lens_prompt("body", DAY, "F"))
+
+    def test_scope_matches_the_realpath_of_the_run_folder(self):
+        f = lens.make_run_folder()
+        self.addCleanup(shutil.rmtree, f, True)
+        self.assertEqual(f, _o.path.realpath(f))
+        cmd = morning.ClaudeLensModel(claude="/x/claude").build_cmd(f)
+        self.assertIn("Read(//%s/**)" % f.lstrip("/"), cmd[cmd.index("--allowedTools") + 1])
+
     def test_the_reply_is_capped(self):
         st = self.go(FakeRunner({"body": "word " * 5000}))
         self.assertLessEqual(len(self.by(st)["body"]["text"]), lens.MAX_LENS_CHARS)
@@ -510,7 +533,8 @@ class Stage(unittest.TestCase):
         self.assertIn("the deep phrase: rank 3 is boats", text)
         self.assertIn("# Map", text)
         self.assertIsNone(note)
-        st = lens.run_lenses(DAY, [], (), None, (r := FakeRunner()), {"lanes": text, "life_map": "x"})
+        r = FakeRunner()
+        self.go(r, settings={"lanes": text, "life_map": "x"})
         self.assertIn("the deep phrase: rank 3 is boats", [c for c in r.calls if c["kind"] == "lanes"][0]["prompt"])
 
     def test_neither_file_skips_with_the_reason(self):
