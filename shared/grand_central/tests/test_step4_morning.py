@@ -1153,6 +1153,9 @@ class DiaryEntry(Base):
         self.assertIn("| Fri 20 Nov 2026 09:55 |", rec)
         self.assertNotIn("09: |", rec)
 
+    def test_r7_the_rules_say_to_state_his_decision_and_the_open_action_never_ask_whether(self):
+        self.assertIn("When he has already decided something, state his decision and the action still open; never ask whether.", morning.MORNING_RULES)
+
     def test_f5_the_rules_ask_for_a_tag_on_every_mentioned_email_and_numbers_as_given(self):
         self.assertIn("Every email you mention carries its [mail:<label>] tag, even when you do not quote it", morning.MORNING_RULES)
         self.assertIn("never re-rank or recompute them", morning.MORNING_RULES)
