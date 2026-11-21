@@ -215,6 +215,17 @@ class Part1(unittest.TestCase):
         self.assertIn("15.md:3: his line two", dl)
         self.assertIn("DEFECTS: 1", open(os.path.join(self.out, "part1-nothing-dropped.md"), encoding="utf-8").read())
 
+    def test_r8b_the_previous_draft_is_copied_into_the_inputs_the_newest_before_the_day(self):
+        ctx = os.path.join(self.run, "notes", "desks", "desk-a", "records", "context")
+        open(os.path.join(ctx, "2026-11-20-desk-a-topup1.md"), "w", encoding="utf-8").write("# the newer top-up of the 20th\n")
+        open(os.path.join(ctx, "2026-11-21-desk-a.md"), "w", encoding="utf-8").write("# today's own record: never the previous one\n")
+        open(os.path.join(ctx, "2026-11-19-desk-a-validated.md"), "w", encoding="utf-8").write("# a validated picture is not a draft\n")
+        rc = audit_run.main(["--run", self.run, "--day", DAY, "--draft", self._draft_file(), "--out", self.out, "--desk", "desk-a"])
+        self.assertEqual(rc, 0)
+        got = open(os.path.join(self.out, "inputs", "previous-draft.md"), encoding="utf-8").read()
+        self.assertIn("the newer top-up of the 20th", got)
+        self.assertNotIn("today's own record", got)
+
     def _draft_file(self):
         p = os.path.join(self.run, "draft.md")
         open(p, "w", encoding="utf-8").write(DRAFT)

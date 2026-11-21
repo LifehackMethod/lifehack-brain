@@ -18,6 +18,7 @@ Python 3.9 compatible."""
 import argparse
 import datetime
 import json
+import shutil
 import os
 import re
 import sys
@@ -208,6 +209,26 @@ def baseline_files(run, desk, day):
         dr = [n for n in dr if os.path.getmtime(os.path.join(d, n)) > mt]
     dr.sort(key=lambda n: os.path.getmtime(os.path.join(d, n)))
     return confirmed, (os.path.join(d, dr[-1]) if dr else None)
+
+
+def previous_draft(run, desk, day):
+    """R8b: the newest staged morning record BEFORE the day in the run copy's records/context (latest date, then latest top-up);
+    -> its path, or None. Validated pictures are not drafts and are left out."""
+    if not desk:
+        return None
+    d = records_dir(run, desk)
+    try:
+        names = os.listdir(d)
+    except OSError:
+        return None
+    best = None
+    for n in names:
+        m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})-%s(?:-topup(\d+))?\.md" % re.escape(desk), n)
+        if m and m.group(1) < day:
+            k = (m.group(1), int(m.group(2) or 0))
+            if best is None or k > best[0]:
+                best = (k, n)
+    return os.path.join(d, best[1]) if best else None
 
 
 # ================================================================ Part 1
@@ -448,7 +469,12 @@ def write_inputs(run, day, out_dir, desk, expected, setup_note=None):
                 ans.append("%s | %s | %s" % (r[0], _one_line(r[1], 100), " ".join(str(r[2] or "").split())))
     _w(os.path.join(inp, "answers.txt"), ["# his recorded answers (date | subject | his words)"] + ans)
     _w(os.path.join(inp, "diary-lines.txt"), ["# his diary lines for the %d days before %s (file:line: text)" % (DIARY_DAYS, day)] + diary_lines(run, day))
-    return [os.path.join(inp, n + ".txt") for n in ("calendar", "tasks", "handed", "questions", "answers", "diary-lines")]
+    written = [os.path.join(inp, n + ".txt") for n in ("calendar", "tasks", "handed", "questions", "answers", "diary-lines")]
+    prev = previous_draft(run, desk, day)       # R8b: lens sentences and carried-over phrases are traced to it
+    if prev:
+        shutil.copyfile(prev, os.path.join(inp, "previous-draft.md"))
+        written.append(os.path.join(inp, "previous-draft.md"))
+    return written
 
 
 def diary_lines(run, day):

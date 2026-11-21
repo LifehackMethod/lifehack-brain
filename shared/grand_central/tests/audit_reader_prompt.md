@@ -4,7 +4,8 @@ You are an independent auditor of one morning draft written by Grand Central's m
 
 ## Files (read each IN FULL unless told otherwise; list every file you opened at the end)
 - DRAFT: {DRAFT}
-- The run's inputs: {RUN}/audit/inputs/ : handed.txt (each handed email's meta plus its transcript path; open EVERY transcript it names, in full), calendar.txt, tasks.txt, questions.txt, answers.txt, diary-lines.txt
+- The run's inputs: {RUN}/audit/inputs/ : handed.txt (each handed email's meta plus its transcript path; open EVERY transcript it names, in full), calendar.txt, tasks.txt, questions.txt, answers.txt, diary-lines.txt, previous-draft.md (the newest staged morning record before DAY, copied from the run copy; any sentence of the draft that carries over a phrase from the last draft, or that restates a lens finding, is traced to this file or to the lens outputs bullet below)
+- The lens outputs: the run keeps NO lens text on disk (it lives only in the final call's prompt; the record names only failed or skipped lenses). Treat any sentence in the draft that reads like a lens observation as UNTRACEABLE to a file and say so, rather than guessing its source; lens sentences and carried-over phrases are traced to previous-draft.md and inputs only
 - Part 1 (code's nothing-dropped table, for context only; do not redo it): {RUN}/audit/part1-nothing-dropped.md
 - The Spec, sections 3.9 and 3.10 only (lines 831-907): {SPEC}
 - The plan's step 4P.3R row (the line beginning "| 4P.3R |"; Grep for it, then read that line in full): {PLAN}
