@@ -489,9 +489,14 @@ OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
 # wake after it is owed. Whole-hour intervals under a day that divide 86400 (1 h, 2 h, 3 h, 4 h, 6 h, 8 h, 12 h) keep a
 # StartCalendarInterval hourly-step trigger; ANYTHING ELSE under a day (600 s, 5400 s, ...) gets StartInterval = its own
 # period. Below 60 s or a non-number still FAILS LOUDLY, nothing is touched.
-# TEST SEAMS: LAUNCHAGENTS_DIR (default ~/Library/LaunchAgents); LIFEHACK_INSTALL_DRY_RUN=1 writes
-# the plists there but skips every launchctl call (and the state-dir mkdir), printing what it would run.
+# TEST SEAMS: LAUNCHAGENTS_DIR (default ~/Library/LaunchAgents); LIFEHACK_INSTALL_DRY_RUN=1 skips every launchctl call,
+# every delete and the state-dir mkdir, printing what it would do; it writes a NEW plist only into an explicitly set
+# LAUNCHAGENTS_DIR (never the real ~/Library/LaunchAgents) and never overwrites one that exists. Dry run changes nothing.
 # Without --install and without LIFEHACK_INSTALL_DRY_RUN=1 this only prints the plan.
+# ONLY ITS OWN AGENTS (V2 cr9, 2026-11-21; was `rm -f ai.lifehack.*.plist`, which also wiped agents no jobs list names):
+# it boots out and deletes an ai.lifehack.<x> agent only if <x> is a row name in the jobs lists (on, off or refused) or
+# a label it recorded writing last time ($HOME/.config/lifehack/state/install-schedulers.managed). Any other
+# ai.lifehack.* agent is left alone and named as kept.
 _xml_escape() {
   local s="$1"
   s="${s//&/&amp;}"; s="${s//</&lt;}"; s="${s//>/&gt;}"; s="${s//\"/&quot;}"
@@ -508,6 +513,7 @@ _trigger_text() {     # interval -> the trigger class the plist will carry (show
 }
 install_mac_launchd() {
   local la_dir="${LAUNCHAGENTS_DIR:-$HOME/Library/LaunchAgents}"
+  local record="$HOME/.config/lifehack/state/install-schedulers.managed"
   local dry=0 apply=0
   [ "${LIFEHACK_INSTALL_DRY_RUN:-}" = "1" ] && dry=1
   if [ "$dry" -eq 1 ] || [ "$MODE" = "--install" ]; then apply=1; fi
@@ -515,7 +521,7 @@ install_mac_launchd() {
   local state_root="$HOME/.config/lifehack/state/jobs"
 
   # --- parse the ```jobs``` block: name | enabled | interval | outcome | check | model | budget | source | command ---
-  local -a names=() ivals=()
+  local -a names=() ivals=() all_names=()
   local in=0 fence_seen=0 line name enabled interval cmd reasons mark _rc
   DOOR_WALK_MARK=""
   while IFS= read -r line || [ -n "$line" ]; do
@@ -529,6 +535,7 @@ install_mac_launchd() {
     IFS='|' read -r name enabled interval _outcome _check _model _budget _source cmd <<< "$line"
     name="$(trim "$name")"; enabled="$(trim "$enabled")"; interval="$(trim "$interval")"
     [ -n "$name" ] || continue
+    all_names+=("$name")   # every row the installer manages, whatever its state (an off row's old agent is removed)
     [ "$enabled" = "yes" ] || continue
     # THE DOOR (5.2): a row that fails it is refused -- reason printed, no plist, non-zero exit at the end.
     reasons="$(door_check_row "$name" "$enabled" "$(trim "$_outcome")" "$(trim "$_check")" "$(trim "$_model")" "$(trim "$_budget")" "$(trim "$_source")" "$(trim "$cmd")")"; _rc=$?
@@ -576,18 +583,29 @@ install_mac_launchd() {
 
   _run() { if [ "$dry" -eq 1 ]; then echo "  DRY-RUN would run: $*"; else "$@"; fi; }
 
-  # --- idempotent: bootout every loaded ai.lifehack.* label, delete stale plists ---
-  local label
-  if [ "$dry" -eq 1 ]; then
-    echo "  DRY-RUN would run: launchctl list | (bootout each loaded ai.lifehack.* label)"
-  else
-    while IFS= read -r label; do
-      [ -n "$label" ] || continue
-      launchctl bootout "gui/$uid/$label" >/dev/null 2>&1 || true
-    done < <(launchctl list 2>/dev/null | awk '{print $3}' | grep '^ai\.lifehack\.' || true)
+  # --- idempotent, ONLY ITS OWN AGENTS: managed = every row name in the jobs lists + the labels it recorded writing ---
+  local label _n _p
+  local -a managed=() loaded=() written=()
+  for _n in ${all_names[@]+"${all_names[@]}"}; do [[ "$_n" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] && managed+=("ai.lifehack.$_n"); done
+  if [ -f "$record" ]; then
+    while IFS= read -r _n; do [[ "$_n" =~ ^ai\.lifehack\.[A-Za-z0-9][A-Za-z0-9._-]*$ ]] && managed+=("$_n"); done < "$record"
   fi
-  mkdir -p "$la_dir"
-  rm -f "$la_dir"/ai.lifehack.*.plist
+  _is_managed() { local m; for m in ${managed[@]+"${managed[@]}"}; do [ "$m" = "$1" ] && return 0; done; return 1; }
+  while IFS= read -r label; do [ -n "$label" ] && loaded+=("$label"); done \
+    < <(launchctl list 2>/dev/null | awk '{print $3}' | grep '^ai\.lifehack\.' || true)
+  for label in ${loaded[@]+"${loaded[@]}"}; do
+    if _is_managed "$label"; then
+      if [ "$dry" -eq 1 ]; then echo "  DRY-RUN would boot out: $label"; else launchctl bootout "gui/$uid/$label" >/dev/null 2>&1 || true; fi
+    else echo "  KEPT (not managed by this installer, left loaded): $label"; fi
+  done
+  [ "$dry" -eq 1 ] || mkdir -p "$la_dir"
+  for _p in "$la_dir"/ai.lifehack.*.plist; do
+    [ -e "$_p" ] || continue
+    label="$(basename "$_p" .plist)"
+    if _is_managed "$label"; then
+      if [ "$dry" -eq 1 ]; then echo "  DRY-RUN would delete: $_p"; else rm -f "$_p"; fi
+    else echo "  KEPT (not managed by this installer): $_p"; fi
+  done
 
   # --- write, lint, bootstrap ---
   local plist hours h launch launch_x cal err sched_xml
@@ -616,6 +634,9 @@ ${cal}  </array>"
       sched_xml="  <key>StartInterval</key>
   <integer>$interval</integer>"
     fi
+    if [ "$dry" -eq 1 ] && { [ -z "${LAUNCHAGENTS_DIR:-}" ] || [ -e "$plist" ]; }; then
+      echo "  DRY-RUN would write: $plist (trigger: $(_trigger_text "${ivals[$i]}"))"; continue
+    fi
     cat > "$plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -638,6 +659,7 @@ PLIST
       echo "[install-schedulers] FATAL: plutil -lint rejected $plist" >&2; exit 1
     fi
     echo "[install-schedulers] wrote $plist"
+    written+=("$label")
     # 5.10(4): a failed bootstrap means the job is NOT scheduled; say so loudly and fail the install (the other jobs still get tried).
     _brc=0; _run launchctl bootstrap "gui/$uid" "$plist" || _brc=$?
     if [ "$_brc" -ne 0 ]; then
@@ -645,6 +667,10 @@ PLIST
       BOOTSTRAP_FAILED=$((BOOTSTRAP_FAILED + 1))
     fi
   done
+  if [ "$dry" -eq 0 ]; then   # record what it wrote, so the next run removes only its own agents
+    mkdir -p "$(dirname "$record")"
+    { [ "${#written[@]}" -eq 0 ] || printf '%s\n' "${written[@]}"; } > "$record.tmp.$$" && mv -f "$record.tmp.$$" "$record"
+  fi
   echo "[install-schedulers] REGISTRATION is not proof it fires: check ~/.config/lifehack/state/jobs/<job>/last-success after the first scheduled run."
   [ "$DOOR_REFUSED" -eq 0 ] || { echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door -- no plist written for them." >&2; door_print_next_steps >&2; }
   [ "$BOOTSTRAP_FAILED" -eq 0 ] || { echo "[install-schedulers] $BOOTSTRAP_FAILED job(s) FAILED to bootstrap -- the install FAILED." >&2; return 1; }
