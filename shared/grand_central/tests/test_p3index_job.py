@@ -1,4 +1,4 @@
-"""4P.3 item 10: the diary-index refresher (gc-diary-index), the one gc-midnight duty that must stay on a schedule.
+"""4P.3 item 10: the diary-index refresher (gc-diary-index), the diary index's own job (the retired gc-midnight job's one scheduled duty).
 SCRATCH ONLY: temp databases, temp diary folders, temp state — never the live rig.db or the real diary.
 Each planted case runs a deliberately BROKEN version first and requires the check to FAIL on it, then the real
 code and requires a pass:

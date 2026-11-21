@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 1 steps 1.3 and 1.4: the fast clock, the morning job and the midnight job (gcjobs.py).
+"""Phase 1 steps 1.3 and 1.4: the fast clock, and the morning job (gcjobs.py; the midnight job is retired).
 SYNTHETIC only: made-up mail, scratch folders, a FAKE pull (nothing touches Google), a FAKE model, a FAKE status light.
 The live database and the live front room are never opened. Each planted bad case below was shown FAILING first
 (see the "planted" notes in phase-1-step-3-result.md and phase-1-step-4-result.md).

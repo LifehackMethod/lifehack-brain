@@ -92,6 +92,7 @@ MANIFEST = [
     ("tests/test_p3d_ops.py", "unittest", False),
     ("tests/test_p3w_wake.py", "unittest", False),
     ("tests/test_p3a_snapshot_shape.py", "unittest", False),
+    ("tests/test_p3b_lens.py", "unittest", False),  # 4P.3R (g): the four lens passes in plain words, the uncapped question list
     ("tests/test_feeds.py", "unittest", False),  # 4P.0b: the named no-feed state, the gate, status --json  # phase 1 steps 1.3 and 1.4: fast clock, morning job
     ("tests/test_step43_keys.py", "unittest", False),  # Phase 4 step 4.3: keys in every diary entry, planted cases
     ("tests/test_step4_morning.py", "unittest", False),  # plan B2 step 4: the rebuilt morning read: quote check, code lists, batching, lenses, diary entry, hand-run (fake model)

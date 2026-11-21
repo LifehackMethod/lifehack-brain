@@ -1,13 +1,13 @@
 """Phase 4P.4 + 4P.4b (engine part): `gc decide` -- the door for a session's decisions on a draft, the
-validated weekly picture it stages, and the morning read / midnight job reading it.
+validated weekly picture it stages, and the morning read / morning diary entry reading it.
 
 Planted bad cases, each shown failing on the unfixed code first (see phase-4P-step-4-result.md):
   an answer without his words is refused; a suggestion he did not say yes to is not written; a placement
   (org membership, levels) written by anyone but the owner is refused; a snapshot edited after validation
   fails check_snapshot and is not re-staged; a snapshot with a yes whose answer is not in the database is
   refused; a forced morning read after a staged validated picture labels its baseline "validated", and one
-  after a draft only still says DRAFT; the midnight job's find_staged picks up the validated file and the
-  day's entry points at it; the planning desk folder is found through shared/desk_list.py, never a literal
+  after a draft only still says DRAFT; find_staged picks up the validated file and the
+  morning run's diary entry points at it; the planning desk folder is found through shared/desk_list.py, never a literal
   name.
 
 Temp DBs and temp notes folders only; never the live rig.db or the real notes folder.

@@ -5,7 +5,7 @@
   - a task          -> only a key the task is already linked to (a thing for the task with links to a person, organization,
                        event or project); none exists -> none.
 Nothing is ever read out of prose and looked up. Each stamped item also carries its part of life (routing.py: the
-label's life_part, else the sender's `domain` fact) so the midnight job can route it. The sender's address is NOT kept:
+label's life_part, else the sender's `domain` fact) so the morning run's diary entries can route it. The sender's address is NOT kept:
 only the key and the part of life are written into the form.
 stamp_items(con, emails, calendar, tasks, labels) -> [ {"source", "id", "life_part", "keys", ["thread_id"]} ]"""
 import os

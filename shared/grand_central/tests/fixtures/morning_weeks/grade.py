@@ -11,15 +11,15 @@ Ruling 2026-11-15 (plan B2 step 4 / step 7): the morning write-up is STAGED
 each morning in records (a records/context/ file); the small fixed form for
 code to check lives in the CATALOGUE beside it (a catalogue line / JSON file),
 not inside the record prose; ONE low-confidence diary entry per desk is
-written at MIDNIGHT from what was staged that day. --form reads the fixed
+written by the morning run from what was staged that day. --form reads the fixed
 form from that separate catalogue file; without it, the older fenced-block
 inside the draft is still accepted (compatibility).
 
-Midnight mode (--midnight) grades a whole desk diary directory:
+Diary mode (--midnight, the flag keeps the retired job's name) grades a whole desk diary directory:
 
     python3 grade.py --midnight --diary <diary dir> --expected cases/08_midnight_entry/expected.json
 
-Midnight check kinds (expected.json "checks" list; each carries "date"):
+Diary-entry check kinds (the midnight_ prefix is the retired job's name; expected.json "checks" list; each carries "date"):
   midnight_one_entry        -- exactly ONE diary file for the date, containing exactly one entry heading ("# ...")
   midnight_low_confidence   -- today's entry is marked low confidence ("confidence: low")
   midnight_points_to_staged -- today's entry references each staged write-up named in "files"
@@ -225,7 +225,7 @@ def check_midnight(diary_dir, exp_dir, c):
                 date, len(today), ", ".join(today))
         n = len(ENTRY_HEADING.findall(load_draft_text(os.path.join(diary_dir, today[0]))))
         return (n == 1), ("one file, one entry heading" if n == 1 else
-                          "file %s holds %d entry headings; midnight writes ONE" % (today[0], n))
+                          "file %s holds %d entry headings; the day gets ONE" % (today[0], n))
     if len(today) != 1:
         return False, "no single entry file for %s (found %d)" % (date, len(today))
     text = load_draft_text(os.path.join(diary_dir, today[0]))

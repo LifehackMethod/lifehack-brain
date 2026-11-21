@@ -1217,7 +1217,7 @@ def diary_entry_path(diary_root, day, desk, layout="tree"):
 
 def find_staged(records_dir, day, desk):
     """The day's staged write-ups for this desk: the morning draft, any top-ups, and (4P.4b) the validated
-    weekly picture <day>-<desk>-validated.md, so the midnight entry points at it too."""
+    weekly picture <day>-<desk>-validated.md, so the morning run's diary entry points at it too."""
     stem = "%s-%s" % (day, desk)
     try:
         names = sorted(n for n in os.listdir(records_dir)

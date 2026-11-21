@@ -9,7 +9,7 @@ One command, two forms (wired in gc.py as `gc decide`):
       the one door, record_answer), runs store.check_snapshot on the returned snapshot, and on PASS stages
       the validated weekly picture in the planning desk's records/context/ under ONE file name both readers
       use: <day>-<desk>-validated.json (the receipt: snapshot + draft + check result) and a readable
-      <day>-<desk>-validated.md beside it (what the morning read and the midnight job read). Staging is
+      <day>-<desk>-validated.md beside it (what the morning read and the morning run's own diary entry read). Staging is
       exclusive: a day's picture is staged once; a second decide for the same day is refused. On a FAILED
       check the decisions stay recorded (they were his word) but NOTHING is staged, and the command exits 1.
 

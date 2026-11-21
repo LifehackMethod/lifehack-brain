@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""4P.0b: the named no-feed state (feeds.py) and the gate in the gc read commands, plus the midnight
-job's quiet-night receipt. SYNTHETIC only: tmp setup folders, tmp databases, AGE_NOW frozen; the live
+"""4P.0b: the named no-feed state (feeds.py) and the gate in the gc read commands, plus the quiet-week
+receipt. SYNTHETIC only: tmp setup folders, tmp databases, AGE_NOW frozen; the live
 DB and the real setup are never opened. Planted bad cases are marked PLANTED (each was shown FAILING
 on the unfixed code before the fix: no DB -> 'unable to open database file' exit 1; empty DB -> a quiet
 week indistinguishable from a connected one; a configured-but-errored calendar read as data).

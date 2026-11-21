@@ -3,14 +3,14 @@
 # build window and the job door when the branch merges (plan 4P.3 item 10). Not a personal skill — it is
 # engine code that this job's runner in jobs/ execs from $LIFEHACK_CODE_ROOT.
 
-The one gc-midnight duty that must stay on a schedule when midnight retires (midnight inventory duty 5,
-2026-11-20): without a refresher the diary_index table (migration 028) goes stale and `gc person`'s DIARY
+The diary index's own job (it was the one duty of the retired gc-midnight job that had to stay on a schedule;
+the morning run now writes its own diary entry): without a refresher the diary_index table (migration 028) goes stale and `gc person`'s DIARY
 lines (store_pages.entries_mentioning) go dark. Code only: no model call, no network, no email, no outside
-read of its own. For every diary the engine knows — the SAME diary-name list midnight_job walks
-(diary_names.load(), a desk only when its folder exists) — store_diary.refresh_index runs once per diary
+read of its own. For every diary the engine knows — the diary-name list the morning run's
+diary entries use (diary_names.load(), a desk only when its folder exists) — store_diary.refresh_index runs once per diary
 under the store's write lock, exactly as gcjobs._live_index_refresh does. The receipt is ONE line, written
-LAST, atomically, only after every diary was refreshed (gcjobs.write_receipt, the same machinery midnight
-uses); a stale proof ages and the runner's missed-run alert fires (cron SOP).
+LAST, atomically, only after every diary was refreshed (gcjobs.write_receipt, the same machinery the other jobs
+use); a stale proof ages and the runner's missed-run alert fires (cron SOP).
 
 Exit codes (cron SOP section 4): 0 receipt written; 75 stood down — the engine is not set up (no database
 file at the store's path), no receipt; 1 failed — a diary failed (named on stderr, the other diaries still
@@ -29,7 +29,7 @@ JOB = "gc-" "diary-index"
 
 
 def diary_roots(notes=None, cfg=None):
-    """Every diary the engine knows, by its name: {diary_name: diary_folder}. The same walk midnight_job does —
+    """Every diary the engine knows, by its name: {diary_name: diary_folder}. The diary-name list the morning run uses —
     the pattern and the desk list live in setup/desks.json (never here); a desk with no folder is skipped."""
     import diary_names
     import gc_settings

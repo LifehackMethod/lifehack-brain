@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.3 item 10)
 # gc-diary-index-run.sh — the plugin's thin runner for the Grand Central diary-index refresher (daily, interval 86400).
-# Plan 4P.3 item 10: the one gc-midnight duty that must stay on a schedule when midnight retires (midnight
-# inventory duty 5, 2026-11-20) — without it the diary_index table goes stale and `gc person`'s DIARY lines
+# Plan 4P.3 item 10: the diary index's own job (the retired gc-midnight job's one duty that had to stay
+# on a schedule; the morning run writes its own diary entry) — without it the diary_index table goes stale and `gc person`'s DIARY lines
 # go dark. Thin on purpose: all the work is grand_central/diary_index_job.py (code only — refresh_index once
 # per diary under the store's write lock; no model, no network, no email). This file does no outside read of
 # its own. Exit codes pass straight through (cron SOP section 4): 0 receipt written, 75 stood down
