@@ -482,10 +482,13 @@ OS="${LIFEHACK_TEST_OS_OVERRIDE:-$OS}"
 # Each enabled job gets ~/Library/LaunchAgents/ai.lifehack.<job>.plist whose launch line is
 #   /bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'
 # so no plist carries a code path (the pointer file does). $HOME stays literal for bash to expand.
-# Schedule: any whole number of seconds >= 60 (canon cron-jobs-sop L81, owner-approved 2026-11-16). Whole-hour
-# intervals that divide 86400 keep a StartCalendarInterval trigger; whole-day multiples above a day (604800 = weekly)
-# keep a DAILY trigger with --if-overdue enforcing the row's real interval; ANYTHING ELSE (600 s, 5400 s, ...)
-# gets a launchd StartInterval trigger. Below 60 s or a non-number still FAILS LOUDLY, nothing is touched.
+# Schedule: any whole number of seconds >= 60 (canon cron-jobs-sop L81, owner-approved 2026-11-16). "Owed, not scheduled"
+# (spec item 8, 2026-11-21): a row of a day or longer (>= 86400 s: daily, weekly ...) gets NO clock-time trigger. It gets a
+# HEARTBEAT_SECS (3600) StartInterval plus RunAtLoad (launchd fires an overdue StartInterval on wake), and job-run.sh
+# --if-overdue decides on each beat whether the row is owed (once per calendar day / per N days), so the job runs on the first
+# wake after it is owed. Whole-hour intervals under a day that divide 86400 (1 h, 2 h, 3 h, 4 h, 6 h, 8 h, 12 h) keep a
+# StartCalendarInterval hourly-step trigger; ANYTHING ELSE under a day (600 s, 5400 s, ...) gets StartInterval = its own
+# period. Below 60 s or a non-number still FAILS LOUDLY, nothing is touched.
 # TEST SEAMS: LAUNCHAGENTS_DIR (default ~/Library/LaunchAgents); LIFEHACK_INSTALL_DRY_RUN=1 writes
 # the plists there but skips every launchctl call (and the state-dir mkdir), printing what it would run.
 # Without --install and without LIFEHACK_INSTALL_DRY_RUN=1 this only prints the plan.
@@ -496,6 +499,13 @@ _xml_escape() {
 }
 
 BOOTSTRAP_FAILED=0
+HEARTBEAT_SECS=3600   # a daily-or-longer row wakes this often (plus RunAtLoad); --if-overdue decides whether it is owed
+_trigger_text() {     # interval -> the trigger class the plist will carry (shown in the plan line)
+  local iv="$1"
+  if [ "$iv" -ge 86400 ]; then echo "heartbeat StartInterval ${HEARTBEAT_SECS}s + RunAtLoad, no clock time; --if-overdue decides"
+  elif [ $((iv % 3600)) -eq 0 ] && [ $((86400 % iv)) -eq 0 ]; then echo "calendar, hourly steps of $((iv/3600))h"
+  else echo "StartInterval ${iv}s"; fi
+}
 install_mac_launchd() {
   local la_dir="${LAUNCHAGENTS_DIR:-$HOME/Library/LaunchAgents}"
   local dry=0 apply=0
@@ -547,9 +557,8 @@ install_mac_launchd() {
       echo "[install-schedulers] FATAL: job name '$name' is not a safe launchd label fragment." >&2; bad=1; continue
     fi
     # ANY whole number of seconds >= 60 (canon cron-jobs-sop L81, owner-approved 2026-11-16). Whole-hour
-    # intervals that divide 86400 get a StartCalendarInterval trigger; whole-day multiples above a day
-    # (weekly 604800 ...) get a DAILY trigger and job-run.sh --if-overdue enforces the row's real interval
-    # (it compares last-success age to the ROW's period, not the trigger's); anything else gets StartInterval.
+    # whole-hour intervals under a day that divide 86400 get a StartCalendarInterval trigger; a row of a day or longer gets
+    # an hourly heartbeat (no 00:00 trigger) and job-run.sh --if-overdue decides; anything else gets StartInterval.
     if ! [[ "$interval" =~ ^[0-9]+$ ]] || [ "$interval" -lt 60 ]; then
       echo "[install-schedulers] FATAL: job '$name' has interval '$interval'; an interval must be a whole number of seconds >= 60 (canon cron-jobs-sop L81). Non-whole-hour intervals are installed as launchd StartInterval jobs. Set the row off or fix the interval." >&2
       bad=1
@@ -559,7 +568,7 @@ install_mac_launchd() {
 
   echo "[install-schedulers] macOS launchd: ${#names[@]} enabled job(s); agents dir: $la_dir"
   if [ "$apply" -eq 0 ]; then
-    for i in "${!names[@]}"; do echo "  WOULD WRITE $la_dir/ai.lifehack.${names[$i]}.plist (every ${ivals[$i]}s)"; done
+    for i in "${!names[@]}"; do echo "  WOULD WRITE $la_dir/ai.lifehack.${names[$i]}.plist (every ${ivals[$i]}s; trigger: $(_trigger_text "${ivals[$i]}"))"; done
     echo "[install-schedulers] plan only (re-run with --install to apply)."
     [ "$DOOR_REFUSED" -eq 0 ] || { echo "[install-schedulers] $DOOR_REFUSED enabled row(s) REFUSED by the door." >&2; door_print_next_steps >&2; }
     return 0
@@ -591,16 +600,14 @@ install_mac_launchd() {
     launch="exec /bin/bash \"\$(cat \"\$HOME/.config/lifehack/code-root\")/system/tools/job-run.sh\" $name --if-overdue"
     launch_x="$(_xml_escape "$launch")"
     cal=""
-    if [ "$interval" -le 86400 ] && [ $((interval % 3600)) -eq 0 ] && [ $((86400 % interval)) -eq 0 ]; then
+    if [ "$interval" -lt 86400 ] && [ $((interval % 3600)) -eq 0 ] && [ $((86400 % interval)) -eq 0 ]; then
       local step=$((interval/3600))          # whole-hour interval dividing 86400: an HOURLY-STEP calendar (unchanged)
       for ((h=0; h<24; h+=step)); do
         cal+="    <dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>0</integer></dict>"$'\n'
       done
-    elif [ "$interval" -gt 86400 ] && [ $((interval % 86400)) -eq 0 ]; then
-      cal+="    <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>0</integer></dict>"$'\n'
-      # > 1 day: a DAILY trigger; --if-overdue holds the real period (unchanged)
     fi
-    # anything else (600 s, 5400 s, ...): launchd StartInterval; --if-overdue keeps the launch line honest
+    # a day or longer: NO calendar trigger, an hourly heartbeat (below); anything else (600 s, 5400 s, ...): StartInterval = its period
+    [ "$interval" -ge 86400 ] && interval="$HEARTBEAT_SECS"
     if [ -n "$cal" ]; then
       sched_xml="  <key>StartCalendarInterval</key>
   <array>

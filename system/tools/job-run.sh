@@ -43,10 +43,10 @@
 # logged loudly and retried on the next run, recovery included. Sent through shared/notify/notify-send.sh (its governor owns quiet hours and dedup);
 # JOB_RUN_NOTIFY overrides the path, for tests.
 #
-# --if-overdue: run only if last-success is older than one period minus a 10% grace (capped at
-# 30 min). launchd gives a plist ONE argument list, so the calendar fire and RunAtLoad cannot pass
-# different flags; with the grace, every calendar fire is overdue (the last success is ~one period
-# old) while a login shortly after a success stands down. After a Shut Down, the at-login fire runs.
+# --if-overdue: run only if the row is owed. Sub-daily row: last-success older than one period minus a 10% grace (capped at
+# 30 min). Row of a day or longer: owed once per calendar day (per N days), counted from the previous due point (local
+# midnight), see section 3 below. launchd gives a plist ONE argument list, so the heartbeat and RunAtLoad cannot pass
+# different flags; --if-overdue decides on every fire. After a Shut Down, the at-login fire runs.
 #
 # REUSES system/tools/ingest-run.lib.sh for binary resolution and the credential/pre-flight checks.
 # Its lock (ingest_acquire_lock) and watchdog (ingest_run_claude) are NOT used: the lock `exit 0`s on
@@ -469,11 +469,33 @@ run_row_check() {
 }
 
 # ── 3) --if-overdue ──
+# "Owed, not scheduled." WHEN a row is due is counted from the PREVIOUS DUE POINT, never from a fixed age since the last success.
+#  - A row of a day or longer (INTERVAL >= 86400) has its due points at local midnight, every N calendar days (N = INTERVAL in
+#    days, rounded up). It is owed once the local calendar day has moved N or more days past the day of its last success. So a
+#    daily row is owed once per calendar day, on the first wake after midnight: a daytime catch-up (15:00) never makes the next
+#    morning stand down; a Mac asleep through the due time runs once on wake; a gap of three closed days is covered by ONE run
+#    (the day count only has to reach N, and the run stamps today); a second wake the same day stands down. The installer gives
+#    these rows no clock-time trigger, only a heartbeat (install-schedulers.sh), and this rule decides on each heartbeat.
+#  - A sub-daily row keeps the age rule: overdue when the last success is older than one period minus a 10% grace (capped 30 min).
 if [ "$IF_OVERDUE" = 1 ] && [ -f "$STATE/last-success" ]; then
-  GRACE=$(( INTERVAL / 10 )); [ "$GRACE" -gt 1800 ] && GRACE=1800
-  AGE=$(( $(now_epoch) - $(mtime "$STATE/last-success") ))
-  if [ "$AGE" -lt $(( INTERVAL - GRACE )) ]; then
-    finish 75 "not overdue: last success ${AGE}s ago, period ${INTERVAL}s" no
+  if [ "$INTERVAL" -ge 86400 ]; then
+    local_day() { # epoch -> local calendar day number (local wall clock shifted to UTC, so DST-safe)
+      local e="$1" z sign hh mm off
+      z="$(date -r "$e" +%z 2>/dev/null || date -d "@$e" +%z)"; sign="${z:0:1}"; hh="${z:1:2}"; mm="${z:3:2}"
+      off=$(( 10#$hh * 3600 + 10#$mm * 60 )); [ "$sign" = "-" ] && off=$(( -off ))
+      echo $(( ( e + off ) / 86400 ))
+    }
+    NDAYS=$(( (INTERVAL + 86399) / 86400 ))
+    GAPDAYS=$(( $(local_day "$(now_epoch)") - $(local_day "$(mtime "$STATE/last-success")") ))
+    if [ "$GAPDAYS" -lt "$NDAYS" ]; then
+      finish 75 "not overdue: last success ${GAPDAYS} calendar day(s) ago, due every ${NDAYS} day(s)" no
+    fi
+  else
+    GRACE=$(( INTERVAL / 10 )); [ "$GRACE" -gt 1800 ] && GRACE=1800
+    AGE=$(( $(now_epoch) - $(mtime "$STATE/last-success") ))
+    if [ "$AGE" -lt $(( INTERVAL - GRACE )) ]; then
+      finish 75 "not overdue: last success ${AGE}s ago, period ${INTERVAL}s" no
+    fi
   fi
 fi
 
