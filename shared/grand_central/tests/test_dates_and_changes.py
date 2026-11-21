@@ -99,6 +99,26 @@ class CalendarChanges(T.Base):
         morning.run_morning(m, DAY, "desk-a", self.recs, expected=T.EXPECTED, calendar=old)
         self.assertIn("no changes since the previous draft", T.file_text(m.prompts[0], "calendar-changes"))
 
+    def test_the_older_draft_format_is_read_too(self):
+        """the live code's last draft ('## Your next 14 days' + '- date: title', no times) is the first morning's previous draft"""
+        fx = open(os.path.join(HERE, "fixtures", "old_format_calendar_2026-11-20.md.txt"), encoding="utf-8").read().splitlines()[1:]
+        with open(os.path.join(self.recs, "2026-11-20-desk-a.md"), "w", encoding="utf-8") as f:
+            f.write("\n".join(["# Morning snapshot 2026-11-20", ""] + fx + ["", "## Picture", "A short picture.", ""]))
+        pairs = [l[2:].split(": ", 1) for l in fx if l[:4] == "- 20"]
+        self.assertEqual(len(pairs), 48)
+        removed = ["2026-12-01", "Flight to Dallas (AA 760)"]
+        self.assertIn(removed, pairs)
+        now = [{"title": t, "start": d + "T09:00:00-05:00", "end": d + "T10:00:00-05:00", "location": ""} for d, t in pairs if [d, t] != removed]
+        now.append({"title": "Board call", "start": "2026-11-24T09:00:00-05:00", "end": "2026-11-24T10:00:00-05:00", "location": ""})
+        out = morning.calendar_changes_text(self.recs, "desk-a", now, DAY)
+        self.assertIn("previous draft is 2026-11-20", out)
+        body = [l for l in out.splitlines()[1:]]
+        self.assertEqual(len(body), 2, out)
+        self.assertTrue(body[0].startswith("- NEW 2026-11-24: Board call"), out)
+        self.assertTrue(body[1].startswith("- NO LONGER LISTED 2026-12-01: Flight to Dallas (AA 760)"), out)
+        self.assertNotIn("no previous draft", out)
+        self.assertNotIn("carries no calendar list", out)
+
     def test_no_previous_draft_is_said_too(self):
         self.env.deliver("th-5", "msg-5", "Dana <d@h.test>", "Hi", "2026-11-20 09:00", "read-x", self.t, "Note.")
         self.env.ingest()

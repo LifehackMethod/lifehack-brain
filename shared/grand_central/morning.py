@@ -607,6 +607,9 @@ def mail_dates_text(rows, day):
 _CAL_LINE = re.compile(r"^(\d{4}-\d{2}-\d{2}): (.*) \(([^()]*?) to ([^()]*?), time zone ([^,]*), place: (.*)\)$")
 
 
+_OLD_CAL_LINE = re.compile(r"^- (\d{4}-\d{2}-\d{2}): (.+)$")
+
+
 def _cal_parse(lines):
     out = {}
     for ln in lines:
@@ -641,6 +644,17 @@ def calendar_changes_text(records_dir, desk, calendar, day):
         return "%s (computed by code): no previous draft to compare against." % head
     prev_lines = [ln.split("- Your next 14 days: ", 1)[1] for ln in text.splitlines() if ln.startswith("- Your next 14 days: ")]
     prev, cur = _cal_parse(prev_lines), _cal_parse([calendar_line(c) for c in (calendar or []) if isinstance(c, dict)])
+    # the older draft format: a '## Your next 14 days' section of '- YYYY-MM-DD: title' lines (no times); a None entry = date and title only
+    in_old = False
+    for ln in text.splitlines():
+        if ln.startswith("## ") or ln.startswith("# "):
+            in_old = ln.strip() == "## Your next 14 days"
+            if in_old:
+                prev_lines.append("(older format section)")
+            continue
+        m = _OLD_CAL_LINE.match(ln.strip()) if in_old else None
+        if m:
+            prev.setdefault((m.group(1), m.group(2)), []).append(None)
     try:
         lo = max(day, name[:10])
         hi = (datetime.date.fromisoformat(name[:10]) + datetime.timedelta(days=14)).isoformat()
@@ -654,8 +668,13 @@ def calendar_changes_text(records_dir, desk, calendar, day):
             continue
         p, c = list(prev.get(key, [])), list(cur.get(key, []))
         for d_ in list(p):
-            if d_ in c:
+            if d_ is None:
+                if c:
+                    p.remove(None); c.pop(0)  # older draft: date and title only, no times to compare
+            elif d_ in c:
                 p.remove(d_); c.remove(d_)
+        gone += ["- NO LONGER LISTED %s: %s (the older draft carried no times)" % key for d_ in p if d_ is None]
+        p = [d_ for d_ in p if d_ is not None]
         while p and c:
             a, b = p.pop(0), c.pop(0)
             moved.append("- CHANGED %s: %s was %s to %s (time zone %s, place: %s), now %s to %s (time zone %s, place: %s)" % ((key[0], key[1]) + tuple(a) + tuple(b)))
