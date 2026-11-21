@@ -126,6 +126,43 @@ def naive(rows, day, collisions=0):
 
 
 class CapacityMath(unittest.TestCase):
+    # --- real-mirror format: timed rows carry an ISO offset, all-day rows a bare date, summary not title
+    def test_real_mirror_two_overlapping_events_collide_and_are_busy(self):
+        rows = [{"summary": "xx meeting", "start": DAY + "T09:30:00-05:00", "end": DAY + "T10:30:00-05:00", "all_day": 0},
+                {"summary": "Literature Commit", "start": DAY + "T09:30:00-05:00", "end": DAY + "T10:30:00-05:00", "all_day": 0}]
+        out = capacity.capacity(rows, DAY)[0]
+        self.assertEqual(out["collisions"], 1)
+        self.assertEqual(out["busy_hours"], 1.0)
+        self.assertEqual(out["free_hours"], 11.0)
+
+    def test_real_mirror_workout_is_one_and_a_half_busy_hours(self):
+        rows = [{"summary": "workout", "start": DAY + "T07:30:00-05:00", "end": DAY + "T09:00:00-05:00", "all_day": 0}]
+        out = capacity.capacity(rows, DAY)[0]
+        self.assertEqual(out["busy_hours"], 1.5)   # the real event length; free hours count only the 08:00-20:00 window
+        self.assertEqual(out["free_hours"], 11.0)
+        self.assertEqual(out["unusable"], [])
+
+    def test_real_mirror_birthday_all_day_is_not_travel(self):
+        rows = [{"summary": "Day reminder A", "start": DAY, "end": "2026-11-22", "all_day": 1}]
+        out = capacity.capacity(rows, DAY)[0]
+        self.assertFalse(out["travel"])
+        self.assertEqual(out["busy_hours"], 0.0)
+
+    def test_real_mirror_flight_is_travel(self):
+        rows = [{"summary": "Flight to the coast", "start": DAY + "T14:00:00-05:00", "end": DAY + "T16:00:00-05:00", "all_day": 0}]
+        self.assertTrue(capacity.capacity(rows, DAY)[0]["travel"])
+
+    def test_all_day_flight_or_hotel_is_travel_but_reminder_is_not(self):
+        rows = [{"summary": "Hotel stay", "start": DAY, "end": "2026-11-22", "all_day": 1}]
+        self.assertTrue(capacity.capacity(rows, DAY)[0]["travel"])
+        rows = [{"summary": "Day reminder B", "start": DAY, "end": "2026-11-22", "all_day": 1}]
+        self.assertFalse(capacity.capacity(rows, DAY)[0]["travel"])
+
+    def test_row_carrying_the_travel_label_from_settings_is_travel(self):
+        rows = [{"summary": "Pickup", "start": DAY + "T09:00:00-05:00", "end": DAY + "T10:00:00-05:00", "labels": ["Zed"]}]
+        self.assertFalse(capacity.capacity(rows, DAY)[0]["travel"])
+        self.assertTrue(capacity.capacity(rows, DAY, travel_labels=("zed",))[0]["travel"])
+
     def test_empty_day_is_12_free_hours(self):
         out = capacity.capacity([], DAY)
         self.assertEqual(len(out), 7)
@@ -155,9 +192,10 @@ class CapacityMath(unittest.TestCase):
             self.assertEqual(real[0]["busy_hours"], 0.0)
             self.assertEqual(real[0]["free_hours"], 12.0)
 
-    def test_all_day_marks_travel(self):
+    def test_all_day_alone_is_not_travel(self):
+        """was test_all_day_marks_travel: an all-day reminder is never travel (the bug marked 5 of 7 days)."""
         real = capacity.capacity([ev("Trip", DAY)], DAY)
-        self.assertTrue(real[0]["travel"])
+        self.assertFalse(real[0]["travel"])
 
     def test_travel_word_in_title_or_location_marks_the_day(self):
         for rows in ([ev("Flight to the coast", DAY + " 09:00", DAY + " 10:00")],
