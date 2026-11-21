@@ -15,8 +15,8 @@ Read-only rules this file obeys:
   * Google is reached only the way the live jobs reach it: the rig login picked by rig_env.apply_to_this_process(), the same
     gws program, email_fetch's own list/get calls (envelope metadata: only ids, dates and label ids are kept; no header text is
     stored), and the same safe_calendar.py / safe_tasks.py doors in isolate mode (their scratch file is deleted unread);
-  * the one thread-door call (transcripts.read_thread, read-only Caller) keeps only ok/refused and a byte count; the door's access
-    log append is switched off for this process so the front room is not written.
+  * the one thread-door call (transcripts.read_thread, read-only Caller) runs against an owner-only COPY of the front room in the
+    scratch folder, with the door's access log intact (it writes to the copy's log); only ok/refused and a byte count are kept.
 
 Usage:
     python3 intake_plumbing_check.py --scratch DIR [--result-md FILE] [--today YYYY-MM-DD] [--days-ahead 7]
@@ -608,7 +608,35 @@ def check_diaries(a, notes, today):
               n_files, len(found), len(ids), newest, age, with_m, n_keys))
 
 
-def check_door(today, fr_meta):
+def front_room_copy(src, dest, thread_id):
+    """An owner-only COPY of the front room, enough for one door read: the catalogue folder (with its ledger key), the status
+    file, the access log and the one thread file. The door then runs against the copy with its own access log intact."""
+    if os.path.exists(dest):
+        shutil.rmtree(dest)
+    os.makedirs(os.path.join(dest, "transcripts"), mode=0o700)
+    os.chmod(dest, 0o700)
+    shutil.copytree(os.path.join(src, "catalogue"), os.path.join(dest, "catalogue"),
+                    ignore=shutil.ignore_patterns("morning"))
+    for name in ("ingest-status.json", "access.log"):
+        if os.path.isfile(os.path.join(src, name)):
+            shutil.copy2(os.path.join(src, name), os.path.join(dest, name))
+    shutil.copy2(os.path.join(src, "transcripts", thread_id + ".txt"), os.path.join(dest, "transcripts", thread_id + ".txt"))
+    for root, dirs, files in os.walk(dest):
+        for d in dirs:
+            os.chmod(os.path.join(root, d), 0o700)
+        for f in files:
+            os.chmod(os.path.join(root, f), 0o600)
+
+
+def line_count(path):
+    try:
+        with open(path, "rb") as f:
+            return sum(1 for _ in f)
+    except OSError:
+        return 0
+
+
+def check_door(today, fr_meta, scratch):
     import transcripts
     rows = [r for r in fr_meta if str(r.get("ingested_at") or "").startswith(today.isoformat()) and r.get("thread_id")]
     if not rows:
@@ -620,17 +648,54 @@ def check_door(today, fr_meta):
         plumb("read-only email door (read_thread)", "missing", "the catalogue has no thread to test")
         return
     tid = sorted(rows, key=lambda r: str(r.get("ingested_at")))[-1]["thread_id"]
-    transcripts._log_access = lambda *x, **k: None      # no access-log append: the front room is not written by this check
-    caller = transcripts.Caller("intake-plumbing-check", read_only=("Read",))
+    live = transcripts.front_room()
+    copy = os.path.join(scratch, "front-room-copy")
     try:
-        text = transcripts.read_thread(tid, caller)
-        n = len(text.encode("utf-8"))
-        del text
-        RESULTS["door"] = {"thread_id": tid, "outcome": "ok", "bytes": n, "which": which}
-        plumb("read-only email door (read_thread)", "ok", "ok on one thread %s (id %s), %d bytes (text discarded)" % (which, tid, n))
-    except transcripts.Refused as e:
-        RESULTS["door"] = {"thread_id": tid, "outcome": "refused:%s" % e.reason, "which": which}
-        plumb("read-only email door (read_thread)", "error", "refused: %s (thread %s)" % (e.reason, tid))
+        front_room_copy(live, copy, tid)
+    except OSError as e:
+        plumb("read-only email door (read_thread)", "missing", "could not copy the front room for the test: %s" % e)
+        return
+    log = os.path.join(copy, "access.log")
+    before = line_count(log)
+    prior = os.environ.get("AGE_FRONT_ROOM")
+    os.environ["AGE_FRONT_ROOM"] = copy               # the door's places all follow this, so it reads and logs in the copy
+    try:
+        caller = transcripts.Caller("intake-plumbing-check", read_only=("Read",))
+        try:
+            text = transcripts.read_thread(tid, caller)
+            n = len(text.encode("utf-8"))
+            del text
+            outcome = "ok"
+        except transcripts.Refused as e:
+            n, outcome = 0, "refused:%s" % e.reason
+    finally:
+        if prior is None:
+            os.environ.pop("AGE_FRONT_ROOM", None)
+        else:
+            os.environ["AGE_FRONT_ROOM"] = prior
+        shutil.rmtree(os.path.join(copy, "transcripts"), ignore_errors=True)   # the copied text is not kept
+    after = line_count(log)
+    logged = after == before + 1
+    RESULTS["door"] = {"thread_id": tid, "outcome": outcome, "bytes": n, "which": which,
+                       "copy_log_lines_before": before, "copy_log_lines_after": after, "log_grew_by_one": logged}
+    if outcome != "ok":
+        plumb("read-only email door (read_thread)", "error", "refused: %s (thread %s)" % (outcome, tid))
+    elif not logged:
+        plumb("read-only email door (read_thread)", "error",
+              "read ok but the door's access log (in the copy) went %d -> %d lines, not +1" % (before, after))
+    else:
+        plumb("read-only email door (read_thread)", "ok",
+              "ok on one thread %s (id %s), %d bytes (text discarded), read in a COPY of the front room; its access log went %d -> %d lines" % (
+                  which, tid, n, before, after))
+
+
+def assert_no_log_patch():
+    """Self-check: this file never replaces the door's logging function (any assignment to its name)."""
+    with open(os.path.abspath(__file__), encoding="utf-8") as f:
+        src = f.read()
+    name = "_log" + "_access"
+    if re.search(r"\b[\w.]*%s\s*=[^=]" % name, src) or re.search(r"setattr\([^)]*%s" % name, src):
+        raise SystemExit("STOP: this check must never patch or replace the door's logging function")
 
 
 def check_life_map(notes, today):
@@ -757,6 +822,7 @@ def main(argv=None):
     ap.add_argument("--branch-draft", help="a draft produced by branch code, to list its code lists")
     ap.add_argument("--no-google", action="store_true", help="skip every Google call (plumbing only)")
     a = ap.parse_args(argv)
+    assert_no_log_patch()
 
     os.makedirs(a.scratch, exist_ok=True)
     os.chmod(a.scratch, 0o700)
@@ -817,7 +883,7 @@ def main(argv=None):
             check_life_map(notes, today)
         check_diaries(a, notes, today)
         run_gc_reads(a, copy_path, today, a.scratch)
-        check_door(today, fr_meta)
+        check_door(today, fr_meta, a.scratch)
         check_answers(db, today)
         check_state(db, gc_settings.state_dir(), today, now)
     finally:
