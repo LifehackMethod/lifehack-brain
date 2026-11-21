@@ -963,10 +963,15 @@ WHOLE_RULES = (
     "ledger, then the single line NO-FINDINGS. Use no tools; everything you need is in this "
     "prompt.")
 
-def whole_prompt(task_text, files):
+def whole_prompt(task_text, files, rules=WHOLE_RULES):
     """ONE prompt: the task's text, the reply rules, then every file printed in full, each
-    between BEGIN/END markers, every line prefixed with its 1-based line number and a tab."""
-    parts = [task_text.strip(), "", WHOLE_RULES, ""]
+    between BEGIN/END markers, every line prefixed with its 1-based line number and a tab.
+    `rules` defaults to the whole-read reply contract; a caller with its own reply shape (the
+    Grand Central morning read writes plain words) passes its own. rules="" or None leaves out
+    both the rules line and the blank line after it."""
+    parts = [task_text.strip(), ""]
+    if rules:
+        parts += [rules, ""]
     for label, text in files:
         lines = text.split("\n")
         parts.append("===== FILE %s BEGINS (%d lines) =====" % (label, len(lines)))
