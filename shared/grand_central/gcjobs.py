@@ -137,7 +137,8 @@ def lock_release(path):
         shutil.rmtree(path, ignore_errors=True)
 
 
-MORNING_AFTER_HOUR = 5            # the fast clock starts the morning read on its first tick at or after 05:00 local
+# No hour gate (owner's rule, 2026-11-20): work happens when the laptop is awake, not at a time on the clock. The morning
+# is due on the first fast-clock tick of a new local day that has no successful draft.
 LAUNCH_MIN_GAP_S = 1800           # a morning that failed is not started again for 30 minutes
 REFRESH_LOCK_WAIT_S = 120         # the morning waits this long for the database lock before reading stored sources
 LAUNCH_MAX_PER_DAY = 6 # the hard ceiling on tries a day, wake resets aside (each try spends a model call; 4P.3D item 12)
@@ -166,7 +167,7 @@ def launch_morning_detached(desk, state=None):
 
 def morning_launch_check(now_local, desk=None, launcher=None, state=None):
     """Called by the fast clock every tick. -> one word for the proof line:
-    not-due (before 05:00) · done (today's draft exists) · running (the morning's own lock is held by a live process) ·
+    done (today's draft exists) · running (the morning's own lock is held by a live process) ·
     backoff / gave-up-today (a failing morning is not hammered) · launched (a detached morning was just started) ·
     launch-failed. The tick itself never waits for the morning read. 4P.3D slice W item A: the retries happen INSIDE
     the detached run (up to 3 attempts, 300 s apart); this launcher applies the per-wake rule (more than
@@ -174,8 +175,6 @@ def morning_launch_check(now_local, desk=None, launcher=None, state=None):
     counting EVERY attempt — the morning run records each one in the ledger."""
     import morning
     desk = desk or gc_settings.default_desk()
-    if now_local.hour < MORNING_AFTER_HOUR:
-        return "not-due"
     day = now_local.date().isoformat()
     if morning.find_staged(morning.records_context_dir(morning.notes_root(), desk), day, desk):
         return "done"
@@ -738,15 +737,17 @@ def main(argv=None):
     ap.add_argument("--desk", default=None, help="the desk (default: gc.json default_desk)")
     ap.add_argument("--day", default=None)
     ap.add_argument("--drop", default=None, help="drop folder (default: $GC_DROP, else gc.json drop_dir)")
-    ap.add_argument("--any-time", action="store_true")
     a = ap.parse_args(sys.argv[1:] if argv is None else argv)
     if a.job == "fast-clock":
         return fast_clock(drop=a.drop or default_drop())
     if a.job == "morning":
-        # The fast clock starts the morning after 05:00. A job-run row firing at 00:00 must not make a premature draft:
-        # before 05:00 it stands down, unless this is a forced test run (job-run sets JOB_RUN_FORCED=1) or --any-time.
-        if datetime.datetime.now().hour < MORNING_AFTER_HOUR and not a.any_time and os.environ.get("JOB_RUN_FORCED") != "1":
-            print("[morning] stood down: before %02d:00 local (the fast clock starts the morning read after that)" % MORNING_AFTER_HOUR)
+        # Double-run guard only (never the hour): stand down when today's draft already exists. The morning's own lock
+        # (held by a live process) makes morning_job stand down with 75 too.
+        import morning
+        desk = a.desk or gc_settings.default_desk()
+        day = a.day or datetime.date.today().isoformat()
+        if morning.find_staged(morning.records_context_dir(morning.notes_root(), desk), day, desk):
+            print("[morning] stood down: today's draft already exists (%s)" % day)
             return 75
         return morning_job(day=a.day, desk=a.desk, extra_argv=(["--drop", a.drop] if a.drop else []))
     return 2

@@ -101,7 +101,7 @@ class Scratch(unittest.TestCase):
     FRESH = "[pull] skipping calendar: fetched successfully within the last 18h (mode=auto)\n[pull] skipping tasks: fetched successfully within the last 18h (mode=auto)\n"
 
     def fast(self, pull=None, login_ok=None, **kw):
-        kw.setdefault("now_local", datetime.datetime(2026, 11, 16, 3, 0))        # before 05:00: the morning is not due
+        kw.setdefault("now_local", datetime.datetime(2026, 11, 16, 3, 0))        # 03:00 local, no draft: the morning is due (no hour gate)
         kw.setdefault("launch", lambda desk, st: self.launched.append(desk))
         self.envelope_pulls = [] # 4P.3D slice W: the envelope pull and the once-a-day launcher are stubbed per tick
         kw.setdefault("envelope_pull", lambda after: self.envelope_pulls.append(after) or (0, "[pull] envelopes ok after %s" % after))
@@ -121,7 +121,7 @@ class FastClock(Scratch):
         self.assertEqual(rc, 0, self.lines)
         self.assertEqual(os.listdir(self.deliv), [])
         line = self.receipt("gc-fast-clock")
-        self.assertIn("waiting=2 cleared=2 filed=2 duplicate=0 refused=0 calendar=fresh tasks=fresh db=done considered=2 candidates=1 morning=not-due", line)
+        self.assertIn("waiting=2 cleared=2 filed=2 duplicate=0 refused=0 calendar=fresh tasks=fresh db=done considered=2 candidates=1 morning=launched", line)
         self.assertTrue(check_passes("gc-fast-clock", line), line)
         cand = [json.loads(x) for x in slurp(os.path.join(self.front, "alarm-candidates.jsonl")).splitlines()]
         self.assertEqual([c["message_id"] for c in cand], ["a00001"])
@@ -357,25 +357,50 @@ def hold(path, pid=None):
 
 
 class MorningTrigger(Scratch):
-    """1. The fast clock starts the morning detached, once, after 05:00, never twice."""
+    """1. The fast clock starts the morning detached, once, on the first tick of a new local day with no draft, never twice."""
 
     def at(self, hh, mm=0):
         return datetime.datetime(2026, 11, 16, hh, mm)
 
-    def test_before_five_nothing_starts_and_after_five_one_detached_morning_starts(self):
-        self.assertEqual(self.fast(now_local=self.at(4, 59)), 0)
-        self.assertEqual(self.launched, [])
-        self.assertIn("morning=not-due", self.receipt("gc-fast-clock"))
-        self.assertEqual(self.fast(now_local=self.at(5, 0)), 0, self.lines)
+    def test_PLANTED_a_lid_opened_at_0430_with_no_draft_today_starts_the_morning_at_once(self):
+        # the owner's rule (2026-11-20): work happens when the laptop is awake, not at a time on the clock.
+        self.assertEqual(self.fast(now_local=self.at(4, 30)), 0, self.lines)
         self.assertEqual(self.launched, ["desk-a"])
         line = self.receipt("gc-fast-clock")
         self.assertIn("morning=launched", line)
         self.assertTrue(check_passes("gc-fast-clock", line), line)
 
+    def test_a_second_tick_the_same_day_after_a_successful_draft_starts_nothing(self):
+        self.assertEqual(self.fast(now_local=self.at(4, 30)), 0, self.lines)
+        self.assertEqual(self.launched, ["desk-a"])
+        rec = morning.records_context_dir(self.notes, "desk-a")   # the detached morning succeeded: today's draft exists
+        os.makedirs(rec)
+        with open(os.path.join(rec, "2026-11-16-desk-a.md"), "w", encoding="utf-8") as f:
+            f.write("# draft\n")
+        self.assertEqual(self.fast(now_local=self.at(4, 45)), 0, self.lines)
+        self.assertEqual(self.launched, ["desk-a"])
+        self.assertIn("morning=done", self.receipt("gc-fast-clock"))
+
+    def test_the_morning_command_stands_down_75_only_as_the_double_run_guard(self):
+        called = []
+        real = gcjobs.morning_job
+        gcjobs.morning_job = lambda **kw: called.append(kw) or 0
+        try:
+            self.assertEqual(gcjobs.main(["morning", "--desk", "desk-a", "--day", t4.DAY]), 0)   # any hour, no draft: runs
+            self.assertEqual(len(called), 1)
+            rec = morning.records_context_dir(self.notes, "desk-a")
+            os.makedirs(rec)
+            with open(os.path.join(rec, "%s-desk-a.md" % t4.DAY), "w", encoding="utf-8") as f:
+                f.write("# draft\n")
+            self.assertEqual(gcjobs.main(["morning", "--desk", "desk-a", "--day", t4.DAY]), 75)  # today's draft exists
+            self.assertEqual(len(called), 1)
+        finally:
+            gcjobs.morning_job = real
+
     def test_PLANTED_a_morning_already_running_is_not_started_again_and_the_tick_finishes(self):
         hold(gcjobs.morning_run_lock())                            # a live morning holds its own lock
         t0 = time.time()
-        self.assertEqual(self.fast(now_local=self.at(7)), 0, self.lines)
+        self.assertEqual(self.fast(now_local=self.at(4, 30)), 0, self.lines)
         self.assertLess(time.time() - t0, 5)                       # the tick does not wait for the morning
         self.assertEqual(self.launched, [])
         self.assertIn("morning=running", self.receipt("gc-fast-clock"))
