@@ -1135,6 +1135,11 @@ class DiaryEntry(Base):
         self.assertIn("Never restate a guess against them", morning.MORNING_RULES)
         self.assertIn("a clash with one becomes a question for the next session", morning.MORNING_RULES)
 
+    def test_r3_the_contradiction_rule_covers_his_answers_ledger_as_well_as_his_notes(self):
+        rule = "If anything you would write clashes with an answer he has given or a note he has written, do not settle it: write it as a question for the next session."
+        self.assertIn(rule, morning.MORNING_RULES)
+        self.assertNotIn("contradicts an older note of his", morning.MORNING_RULES)      # the narrow, notes-only wording is gone
+
     def test_f5_the_rules_ask_for_a_tag_on_every_mentioned_email_and_numbers_as_given(self):
         self.assertIn("Every email you mention carries its [mail:<label>] tag, even when you do not quote it", morning.MORNING_RULES)
         self.assertIn("never re-rank or recompute them", morning.MORNING_RULES)

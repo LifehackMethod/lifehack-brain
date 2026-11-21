@@ -352,7 +352,7 @@ MORNING_RULES = """HOW TO WRITE THE MORNING DRAFT (plain words; no JSON, no tabl
 - Everything you write is a suggestion, never a fact. Anything that rests on baseline-unconfirmed stays a guess until he confirms it.
 - Deadlines, money and commitments you find in emails: write them as plain words with a quote. They are guesses until he confirms them.
 - Write the lens findings as low-confidence observations, never as settled facts.
-- If something in the mail contradicts an older note of his, write it as a QUESTION for the next session. Never retire or rewrite his line yourself.
+- If anything you would write clashes with an answer he has given or a note he has written, do not settle it: write it as a question for the next session. Never retire or rewrite his line yourself.
 - Email, calendar and tasks weigh equally. A moved event or a dropped task deserves its place next to the mail; if a source has nothing new, say so in one sentence.
 - When there is no earlier picture, a thread whose newest message is older than 7 days is not news: say so in one sentence.
 - Quote what matters, never whole transcripts.
