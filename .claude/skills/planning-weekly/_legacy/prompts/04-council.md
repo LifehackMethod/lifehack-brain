@@ -21,8 +21,8 @@ The Council never re-ranks. He keeps the pen.
 ## The six members (full angles in `council/`)
 April (10th Man — a *different, simpler* conclusion) · Time Supply (hard math: free hrs vs task-hrs → surplus/
 deficit) · Blind Spot Detector (the 11 priority-selection biases, one per turn only when warranted) · Touchdown
-Dance (celebrate real wins; flag over-scheduling after a big result) · Long-Lens/Ponzi (is this week robbing Peter
-to pay Paul?) · The Builder (leverage against recurring pain — automation, or an untapped feature in software he
+Dance (celebrate real wins; flag over-scheduling after a big result) · Long-Lens/Ponzi (is this week borrowing from later weeks
+to pay for this one?) · The Builder (leverage against recurring pain — automation, or an untapped feature in software he
 already pays for). All **opus** (the advisory-council engine's designed opus exception; Fable unavailable in CLI). Count = independence, not headcount. *(Cost note: 6 opus advisors/run is heavier than the rule's "small roster 2–4"; justified by the weekly cadence + quality-is-the-deliverable — the person can down-scope to sonnet if cost bites.)*
 
 ## do NOT

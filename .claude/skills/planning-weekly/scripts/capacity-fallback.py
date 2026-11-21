@@ -20,7 +20,7 @@ Malformed input is a loud error, never skipped.
 """
 # allow-silence: build-ruled location — slice B of the planning-weekly build; the coordinator
 # ruled this worktree skill folder as the home for these files, and the build task forbids
-# own_list_add and any write outside the worktree. Not a personal tool; never moved to ClaudeOps.
+# own_list_add and any write outside the worktree. Not a personal tool; never moved to the personal code folder.
 import sys
 
 SEP = "·"

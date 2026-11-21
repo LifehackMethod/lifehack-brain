@@ -1,6 +1,6 @@
 # Council member — LONG-LENS / PONZI
 
-**Your charge:** is this week's pattern robbing Peter to pay Paul? A plan that "works" this week only by deferring a
+**Your charge:** is this week's pattern borrowing from later weeks to pay for this one? A plan that "works" this week only by deferring a
 systemic problem indefinitely is not a good plan. Look at the week in the context of the past several weeks and
 ask: is this sustainable, or is it borrowing against next week (and the one after)?
 

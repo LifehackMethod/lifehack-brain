@@ -26,7 +26,7 @@ real files.
 
 ## Deferred (named, with homes) — see the plan
 - To live shakeout: Phase-4 loop-back exit · "no final verdict" wording · Phase-1→2 size/confidence hand-off + flywheel skip.
-- To `state/tech-debt.md`: full write idempotency/dedup keys · structural PreToolUse gate + tool-revoking fences · MCP-matcher calendar hook · email auto-send hook · expiry-clock alignment · council opus-vs-sonnet (a decision, kept on opus). ⛔ that `state/tech-debt.md` is the AUTHOR's own engineering burndown in the donor system (`claudeops-config`) — these are build/implementation follow-ups on the skill's own code, not the student-facing `<notes>/state/tech-debt.md` durable-records destination this skill writes to (see `.claude/skills/planning-daily/prompts/05-act.md` / `.claude/skills/planning-daily/prompts/04.5-consolidate.md`). Never shipped here; this is a build record, not a promise.
+- To `state/tech-debt.md`: full write idempotency/dedup keys · structural PreToolUse gate + tool-revoking fences · MCP-matcher calendar hook · email auto-send hook · expiry-clock alignment · council opus-vs-sonnet (a decision, kept on opus). ⛔ that `state/tech-debt.md` is the AUTHOR's own engineering burndown in the donor system (`the private repo-config`) — these are build/implementation follow-ups on the skill's own code, not the student-facing `<notes>/state/tech-debt.md` durable-records destination this skill writes to (see `.claude/skills/planning-daily/prompts/05-act.md` / `.claude/skills/planning-daily/prompts/04.5-consolidate.md`). Never shipped here; this is a build record, not a promise.
 
 ## Re-verify (post-fix, 2026-07-21)
 Mechanical harness: `--append` gone · no literal placeholders · ANCHOR 1112 chars · blind chain intact.
