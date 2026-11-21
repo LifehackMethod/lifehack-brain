@@ -1795,7 +1795,8 @@ def hand_run(argv, model=None, out=print):
             except Exception:
                 _stand = lambda addr: 0.0   # noqa: E731
             questions, not_asked = rank_questions(all_q, _stand, a.max_questions)
-            questions, qstats = filter_questions(questions, con)
+            _subj, _unkeyed = question_subject_keys(d.get("calendar_tasks"), con)
+            questions, qstats = filter_questions(questions, con, _subj)
             if any(qstats.values()):
                 say("   questions tidied: %d merged into one per person, %d exact duplicate(s), %d already answered by him (dropped)" % (
                     qstats["merged"], qstats["duplicates"], qstats["answered"]))
@@ -1809,6 +1810,8 @@ def hand_run(argv, model=None, out=print):
                             if not e["asked"] and not e.get("settled"):
                                 e["left_out"] = "over_question_cap"     # a new/changed one may still be in the list shown (account_sources)
             say("   questions handed to the model: %d; %d more not asked" % (len(questions), not_asked))
+            if _unkeyed:
+                say("   questions kept unkeyed (subject lookup failed): %d" % len(_unkeyed))
             day_ms = datetime.date.fromisoformat(day)
             for t in con.execute("SELECT title, status, due, updated, id FROM tasks"):
                 tasks.append({"title": t[0], "status": "open" if str(t[1]).lower() != "completed" else "completed",
@@ -2031,10 +2034,38 @@ def _live_answers_reader(db=None):
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 
 
-def filter_questions(questions, con):
+def question_subject_keys(source_delta, con):
+    """R2: for each calendar and task question the delta wrote, the KEYS of what it is about, from the entry's own id (never from
+    the question's text): the event's key, the task's keys. A lookup that fails (a database error or a bad value) leaves that question
+    with NO keys, so it is kept (fail toward asking) and is counted. -> ({question text: set of keys}, [questions kept unkeyed])"""
+    import sqlite3
+    import stamp_keys
+    out, unkeyed = {}, []
+    for src in ("calendar", "tasks"):
+        for kind in ("new", "changed", "missing"):
+            for e in ((source_delta or {}).get(src) or {}).get(kind) or []:
+                q, i = e.get("question"), e.get("id")
+                if not q or not i:
+                    continue
+                ks = {"event:calendar:%s" % i} if src == "calendar" else {"task:%s" % i}
+                try:
+                    if src == "calendar":
+                        ek = stamp_keys.event_key(con, i)
+                        ks.update([ek] if ek else [])
+                    else:
+                        ks.update(stamp_keys.task_keys(con, i))
+                except (sqlite3.Error, KeyError, ValueError, TypeError):
+                    ks = set()                      # never drop a question on a lookup that failed
+                    unkeyed.append(q)
+                out[q] = ks
+    return out, unkeyed
+
+
+def filter_questions(questions, con, subjects=None):
     """F2: the email questions handed to the model: ONE per PERSON (addresses that resolve to the same PRM person merge into
     one), exact duplicate texts dropped, and nothing about anyone he has ALREADY ANSWERED (a kg_answers row on that person, on
-    any of their addresses, or naming the address). Calendar and task questions pass through untouched; the order is kept.
+    any of their addresses, or naming the address). Calendar and task questions are dropped only when `subjects` (their entry's own
+    keys, question_subject_keys) match a kg_answers subject_key, never by their text; the order is kept.
     -> (kept, {"merged": n, "duplicates": n, "answered": n})"""
     import stamp_keys
     sg = stamp_keys.sg
@@ -2050,6 +2081,9 @@ def filter_questions(questions, con):
     kept, seen_text, seen_group = [], set(), set()
     for q in questions:
         if _question_source(q) != "email":
+            if subjects and subjects.get(q) and subjects[q] & answered:      # R2: he has already answered about this event or task
+                stats["answered"] += 1
+                continue
             kept.append(q)
             continue
         if q in seen_text:

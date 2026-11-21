@@ -1168,6 +1168,41 @@ class DiaryEntry(Base):
         kept3, s3 = morning.filter_questions([self.QA, self.QB], self.con)
         self.assertEqual((kept3, s3["answered"]), ([], 2))
 
+    def test_r2_a_calendar_or_task_question_about_a_subject_he_answered_is_dropped_by_key_never_by_text(self):
+        src = {"calendar": {"new": [{"id": "ev-1", "question": "Calendar: a new event 'Literature Commit' on 2026-11-21: does it change the plan?"}],
+                            "changed": [{"id": "ev-2", "question": "Calendar: 'Dentist' moved from Tuesday to Wednesday: what does that knock on?"}], "missing": []},
+               "tasks": {"new": [{"id": "tk-1", "question": "Task: a new task 'Send proposal': does it belong in this week?"}], "changed": [], "missing": []}}
+        qs = [e["question"] for s in ("calendar", "tasks") for k in ("new", "changed") for e in src[s][k]]
+        subjects, unkeyed = morning.question_subject_keys(src, self.con)
+        self.assertEqual(unkeyed, [])
+        self._answer("event:calendar:ev-1", "Yeah, we can remove the Saturday literature entry.", question="literature")
+        kept, stats = morning.filter_questions(qs, self.con, subjects)
+        self.assertEqual(len(kept), 2)                                          # the event with an answer row is gone, the other two stay
+        self.assertTrue(all("Literature" not in q for q in kept))
+        self.assertEqual(stats["answered"], 1)
+        # the same words in a question whose entry has NO answer row are kept: matching is by key, not by text
+        kept2, _s = morning.filter_questions(qs, self.con, {q: {"event:calendar:other"} for q in qs})
+        self.assertEqual(len(kept2), 3)
+        self._answer("task:tk-1", "Already sent.", question="proposal")
+        kept3, s3 = morning.filter_questions(qs, self.con, subjects)
+        self.assertEqual((len(kept3), s3["answered"]), (1, 2))
+
+    def test_r2_a_question_whose_subject_lookup_fails_is_kept_and_counted(self):
+        import stamp_keys
+        src = {"calendar": {"new": [{"id": "ev-9", "question": "Calendar: a new event 'Literature Commit' on 2026-11-21: does it change the plan?"}],
+                            "changed": [], "missing": []}, "tasks": {"new": [], "changed": [], "missing": []}}
+        self._answer("event:calendar:ev-9", "Remove it.", question="literature")      # an answer exists, but the lookup breaks first
+        orig = stamp_keys.event_key
+        stamp_keys.event_key = lambda con, i: (_ for _ in ()).throw(TypeError("bad id"))
+        try:
+            subjects, unkeyed = morning.question_subject_keys(src, self.con)
+        finally:
+            stamp_keys.event_key = orig
+        q = src["calendar"]["new"][0]["question"]
+        self.assertEqual(unkeyed, [q])
+        kept, stats = morning.filter_questions([q], self.con, subjects)
+        self.assertEqual((kept, stats["answered"]), ([q], 0))                           # kept: fail toward asking
+
     def test_held_casting_line_counts_held_items_from_casting_labels_and_says_how_it_decided(self):
         self.con.execute("INSERT INTO labels(id,name,type) VALUES('Label_c','Casting-Notices','user')")
         self.con.execute("INSERT INTO messages(id, from_addr, label_ids) VALUES('cc11cc11cc11','casting@example.test','[\"Label_c\"]')")
