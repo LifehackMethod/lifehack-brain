@@ -191,6 +191,23 @@ class Cmd(unittest.TestCase):
         self.assertEqual(m.complete("x"), (None, "lens_model_has_tools"))
         self.assertFalse(transcripts.Caller("morning-read", tools=m.tools).tool_less)
 
+    def test_only_the_lens_child_carries_gc_lens_run(self):
+        """coordinator 38: V2's ingest_gate trusts the lens temp folder only when the reader carries GC_LENS_RUN=1."""
+        envf = _o.path.join(self.folder, "..", "p3b-env-%d.txt" % _o.getpid())
+        binp = _o.path.join(tempfile.mkdtemp(prefix="p3b-bin-"), "claude")
+        with open(binp, "w", encoding="utf-8") as f:
+            f.write('#!/bin/sh\nenv > "%s"\ncat > /dev/null\necho plain words\n' % envf)
+        _o.chmod(binp, 0o755)
+        self.addCleanup(shutil.rmtree, _o.path.dirname(binp), True)
+        self.addCleanup(lambda: _o.path.exists(envf) and _o.remove(envf))
+        lensm = morning.ClaudeLensModel(claude=binp, home=self.folder)
+        self.assertEqual(lensm.complete_in("hi", self.folder), ("plain words", None))
+        self.assertIn("GC_LENS_RUN=1", open(envf, encoding="utf-8").read().splitlines())
+        _o.remove(envf)
+        plain = morning.ClaudeCliModel(claude=binp, home=self.folder)
+        self.assertEqual(plain.complete("hi"), ("plain words", None))
+        self.assertNotIn("GC_LENS_RUN", open(envf, encoding="utf-8").read())
+
 
 # ================================================================ the export folder
 class Export(unittest.TestCase):

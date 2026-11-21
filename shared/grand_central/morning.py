@@ -75,6 +75,7 @@ class ClaudeCliModel(Model):
     is built from scratch (nothing inherited, ANTHROPIC_* never passed), so the call uses the login of whoever's HOME
     it is given, or CLAUDE_CODE_OAUTH_TOKEN if a token file is named. NEVER used by the tests."""
     tools = ()
+    extra_env = {}          # added to the child's from-scratch environment; empty for the main tool-less model
 
     def __init__(self, claude=None, home=None, model=None, token_file=None, timeout_s=900):
         self.claude = claude or os.environ.get("CLAUDE_BIN") or _which("claude")
@@ -114,6 +115,7 @@ class ClaudeCliModel(Model):
                     env["CLAUDE_CODE_OAUTH_TOKEN"] = f.read().strip()
             except OSError:
                 return None, "no_token"
+        env.update(self.extra_env)
         work = os.path.join(self.home, "work")
         try:
             p = subprocess.run(cmd, input=prompt.encode("utf-8", "replace"), env=env,
@@ -146,6 +148,9 @@ class ClaudeLensModel(ClaudeCliModel):
     tools=LENS_TOOLS, so the morning read's own tool-less door refuses it as the MAIN model: it can only be used as a
     lens runner. NEVER used by the tests (they use fakes, and a fake claude binary for the argument list)."""
     tools = LENS_TOOLS
+    # V2's ingest_gate trusts the lens's own temp folder (gc-lens-*/threads|prm under the real temp dir, 0700, owned
+    # by him) only when the reader carries this marker (coordinator 38, 2026-11-21). Only the lens child gets it.
+    extra_env = {"GC_LENS_RUN": "1"}
 
     def build_cmd(self, folder):
         scope = "//" + os.path.realpath(folder).lstrip("/") + "/**"
