@@ -111,6 +111,44 @@ class T(unittest.TestCase):
         with open(self.p, "rb") as f:
             self.assertEqual(f.read(), b"\xff\xfe\x00bad")
 
+    def test_read_callable_is_the_existing_page_read(self):
+        old = "---\nmentions: []\nconfidence: low\n---\nhis line\n"
+        self.put(old)
+        seen = []
+
+        def spy(path):
+            seen.append(path)
+            return old
+        real_open = open
+        opened = []
+
+        def guard(file, *a, **k):
+            if file == self.p and (not a or "r" in a[0]) and k.get("mode", "r") == "r":
+                opened.append(file)
+            return real_open(file, *a, **k)
+        dp.open = guard  # module-level shadow of the builtin: any plain read of the page is recorded
+        try:
+            self.assertEqual(dp.append_entry(self.p, BODY, [], ["s1"], heading=HEAD, read=spy), "appended")
+        finally:
+            del dp.open
+        self.assertEqual(seen, [self.p])
+        self.assertEqual(opened, [])
+        self.assertTrue(self.get().endswith("his line\n\n" + BODY))
+
+    def test_read_default_is_the_plain_read(self):
+        self.put("x\n")
+        self.assertEqual(dp.append_entry(self.p, BODY, [], [], heading=HEAD, read=None), "appended")
+
+    def test_read_that_raises_refused_nothing_written(self):
+        self.put("keep me\n")
+
+        def boom(path):
+            raise OSError("drive online-only")
+        with self.assertRaises(dp.DiaryPageError):
+            dp.append_entry(self.p, BODY, [], [], heading=HEAD, read=boom)
+        self.assertEqual(self.get(), "keep me\n")
+        self.assertEqual(os.listdir(os.path.dirname(self.p)), ["20.md"])
+
     def test_no_temp_files_left(self):
         self.put("x\n")
         dp.append_entry(self.p, BODY, [], [], heading=HEAD)

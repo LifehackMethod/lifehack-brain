@@ -2,13 +2,15 @@
 # not-wired-yet: its first caller (planning-diary-capture.py) lands in the very next commit; Grand Central adopts it in its own follow-up
 """diary_page.py -- the ONE desk-neutral diary append: whoever produces an entry on a day's page APPENDS its own (Spec 3.10).
 
-append_entry(path, body, mentions, staged, confidence="low", heading=None, after_write=None) -> "written" | "appended" | "exists"
+append_entry(path, body, mentions, staged, confidence="low", heading=None, after_write=None, read=None) -> "written" | "appended" | "exists"
   No page yet: created exclusively (a front matter block of mentions, staged, confidence, then the body) -> "written".
   A page already there: the body is appended at its END; mentions and staged are merged (union) into the TOP front matter;
   a confidence of high or medium stays; every other key and every existing line is left byte for byte; a page with no
   front matter gains a block on top and keeps every line -> "appended". `heading` given and already a line of the page ->
   "exists", nothing written (a re-run adds nothing). Atomic (temp file + os.replace), mode 0600. after_write(path) is
   called once after a write (a caller passes its own local-copy step); this module imports nothing of any desk.
+  read (optional callable path -> text) is used ONLY to read an existing page (a scheduled job passes its Drive-safe
+  reader); default None = the plain read. A read that raises -> DiaryPageError, nothing written.
   An unreadable page raises DiaryPageError (loud); a normal page never raises.
 Lifted as-is from Grand Central's morning.py (_merge_front_matter, _replace_atomic_drive, write_diary_entry): no behaviour change.
 Test: python3 shared/test_diary_page.py"""
@@ -106,10 +108,18 @@ def _read(path):
         raise DiaryPageError("cannot read the diary page %s (%s); nothing was written" % (path, e))
 
 
-def append_entry(path, body, mentions, staged, confidence="low", heading=None, after_write=None):
+def append_entry(path, body, mentions, staged, confidence="low", heading=None, after_write=None, read=None):
     """-> "written" (new page) | "appended" (added to the page there) | "exists" (heading already on the page; nothing written)."""
     if os.path.lexists(path):
-        existing = _read(path)
+        if read is None:
+            existing = _read(path)
+        else:
+            try:
+                existing = read(path)
+            except DiaryPageError:
+                raise
+            except Exception as e:
+                raise DiaryPageError("cannot read the diary page %s (%s); nothing was written" % (path, e))
         if heading is not None and any(ln.strip() == heading for ln in existing.splitlines()):
             return "exists"
         merged = _merge_front_matter(existing, list(mentions), list(staged), confidence)
@@ -122,7 +132,7 @@ def append_entry(path, body, mentions, staged, confidence="low", heading=None, a
         try:
             _excl_write(path, front_matter(mentions, staged, confidence).rstrip("\n") + "\n" + body)
         except FileExistsError:
-            return append_entry(path, body, mentions, staged, confidence, heading, after_write)
+            return append_entry(path, body, mentions, staged, confidence, heading, after_write, read)
         status = "written"
     if after_write is not None:
         after_write(path)
