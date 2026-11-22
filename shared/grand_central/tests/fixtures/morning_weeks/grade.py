@@ -11,20 +11,9 @@ Ruling 2026-11-15 (plan B2 step 4 / step 7): the morning write-up is STAGED
 each morning in records (a records/context/ file); the small fixed form for
 code to check lives in the CATALOGUE beside it (a catalogue line / JSON file),
 not inside the record prose; ONE low-confidence diary entry per desk is
-written at MIDNIGHT from what was staged that day. --form reads the fixed
+written by the morning run from what was staged that day. --form reads the fixed
 form from that separate catalogue file; without it, the older fenced-block
 inside the draft is still accepted (compatibility).
-
-Midnight mode (--midnight) grades a whole desk diary directory:
-
-    python3 grade.py --midnight --diary <diary dir> --expected cases/08_midnight_entry/expected.json
-
-Midnight check kinds (expected.json "checks" list; each carries "date"):
-  midnight_one_entry        -- exactly ONE diary file for the date, containing exactly one entry heading ("# ...")
-  midnight_low_confidence   -- today's entry is marked low confidence ("confidence: low")
-  midnight_points_to_staged -- today's entry references each staged write-up named in "files"
-  midnight_no_earlier_edit  -- every file present the day before is byte-identical, and nothing
-                               exists in the diary beyond the before-set plus today's ONE entry
 
 Draft format (the contract the morning read must write; see README.md):
   - Markdown with "## What changed", "## Picture", "## Questions" sections.
@@ -207,83 +196,14 @@ def run(draft_path, expected_path, form_path=None):
           sum(1 for _, ok, _ in results if ok), len(results)))
     return 0 if all_ok else 1
 
-ENTRY_HEADING = re.compile(r"^#\s", re.M)
-
-def midnight_today_files(diary_dir, date):
-    return sorted(f for f in os.listdir(diary_dir)
-                  if date in f and os.path.isfile(os.path.join(diary_dir, f)))
-
-def check_midnight(diary_dir, exp_dir, c):
-    date = c["date"]
-    kind = c["kind"]
-    today = midnight_today_files(diary_dir, date)
-    if kind != "midnight_no_earlier_edit" or not today:
-        pass
-    if kind == "midnight_one_entry":
-        if len(today) != 1:
-            return False, "expected exactly ONE diary file for %s, found %d: %s" % (
-                date, len(today), ", ".join(today))
-        n = len(ENTRY_HEADING.findall(load_draft_text(os.path.join(diary_dir, today[0]))))
-        return (n == 1), ("one file, one entry heading" if n == 1 else
-                          "file %s holds %d entry headings; midnight writes ONE" % (today[0], n))
-    if len(today) != 1:
-        return False, "no single entry file for %s (found %d)" % (date, len(today))
-    text = load_draft_text(os.path.join(diary_dir, today[0]))
-    if kind == "midnight_low_confidence":
-        ok = re.search(r"confidence\s*:\s*low", text, re.I) is not None
-        return ok, ("entry is marked low confidence" if ok else
-                    "entry is not marked low confidence (confidence: low)")
-    if kind == "midnight_points_to_staged":
-        missing = [f for f in c["files"] if f not in text]
-        return (not missing), ("points to all %d staged write-ups" % len(c["files"]) if not missing
-                               else "entry does not point to staged write-up(s): %s" % ", ".join(missing))
-    if kind == "midnight_no_earlier_edit":
-        before_dir = os.path.join(exp_dir, c.get("before_dir", "diary_before"))
-        before = sorted(os.listdir(before_dir))
-        problems = []
-        for f in before:
-            p = os.path.join(diary_dir, f)
-            if not os.path.isfile(p):
-                problems.append("%s: missing (deleted?)" % f)
-            elif load_draft_text(p) != load_draft_text(os.path.join(before_dir, f)):
-                problems.append("%s: CHANGED since yesterday" % f)
-        allowed = set(before) | set(today)
-        extra = sorted(set(os.listdir(diary_dir)) - allowed)
-        for f in extra:
-            problems.append("%s: unexpected new file (only one entry per desk per day)" % f)
-        return (not problems), ("all %d earlier files byte-identical; nothing extra beyond today's entry" % len(before)
-                                if not problems else "; ".join(problems))
-    return False, "unknown midnight check kind %r" % kind
-
-def run_midnight(diary_dir, expected_path):
-    with open(expected_path, "r", encoding="utf-8") as f:
-        expected = json.load(f)
-    exp_dir = os.path.dirname(os.path.abspath(expected_path))
-    results, all_ok = [], True
-    for c in expected["checks"]:
-        ok, detail = check_midnight(diary_dir, exp_dir, c)
-        results.append((c.get("id", c["kind"]), ok, detail))
-        all_ok &= ok
-    for name, ok, detail in results:
-        print("%s  %s -- %s" % ("PASS" if ok else "FAIL", name, detail))
-    print("RESULT: %s (%d/%d checks passed)" % ("PASS" if all_ok else "FAIL",
-          sum(1 for _, ok, _ in results if ok), len(results)))
-    return 0 if all_ok else 1
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--draft")
     ap.add_argument("--form", help="catalogue JSON file holding the fixed form (beside the staged record)")
-    ap.add_argument("--midnight", action="store_true", help="grade a whole desk diary directory")
-    ap.add_argument("--diary", help="diary directory (with --midnight)")
     ap.add_argument("--expected", required=True)
     args = ap.parse_args()
-    if args.midnight:
-        if not args.diary:
-            ap.error("--midnight needs --diary <dir>")
-        sys.exit(run_midnight(args.diary, args.expected))
     if not args.draft:
-        ap.error("--draft <draft.md> is required (or use --midnight --diary)")
+        ap.error("--draft <draft.md> is required")
     sys.exit(run(args.draft, args.expected, args.form))
 
 if __name__ == "__main__":

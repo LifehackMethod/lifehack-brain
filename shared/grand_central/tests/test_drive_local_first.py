@@ -2,7 +2,7 @@
 Why: Google Drive for desktop offloads files; a launchd job cannot fetch them, so open() fails with errno 11 (EDEADLK,
 "Resource deadlock avoided"). The 2026-11-17 morning job failed 3 times on the previous picture; mover-usage failed the same
 way since 11-14. Every case is planted against the real call site (morning.previous_picture, synthesize.load_life_map,
-store_diary.index_entry, mover_usage.read_result, status_lights.backup_light, morning.midnight_entry) with a Drive file whose
+store_diary.index_entry, mover_usage.read_result, status_lights.backup_light, morning.write_diary_entry) with a Drive file whose
 open() raises OSError(EDEADLK). SCRATCH ONLY: a tmp notes folder, a tmp data folder; nothing real is opened.
   1. EDEADLK on Drive + a local copy        -> the read succeeds from the local copy
   2. EDEADLK on Drive + NO local copy       -> a loud error naming BOTH paths (never a silent empty picture)
@@ -125,7 +125,7 @@ class PreviousPicture(Base):
     def test_4_a_write_refreshes_the_local_copy(self):
         diary = os.path.join(self.notes, "desks", DESK, "diary")
         staged = self.put(os.path.join(self.rec, "2026-11-15-%s.md" % DESK), PICTURE)
-        res = morning.midnight_entry("2026-11-15", DESK, [staged], diary, "tree", os.path.join(self.tmp.name, "forms"))
+        res = morning.write_diary_entry("2026-11-15", DESK, diary, ["2026-11-15-%s" % DESK], [], [], None, con=None)
         self.assertEqual(res["status"], "written")
         c = cache_of(self.notes, res["path"])
         self.assertTrue(os.path.isfile(c), "the diary entry was written to Drive but not to the local copy")
@@ -332,17 +332,16 @@ class SnapshotLightDeadlock(Base):
         self.assertIn(d, light["summary"])
 
 
-class MidnightEntries(Base):
-    """midnight_entries is the writer the live midnight job calls."""
-    TABLE = {"main_diary": "Main-Diary", "diary_pattern": "{desk}-Diary", "parts_to_desk": {}}
+class DiaryEntryWrite(Base):
+    """write_diary_entry is the writer the live morning run calls (it replaced the midnight job's)."""
 
-    def test_each_written_entry_also_gets_its_local_copy(self):
-        staged = self.put(os.path.join(self.rec, "2026-11-15-%s.md" % DESK), PICTURE)
+    def test_the_written_entry_also_gets_its_local_copy(self):
+        self.put(os.path.join(self.rec, "2026-11-15-%s.md" % DESK), PICTURE)
         diary = os.path.join(self.notes, "desks", DESK, "diary")
-        res = morning.midnight_entries("2026-11-15", [staged], {"Main-Diary": diary}, self.TABLE, "tree", os.path.join(self.tmp.name, "forms"), con=None)
-        self.assertEqual(res["Main-Diary"]["status"], "written")
-        c = cache_of(self.notes, res["Main-Diary"]["path"])
-        with _real_open(res["Main-Diary"]["path"], encoding="utf-8") as a, _real_open(c, encoding="utf-8") as b:
+        res = morning.write_diary_entry("2026-11-15", DESK, diary, ["2026-11-15-%s" % DESK], [], [], None, con=None)
+        self.assertEqual(res["status"], "written")
+        c = cache_of(self.notes, res["path"])
+        with _real_open(res["path"], encoding="utf-8") as a, _real_open(c, encoding="utf-8") as b:
             self.assertEqual(a.read(), b.read())
 
 

@@ -177,6 +177,11 @@ _MORNING = re.compile(
     r"used (?P<used>\d+), sorted out by triage (?P<sorted>\d+), skipped with a reason (?P<skip>\d+)")
 
 
+# 4P.3R: the proof line may end with the rebuilt read's own counts (older lines have none; both are read).
+_MORNING_COUNTS = re.compile(r"handed (?P<handed>\d+) emails; quotes verified (?P<qv>\d+), unverified (?P<qu>\d+); "
+                             r"lenses ok (?P<lok>\d+), failed (?P<lfail>\d+)")
+
+
 def morning_light(proof, problem, now, rhythm_s=DAILY_S):
     """proof: the proof line (str) or the same as a JSON object with new per-source fields (tolerated, passed through)."""
     if proof is None:
@@ -195,6 +200,13 @@ def morning_light(proof, problem, now, rhythm_s=DAILY_S):
     day = _parse_ts(m.group("day"))
     payload = {"day": m.group("day"), "new": n["new"], "examined": n["exam"], "used": n["used"],
                "sorted_by_triage": n["sorted"], "skipped_with_reason": n["skip"], "proof_line": line[:600]}
+    mc = _MORNING_COUNTS.search(line)
+    counts_text = ""
+    if mc:
+        payload.update({"emails_handed": int(mc.group("handed")), "quotes_verified": int(mc.group("qv")),
+                        "quotes_unverified": int(mc.group("qu")), "lenses_ok": int(mc.group("lok")), "lenses_failed": int(mc.group("lfail"))})
+        counts_text = "; %s handed, quotes %s verified / %s unverified, lenses %s ok / %s failed" % (
+            mc.group("handed"), mc.group("qv"), mc.group("qu"), mc.group("lok"), mc.group("lfail"))
     for k, v in extra.items():
         payload.setdefault("src_" + str(k), v)       # new per-source fields ride along, never crash
     if "NOT ACCOUNTED" in line or "every new email accounted for" not in line:
@@ -206,8 +218,98 @@ def morning_light(proof, problem, now, rhythm_s=DAILY_S):
     if n["exam"] == 0:
         return _light("NEEDS_REVIEW", "morning read examined nothing (%s)" % m.group("day"), payload)
     tail = "nothing new" if n["new"] == 0 else "%d new, %d used, %d sorted out, %d skipped with a reason" % (n["new"], n["used"], n["sorted"], n["skip"])
-    return _light("OK", "morning read %s: %d examined, %s, all accounted for" % (m.group("day"), n["exam"], tail), payload)
+    return _light("OK", "morning read %s: %d examined, %s, all accounted for%s" % (m.group("day"), n["exam"], tail, counts_text), payload)
 
+
+MORNING_FAIL_TRIES = 3 # the failed flag in the launch ledger (slice W item B)
+MORNING_TRY_CEILING = 6 # the day's hard ceiling of tries, in-run ones included
+
+def morning_ledger_light(ledger, has_draft, now=None, today=None):
+    """The retry light on top of the morning light (slice W item B): ERROR "3 tries failed, retrying within the
+    hour" when the launch ledger shows 3 consecutive failures today and no draft exists; ERROR "daily ceiling of
+    6 tries reached" when the ceiling is hit. None when neither holds — the caller keeps its own verdict."""
+    if not isinstance(ledger, dict):
+        return None
+    today = today or dt.datetime.now().date().isoformat()
+    if ledger.get("day") != today or has_draft:
+        return None
+    payload = {"attempts": ledger.get("attempts"), "fail_streak": ledger.get("fail_streak")}
+    if ledger.get("attempts", 0) >= MORNING_TRY_CEILING:
+        return _light("ERROR", "daily ceiling of %d tries reached; the morning read has stopped trying until tomorrow"
+            % MORNING_TRY_CEILING, payload)
+    if ledger.get("fail_streak", 0) >= MORNING_FAIL_TRIES:
+        return _light("ERROR", "3 tries failed, retrying within the hour", payload)
+    return None
+
+def _morning_draft_exists(cfg):
+    """Is there a staged draft for today? Reached through the morning module's own finder (the same test the fast
+    clock's launcher uses). Any problem counts as NO draft: the light may only get more worried, never greener."""
+    try:
+        import morning
+        desk = cfg.get("morning_desk") or gc_settings.default_desk()
+        rec = cfg.get("morning_records_dir") or morning.records_context_dir(morning.notes_root(), desk)
+        day = dt.datetime.now().date().isoformat()
+        return bool(morning.find_staged(rec, day, desk))
+    except Exception: # noqa: BLE001
+        return False
+
+def _morning_with_ledger(cfg, now):
+    """The morning light, with the retry overlay from the fast clock's launch ledger (slice W item B) when the
+    config names it (morning_launch_ledger). No ledger configured -> the morning light alone, as before."""
+    base = morning_light(*_read_proof(cfg["morning_proof"]), now)
+    led_path = cfg.get("morning_launch_ledger")
+    if not led_path:
+        return base
+    led, prob = _load_json(led_path)
+    overlay = morning_ledger_light(led if isinstance(led, dict) else None, _morning_draft_exists(cfg), now=now)
+    return overlay or base
+
+# ---------------------------------------------------------------- the gc-gmail tile (slice W item E)
+GMAIL_UNITS_PER_CALL = 5 # a list/read call costs about 5 quota units (Google's Gmail quota page)
+GMAIL_WARN_UNITS = 25000 # half of a 50,000 unit/day budget; a warning, never a cap
+
+def gmail_usage_light(calls_today, now=None):
+    """The gc-gmail tile's verdict (slice W item E): a read-only rollup of today's runs rows — the sum of
+    counts.gmail_calls, each call estimated at GMAIL_UNITS_PER_CALL units. WARN at GMAIL_WARN_UNITS; it never
+    caps anything."""
+    now = now or _utc_now()
+    calls = calls_today if isinstance(calls_today, int) and not isinstance(calls_today, bool) else 0
+    units = calls * GMAIL_UNITS_PER_CALL
+    payload = {"gmail_calls": calls, "estimated_units": units, "warn_at_units": GMAIL_WARN_UNITS,
+        "estimated": "calls x %d units" % GMAIL_UNITS_PER_CALL}
+    base = "%d Gmail call(s) today, about %s units (calls x %d)" % (
+        calls, format(units, ","), GMAIL_UNITS_PER_CALL)
+    if units >= GMAIL_WARN_UNITS:
+        return _light("NEEDS_REVIEW", "WARN: %s — at half of the 50,000 unit/day budget" % base, payload)
+    return _light("OK", base, payload)
+
+def _gmail_calls_today(db=None, now=None):
+    """Sum of counts.gmail_calls over today's (local day) runs rows, read-only through the store's one read
+    path; None when there is no readable database (the light is never green over a missing input)."""
+    now = now or _utc_now()
+    prev = None
+    try:
+        import store
+        if db is not None:
+            prev = store._path
+            store.set_path(db)
+        try:
+            with store._read() as con:
+                start = now.astimezone().replace(hour=0, minute=0, second=0, microsecond=0).astimezone(dt.timezone.utc)
+                row = con.execute("SELECT COALESCE(SUM(CAST(json_extract(counts,'$.gmail_calls') AS INTEGER)),0) "
+                    "FROM runs WHERE finished >= ?", (start.strftime("%Y-%m-%dT%H:%M:%SZ"),)).fetchone()
+                return int(row[0] or 0)
+        finally:
+            if db is not None:
+                store.set_path(prev)
+    except Exception: # noqa: BLE001
+        return None
+
+def _gmail_light_safe(cfg, now=None):
+    calls = _gmail_calls_today(cfg.get("gmail_runs_db"), now)
+    if calls is None:
+        return _light("NEEDS_REVIEW", "no runs database readable; Gmail usage cannot be counted")
+    return gmail_usage_light(calls, now)
 
 def _newest(dirpath, pattern):
     try:
@@ -528,7 +630,7 @@ def run_lights(cfg, only=None, now=None, writer=None, dry_run=False):
                                             cfg.get("held_limit_s", HELD_LIMIT_S))),
         "intake": ("gc-intake", "intake-status", cfg.get("intake_rhythm_s", DAILY_S),
                    lambda: intake_light(*_load_json(cfg["ingest_status"]), now, cfg.get("intake_rhythm_s", DAILY_S))),
-        "morning": ("gc-morning", "morning-read", DAILY_S, lambda: morning_light(*_read_proof(cfg["morning_proof"]), now)),
+        "morning": ("gc-morning", "morning-read", DAILY_S, lambda: _morning_with_ledger(cfg, now)),
         "backup": ("gc-backup", "backup", DAILY_S, lambda: backup_light(cfg["backup"], now)),
         "model": ("gc-model", "model-check", DAILY_S, lambda: model_light(_model_result(cfg, now, dry_run), now)),
         "login": ("gc-login", "login-alive", DAILY_S, lambda: login_light(cfg, now)),
@@ -537,6 +639,7 @@ def run_lights(cfg, only=None, now=None, writer=None, dry_run=False):
         "sentinel": ("gc-sentinel-copy", "sentinel-copy", DAILY_S, lambda: sentinel_drift_light(cfg, now)),
         "mailkey": ("gc-mailkey", "mailroom-key", _stale_s(cfg),
                     lambda: mailkey_light(cfg, *_load_json(cfg["pass_file"]), now, cfg.get("mailroom_rhythm_s", MAILROOM_RHYTHM_S))),
+                            "gmail": ("gc-gmail", "gmail-usage", 2 * MAILROOM_RHYTHM_S, lambda: _gmail_light_safe(cfg, now)), # slice W item E
     }
     for name in jobs:
         if name not in only:

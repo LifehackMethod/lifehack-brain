@@ -62,7 +62,20 @@ def _claude_env():
     env = dict(os.environ)
     for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"):
         env.pop(k, None)
-    return env
+    return _child_env(env)
+
+
+def _window_flags():
+    """the windows' hook flags (claude_child, coordinator 38 route A); [] when anything is missing"""
+    sys.path.insert(0, _THIS_DIR) if _THIS_DIR not in sys.path else None
+    import claude_child
+    return claude_child.window_flags()[0]
+
+
+def _child_env(env):
+    sys.path.insert(0, _THIS_DIR) if _THIS_DIR not in sys.path else None
+    import claude_child
+    return claude_child.child_env(env)
 
 # `ITEM <n>: CLEAN` or `ITEM <n>: ATTACK` or `ITEM <n>: ATTACK: <short reason>` (the reason is optional on
 # purpose: a reader that omits it still gets the item quarantined; the reason is only kept for human review).
@@ -156,7 +169,7 @@ def judge_batch(items, reasons=None):
     try:
         r = subprocess.run(
             [CLAUDE_BIN, "-p", prompt, "--model", SMALL_MODEL,
-             "--tools", "", "--strict-mcp-config", "--output-format", "text"],
+             "--tools", "", "--strict-mcp-config", "--output-format", "text"] + _window_flags(),
             capture_output=True, text=True, timeout=TIMEOUT_S, env=_claude_env(),
         )
     except subprocess.TimeoutExpired:

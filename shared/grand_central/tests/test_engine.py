@@ -42,6 +42,10 @@ class Base(unittest.TestCase):
         self._old = {k: os.environ.get(k) for k in ("AGE_NOW", "AGE_NOTES_ROOT")}
         os.environ["AGE_NOW"] = NOW
         os.environ["AGE_NOTES_ROOT"] = self.tmp.name
+        import clock as _clock  # 4P.0b: the feeds gate must see a connected feed in these CLI-read tests
+        _st = _clock.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        for _src in ("gmail", "calendar", "tasks"):
+            store.set_source_state(_src, _st, 0)
         self.n = 0
         self._old_st = st.STORE_GUESSES
         st.STORE_GUESSES = getattr(self, "STORE", True)   # these tests exercise the old storing path; TestNoGuessesStored turns it off

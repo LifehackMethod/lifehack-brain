@@ -263,24 +263,27 @@ def run(max_threads=DEFAULT_MAX_THREADS, dry_run=False, first_days=DEFAULT_FIRST
 
         if not dry_run:
             (backup_fn or (lambda: backup.local_backup(store.db_path())))()
-            rc, tail = (pull_fn or run_pull)(after, max_threads)
-            res["pull"] = {"rc": rc}
-            if rc != 0:
-                hint = ""
-                if rc == 75:
-                    hint = " (Sentinel PAUSED unit rig: a human must look, then pull.py --unpause rig --why ...)"
-                elif "invalid_grant" in tail or "401" in tail or "auth" in tail.lower():
-                    hint = " (looks like an expired rig login: run the rig login again)"
-                raise RuntimeError("pull.py failed rc=%s%s: %s" % (rc, hint, tail.strip().splitlines()[-1] if tail.strip() else ""))
-            counts = last_run_counts(started)
-            res["pull"]["counts"] = {k: counts.get(k) for k in ("threads", "messages", "quarantined", "errors", "judge_calls")
-                                     if k in counts}
-            if counts.get("threads", 0) >= max_threads:
-                warn("pull hit the %d-thread cap: older mail in the window may be missing; raise the cap or re-run" % max_threads)
-            if counts.get("quarantined"):
-                warn("%d item(s) quarantined by Sentinel this run (see the quarantine table)" % counts["quarantined"])
-            if counts.get("errors"):
-                warn("%d fetch error(s) recorded this run (errors table)" % counts["errors"])
+            if pull_fn is not None:
+                # 4P.3D slice W item C: gc-daily no longer runs the envelope pull — the fast clock does, every
+                # tick, under its own watermark. An injected pull_fn still runs (tests and explicit callers).
+                rc, tail = pull_fn(after, max_threads)
+                res["pull"] = {"rc": rc}
+                if rc != 0:
+                    hint = ""
+                    if rc == 75:
+                        hint = " (Sentinel PAUSED unit rig: a human must look, then pull.py --unpause rig --why ...)"
+                    elif "invalid_grant" in tail or "401" in tail or "auth" in tail.lower():
+                        hint = " (looks like an expired rig login: run the rig login again)"
+                    raise RuntimeError("pull.py failed rc=%s%s: %s" % (rc, hint, tail.strip().splitlines()[-1] if tail.strip() else ""))
+                counts = last_run_counts(started)
+                res["pull"]["counts"] = {k: counts.get(k) for k in ("threads", "messages", "quarantined", "errors", "judge_calls")
+                    if k in counts}
+                if counts.get("threads", 0) >= max_threads:
+                    warn("pull hit the %d-thread cap: older mail in the window may be missing; raise the cap or re-run" % max_threads)
+                if counts.get("quarantined"):
+                    warn("%d item(s) quarantined by Sentinel this run (see the quarantine table)" % counts["quarantined"])
+                if counts.get("errors"):
+                    warn("%d fetch error(s) recorded this run (errors table)" % counts["errors"])
 
             # STEP 4b: refresh labels on stored mail right after the pull (the mover/filters change Gmail, not the store).
             # Tests that inject pull_fn get no real refresh unless they pass label_fn too.

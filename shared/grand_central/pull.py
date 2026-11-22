@@ -751,6 +751,8 @@ def pull_email(db, months, max_threads, after=None, before=None):
                    (lab.get("id"), lab.get("name"), lab.get("type")))
     db.commit()
 
+    stored_ids = {r[0] for r in db.execute("SELECT id FROM messages")} # an already-stored message is
+    # never judged again (slice W item C): loaded once, before the first page
     lo, hi, windowed = window_bounds(months, after, before)
     print(f"[email] paging threads newest-first (metadata only); windowed={windowed}", flush=True)
     prev_newest = None   # newest message date of the previous (in list order) successfully fetched thread
@@ -785,6 +787,12 @@ def pull_email(db, months, max_threads, after=None, before=None):
             if windowed and not keep:
                 STATS["threads_out_of_window"] = STATS.get("threads_out_of_window", 0) + 1
                 continue   # leaves no trace: no thread row, no message row, nothing staged
+            fresh = [(m, ms) for m, ms in keep if (m.get("id") or "") not in stored_ids]
+            if len(fresh) != len(keep):
+                STATS["already_stored"] = STATS.get("already_stored", 0) + (len(keep) - len(fresh))
+            keep = fresh
+            if not keep:
+                continue # every message of the thread is already stored: nothing staged, nothing judged again
             dates = []
             for msg, _ms in keep:
                 dates.append(store_message(db, msg, tid))
@@ -1563,6 +1571,9 @@ def run(args, db):
         prune_quarantine_files()
         if not args.sources_only:
             pull_email(db, args.months, args.max_threads, args.after, args.before)
+            db.execute("INSERT OR REPLACE INTO source_state(source, last_success_at, rows) VALUES(?,?,?)",
+                ("envelopes", started, STATS["messages"])) # the fast clock's own watermark (slice W item C)
+            db.commit()
         pull_source_if_needed(db, "calendar", args.calendar,
             lambda: pull_calendar(db, args.calendar_months))
         pull_source_if_needed(db, "tasks", args.tasks, lambda: pull_tasks(db))

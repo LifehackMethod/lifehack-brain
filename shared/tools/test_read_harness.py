@@ -720,4 +720,39 @@ def test_aa():
 
 check("aa", "labels without extension accepted; a stray label refused, never a crash", test_aa)
 
+
+def _whole_prompt_before_rules_kw(task_text, files):
+    """whole_prompt as it was before the rules keyword (2026-11-21), kept verbatim as the reference."""
+    parts = [task_text.strip(), "", rh.WHOLE_RULES, ""]
+    for label, text in files:
+        lines = text.split("\n")
+        parts.append("===== FILE %s BEGINS (%d lines) =====" % (label, len(lines)))
+        for i, l in enumerate(lines, 1):
+            parts.append("%d\t%s" % (i, l))
+        parts.append("===== FILE %s ENDS =====" % label)
+        parts.append("")
+    return "\n".join(parts)
+
+
+def test_ab():
+    files = [("a.md", "# A\nline two\n"), ("b.md", "only line")]
+    task = "  the task  \n"
+    assert rh.whole_prompt(task, files) == _whole_prompt_before_rules_kw(task, files)
+    assert rh.whole_prompt(task, files, rules=rh.WHOLE_RULES) == _whole_prompt_before_rules_kw(task, files)
+
+
+def test_ac():
+    files = [("a.md", "# A\nline two")]
+    custom = rh.whole_prompt("task", files, rules="REPLY IN PLAIN WORDS")
+    assert custom.startswith("task\n\nREPLY IN PLAIN WORDS\n\n===== FILE a.md BEGINS"), custom[:80]
+    assert "LEDGER |" not in custom
+    for empty in ("", None):
+        p = rh.whole_prompt("task", files, rules=empty)
+        assert p.startswith("task\n\n===== FILE a.md BEGINS"), repr(p[:60])
+        assert "REPLY RULES" not in p
+
+
+check("ab", "whole_prompt with no rules argument is byte-identical to before the keyword", test_ab)
+check("ac", "whole_prompt with custom rules prints them; rules '' or None drops the line and its blank", test_ac)
+
 sys.exit(0 if all(RESULTS) else 1)

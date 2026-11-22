@@ -9,10 +9,15 @@ convention as backup.py):
                                 triage guess, how much was seen, which draft used it
 
 Rules enforced here (plan B1 "Security, honestly"; the owner, 2026-11-15 evening):
-  1. Text is handed ONLY to a caller that declares itself tool-less (Caller.tool_less is True, i.e.
-     it lists no tools). A caller with tools is refused and the refusal is logged. A declaration
+  1. Text goes only to a caller that is tool-less OR declares only read-only tools with no way to
+     write or reach outside (owner's ruling D8, 2026-11-20, replacing the 2026-11-15 tool-less-only
+     rule). The second shape is a CLOSED allowlist: exactly READ_ONLY_TOOLS, nothing else (any
+     write, network or mcp__ tool is refused). A caller outside both shapes is refused and the
+     refusal is logged; an admitted read-only caller is logged WITH its allowlist. A declaration
      can be false; the deny hook (setup/hooks/) and the out-of-place-read check (coverage.py)
      are what catch a window that goes around this door.
+     History (the 2026-11-15 rule, superseded by D8): Text is handed ONLY to a caller that declares
+     itself tool-less (Caller.tool_less is True, i.e. it lists no tools).
   2. Anything with no verdict in the catalogue is refused by every read: a transcript that holds a
      message block the catalogue has no "safe" verdict for is refused whole.
   3. Only messages the mailroom scanned as safe are ever ingested; a delivery that says anything
@@ -45,6 +50,7 @@ DATE_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 DELIVERY_KEYS = {"schema", "thread_id", "message_id", "subject", "from", "date", "label",
                  "verdict", "triage", "block", "header", "seen", "internal_ms"}
 SEEN = ("full", "partial")
+READ_ONLY_TOOLS = ("Read", "Grep", "Glob") # the closed allowlist (D8): a way to look, never a way out
 SCHEMA = "gc.delivery/1"
 _BLOCK_LINE = re.compile(r"^=== message ([0-9a-f]{6,32}) \|", re.M)
 
@@ -108,32 +114,56 @@ def _append(path, text):
 # ---------------------------------------------------------------- callers
 
 class Caller(object):
-    """Who is asking. `tools` lists every tool the asking call can use; the empty tuple is the
-    only thing that counts as tool-less. (A real reader call is `claude -p --tools ""`.)"""
+    """Who is asking. Two admitted shapes (rule 1 above):
+      - tool-less: `tools` lists every tool the asking call can use, and it is the empty tuple
+        (a real reader call is `claude -p --tools ""`);
+      - read-only (D8): a closed, non-empty `read_only` allowlist, every name in READ_ONLY_TOOLS,
+        with `tools` still empty.
+    Anything else (a tool outside the allowlist, a non-empty tools=, an empty allowlist) is refused
+    at the door and logged. A declaration can be false; the deny hook and coverage.py are the
+    backstop that catches a window lying about its tools."""
 
-    def __init__(self, name, tools=()):
+    def __init__(self, name, tools=(), read_only=None):
         self.name = str(name)[:40]
         self.tools = tuple(tools)
+        self.read_only = tuple(read_only) if read_only is not None else None
 
     @property
     def tool_less(self):
-        return self.tools == ()
+        """True ONLY for the tool-less shape (no tools AND no allowlist)."""
+        return self.tools == () and self.read_only is None
+
+    @property
+    def read_only_ok(self):
+        """True only for the second admitted shape: a closed, non-empty allowlist drawn entirely
+        from READ_ONLY_TOOLS, no tools declared."""
+        return (self.read_only is not None and self.tools == ()
+                and len(self.read_only) > 0
+                and len(set(self.read_only)) == len(self.read_only)
+                and all(t in READ_ONLY_TOOLS for t in self.read_only))
 
 
 def _log_access(caller, what, outcome):
     try:
         _mkdir(front_room())
         name = getattr(caller, "name", "unknown")
-        _append(_access_log(), json.dumps({"ts": _now(), "caller": str(name)[:40], "what": what,
-                                           "outcome": outcome}, sort_keys=True) + "\n")
+        ro = getattr(caller, "read_only", None)
+        entry = {"ts": _now(), "caller": str(name)[:40], "what": what,
+                                           "outcome": outcome}
+        if ro is not None: # every access logs the caller's allowlist (D8)
+            entry["allowlist"] = [str(t)[:32] for t in ro]
+        _append(_access_log(), json.dumps(entry, sort_keys=True) + "\n")
     except OSError:
         pass   # logging must never turn a refusal into a read
 
 
 def _require_tool_less(caller, what):
-    if not isinstance(caller, Caller) or caller.tool_less is not True:
-        _log_access(caller, what, "refused:caller_has_tools")
-        raise Refused("caller_has_tools")
+    """The door check (rule 1): tool-less OR a closed read-only allowlist (D8). Anything else is
+    refused, logged, and the refusal is logged with the caller's declared allowlist."""
+    if isinstance(caller, Caller) and (caller.tool_less is True or caller.read_only_ok is True):
+        return
+    _log_access(caller, what, "refused:caller_has_tools")
+    raise Refused("caller_has_tools")
 
 
 # ---------------------------------------------------------------- the catalogue
@@ -229,7 +259,8 @@ def catalogue_meta():
 
 
 def read_catalogue_text(caller):
-    """Full catalogue rows, sender and subject included: only for a tool-less caller."""
+    """Full catalogue rows, sender and subject included: only for an admitted caller (tool-less OR
+    a closed read-only allowlist, rule 1)."""
     _require_tool_less(caller, "catalogue")
     _log_access(caller, "catalogue", "ok")
     return [dict((k, v) for k, v in r.items() if k not in ("mac", "block_sha256")) for r in _catalogue_rows()]
@@ -568,7 +599,8 @@ def _ingest(deliveries_dir, refused_dir, uid, counts):
 # ---------------------------------------------------------------- the access point
 
 def read_thread(thread_id, caller):
-    """The one door to a thread's text. Tool-less callers only. Every block in the file must have a
+    """The one door to a thread's text. Admitted callers only (rule 1: tool-less OR a closed
+    read-only allowlist). Every block in the file must have a
     catalogue line that ingest() wrote (valid MAC, verdict safe) AND whose recorded hash still
     matches the block's text, and the header must be the one ingest wrote; otherwise the whole
     thread is refused."""

@@ -21,7 +21,9 @@ SAFETY / CONTRACT:
   - Fail-soft: any gws/source failure → that section marked `source-unavailable`, exit 0
     (so the Pulse circuit breaker never trips on a content/source gap; only a real crash is non-0).
   - Idempotent: regenerates the machine portion; PRESERVES any "## Human Delta — verified"
-    section verbatim (never overwrites a human gray-matter stamp).
+    section verbatim (never overwrites a human gray-matter stamp). On a day page ANOTHER writer
+    created (the morning run's), it APPENDS its entry through shared/diary_page.py instead; on its
+    own page that another writer has added to, it leaves the page alone (see main()).
   - Atomic write (tmp + os.replace).
   - READ-ONLY against Google (lists only). Only write is the local diary .md.
 
@@ -41,6 +43,7 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "shared"))
 import brain_root                                                            # noqa: E402
 import cal_config                                                            # noqa: E402
+import diary_page                                                            # noqa: E402
 _SRC, DRIVE = brain_root.resolve_brain_root()
 if not DRIVE:
     sys.stderr.write(
@@ -480,6 +483,15 @@ def build(date_str, journal, status, tasks, cal, src):
     return body
 
 
+def _has_other_writers(text, title):
+    """True when our own day page holds lines another writer added: an H1 that is not our title, or a
+    mentions/staged/confidence key in its front matter (our own block never carries them)."""
+    m = re.match(r"\A---\n(.*?)\n---\n", text, re.S)
+    if m and any(ln.split(":", 1)[0] in ("mentions", "staged", "confidence") for ln in m.group(1).split("\n")):
+        return True
+    return any(ln.startswith("# ") and ln.strip() != title for ln in text.splitlines())
+
+
 def iso_now():
     lt = time.localtime()
     off = time.strftime("%z", lt)
@@ -516,28 +528,45 @@ def main():
     cal, s_c = read_calendar(time_min, time_max)
     src = {"journal": s_j, "status": s_s, "tasks": s_t, "calendar": s_c}
 
-    body = build(date_str, journal, status, tasks, cal, src)
-    body = body.rstrip() + "\n\n" + preserve_human_delta(  # re-attach preserved human delta
-        os.path.join(DIARY_ROOT, day.strftime("%Y"), day.strftime("%m"), day.strftime("%d") + ".md"))
-    body = body.rstrip() + "\n"
-
+    machine = build(date_str, journal, status, tasks, cal, src)
     out_dir = os.path.join(DIARY_ROOT, day.strftime("%Y"), day.strftime("%m"))
     out_path = os.path.join(out_dir, day.strftime("%d") + ".md")
-    # One writer per day (contract §4.7): another writer may have created this day's entry —
-    # the engine's midnight job creates exclusively and never overwrites. If the file exists
-    # and is NOT ours (no `type: planning-diary-daily` front matter), stand aside — never
-    # regenerate another writer's day. Our own days stay idempotent (regenerate, preserving
-    # the Human Delta).
+    title = f"# {day.strftime('%A')} {date_str} — Daily Diary"
+
+    # No midnight writer (the owner's diary ruling, 2026-11-20; Spec 3.10): whoever produces an entry APPENDS its
+    # own. The morning run appends a low-confidence entry to the day's page, so another writer may have created or
+    # added to this day before this tool runs. Three cases:
+    #   no page, or a page of OURS (type: planning-diary-daily) with nobody else's lines in it
+    #       -> regenerate it, preserving the Human Delta (today's behaviour, unchanged);
+    #   a page another writer created (no type: planning-diary-daily)
+    #       -> APPEND our entry (diary_page.append_entry): theirs is untouched, a high-confidence line stays high,
+    #          a re-run finds our title line and adds nothing;
+    #   a page of OURS that another writer has since added lines to (an H1 that is not our title, or their
+    #       mentions/staged/confidence keys) -> regenerating would remove their lines, so it is left as it is.
+    existing = ""
     if os.path.exists(out_path):
         try:
             with open(out_path, encoding="utf-8") as f:
-                _head = f.read(2000)
-        except Exception:
-            _head = ""
-        if "type: planning-diary-daily" not in _head:
-            sys.stderr.write(f"[planning-diary] {out_path} was written by another writer "
-                f"(no planning-diary-daily front matter) — standing aside (one writer per day)\n")
-            return 0
+                existing = f.read()
+        except Exception as e:
+            sys.stderr.write(f"planning-diary: FATAL could not read {out_path}: {e}\n")
+            return 1
+    if existing and "type: planning-diary-daily" not in existing[:2000]:
+        # Another writer's page: append our entry (our front matter block is dropped; the page keeps its own).
+        entry = machine.split("\n---\n", 1)[1].lstrip("\n") if machine.startswith("---\n") else machine
+        try:
+            status = diary_page.append_entry(out_path, entry, [], [], "low", heading=title)
+        except Exception as e:
+            sys.stderr.write(f"planning-diary: FATAL could not append to {out_path}: {e}\n")
+            return 1
+        print(f"[planning-diary] {status} {out_path} (another writer's page: our entry appended, theirs untouched)")
+        return 0
+    if existing and _has_other_writers(existing, title):
+        sys.stderr.write(f"[planning-diary] {out_path} holds another writer's lines — left as it is "
+                         f"(regenerating would remove them)\n")
+        return 0
+    body = machine.rstrip() + "\n\n" + preserve_human_delta(out_path)  # re-attach preserved human delta
+    body = body.rstrip() + "\n"
     try:
         os.makedirs(out_dir, exist_ok=True)
         tmp = out_path + ".tmp"

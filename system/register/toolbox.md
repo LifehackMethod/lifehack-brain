@@ -69,20 +69,26 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/cal_config.py` · the one place a calendar or task-list identifier is read from
 - `/shared/desk_door.py` · the desk door's checks (canon/desk-building-sop.md section 5) as one code check
 - `/shared/desk_list.py` · the ONE reader of YOUR desk list, kept in your notes folder next to your desks (and, since CR-9 step 2a, the ONE writer of a new desk's…
+- `/shared/diary_page.py` · the ONE desk-neutral diary append: whoever produces an entry on a day's page APPENDS its own (Spec 3.10)
 - `/shared/disk_preflight.py` · THE disk-low preflight: refuse to START a rig/exam run or the full test suite on a nearly full disk
 - `/shared/grand_central/alarm.py` · alarm.py: the alarm's path (Grand Central V2, plan B2 step 5)
 - `/shared/grand_central/backup.py` · Backups for rig.db. Always the sqlite3 backup API, never a file copy (safe under WAL)
 - `/shared/grand_central/batch_reader.py` · the "AI reads everything" lane (plan task 1.5b)
+- `/shared/grand_central/capacity.py` · 4P.3 item 3: the Capacity section of the morning snapshot, computed by CODE, never a model
 - `/shared/grand_central/check_personal_values.py` · the LOCK: engine code must hold none of the owner's personal values
+- `/shared/grand_central/claude_child.py` · One shared helper for the argv the front room's `claude -p` children get, so they run the same hooks his windows do (coordinator 38, route…
 - `/shared/grand_central/clock.py` · clock.py: the one place the rig reads the wall clock where liveness matters
 - `/shared/grand_central/common.py` · common.py: shared helpers for the engine steps
 - `/shared/grand_central/coverage.py` · the front room's checks on its own work
 - `/shared/grand_central/daily.py` · daily.py: Grand Central's daily engine (plan STEP 7 / Phase E1+E2)
 - `/shared/grand_central/db.py` · db.py: the one connect() for rig.db. Pragmas live here and nowhere else
+- `/shared/grand_central/decide.py` · Phase 4P.4 / 4P.4b: the door for a planning session's decisions on a draft, and the validated weekly picture
 - `/shared/grand_central/delta.py` · delta.py: Grand Central V2 step 3. Compare what arrived in [since, now] against the baseline (everything before) and report three kinds of…
+- `/shared/grand_central/diary_index_job.py` · diary_index_job.py: 4P.3 item 10 — the diary-index refresher (the diary_index job). # not-wired-yet: built in the build window for…
 - `/shared/grand_central/diary_keys.py` · Phase 4 step 4.3: keys in every diary entry (Vision 2.7 and 3.10)
 - `/shared/grand_central/diary_names.py` · diary_names.py: Phase 4 (ruling 4.1). A desk's diary is named by ONE pattern, '<Desk>-Diary'
 - `/shared/grand_central/encrypted_backup.py` · Encrypted backup of the front room's transcripts + catalogue (plan step 4b)
+- `/shared/grand_central/feeds.py` · feeds.py (4P.0b): which of Grand Central's three feeds are set up, connected or failing, derived ONLY from what the engine already records
 - `/shared/grand_central/filter_drift.py` · filter_drift.py: read-only backstop for the Phase C hands (coordinator condition 2, 2026-11-12)
 - `/shared/grand_central/first_message_id.py` · Print the id of one recent message, read through the sanctioned email door with the rig login
 - `/shared/grand_central/first_run.py` · Grand Central step 4M.7(a): set up a person's own setup folder from the examples
@@ -90,14 +96,19 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/gather.py` · gather.py: step 1. Picks the items in the window and writes one kg_scores row each (signal 'window', value 1, reason = why it is in)
 - `/shared/grand_central/gc.py` · gc: Grand Central's one command. Read-only unless the subcommand says otherwise
 - `/shared/grand_central/gc_settings.py` · shared/grand_central/gc_settings.py: the ONE settings loader of the Grand Central engine
-- `/shared/grand_central/gcjobs.py` · gcjobs.py: the three scheduled jobs of Grand Central's Phase 1 (plan 1.3 and 1.4)
+- `/shared/grand_central/gcjobs.py` · gcjobs.py: the scheduled jobs of Grand Central's Phase 1 (plan 1.3 and 1.4)
 - `/shared/grand_central/handoff/handoff.py` · Phase H, the hand-off folder. An .eml the owner downloads from Gmail and asks for by name
 - `/shared/grand_central/handoff/interpreter.py` · the TOOL-LESS interpreter for the hand-off folder (Phase H3)
 - `/shared/grand_central/handoff/worker.py` · the untrusted-content half of the hand-off reader
+- `/shared/grand_central/jobs/gc-diary-index-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.3 item 10)…
+- `/shared/grand_central/jobs/gc-fast-clock-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.0b / 4P.8)…
+- `/shared/grand_central/jobs/gc-morning-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.0b / 4P.8)…
+- `/shared/grand_central/jobs/gc-snapshot-run.sh` · not-wired-yet: its row lands in system/jobs.md through the V2 window when feat/gc-planning-weekly merges (plan 4P.0b / 4P.8)…
+- `/shared/grand_central/lens.py` · 4P.3 slice B item 1: the four lens passes inside the morning read, between the gather and the final call
 - `/shared/grand_central/local_first.py` · the ONE way a scheduled job reads a file that lives on Google Drive
 - `/shared/grand_central/migrate.py` · migrate.py: apply the migrations to rig.db
 - `/shared/grand_central/model_check.py` · model_check.py: `gc rebuild` and `gc check` (Phase 2 step 2.6; Vision 3.7.4 rules 5 and 6, 3.17 health check)
-- `/shared/grand_central/morning.py` · the morning read (plan B1 "The stages" item 3; B2 step 4)
+- `/shared/grand_central/morning.py` · the morning read (plan 4P.3R: rebuilt to the Spec)
 - `/shared/grand_central/mover/limits.py` · Google's ceilings for a consumer Apps Script account
 - `/shared/grand_central/mover/mover_request.py` · build a mover request from a JSON list of actions and (optionally) write it
 - `/shared/grand_central/mover/mover_schema.py` · the strict request schema + refusal rules, in Python
@@ -127,6 +138,7 @@ Shared layer = everything under `shared/`. Look here before writing a new tool.
 - `/shared/grand_central/signals/on_calendar_14d.py` · on_calendar_14d: the sender is an attendee of a calendar event starting in the next 14 days
 - `/shared/grand_central/signals/sender_history.py` · sender_history: how much this sender has written him and how much he wrote back (s_addr_signals)
 - `/shared/grand_central/signals/to_vs_cc.py` · to_vs_cc: he is in To (1.0), only in Cc (0.4), neither (0.0: list or bcc). 'Him' = the addresses in s_me
+- `/shared/grand_central/snapshot_layout.py` · 4P.3 item 5 (the fixed layout) and item 4 (the unclassified-emails rows), pure code
 - `/shared/grand_central/stamp_keys.py` · Phase 4 step 4.5 (closes 4.3's open join): the morning read stamps CODE-CERTAIN keys onto each staged item. - an email item -> its…
 - `/shared/grand_central/status_lights.py` · status_lights.py: the Grand Central status lights, written ONLY through the plugin's one writer (emit_status.py)
 - `/shared/grand_central/stitch.py` · stitch.py: step 3. Rule-based episodes. Certain joins first (same thread; same sender address within 14 days), then three triggers open an…

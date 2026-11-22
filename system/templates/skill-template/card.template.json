@@ -1,0 +1,36 @@
+{
+  "_readme": "The stage card for a long (multi-stage) skill, run by system/parts/stage_runner.py (see RUNNER.md beside this file). Copy into your skill folder as card.json and fill in. One stage = one step of the skill. mode 'talk' means the person converses and moves on with /next; mode 'alone' means the step runs unattended and advances on a verified pass. Placeholder stages below show the shape -- replace them. Every path is relative: 'prompt' to this card's folder, 'out'/'extra'/'inputs' to the run folder the runner creates. checks vocabulary: headings (lines that must appear exactly), min_words (prose words under headings), code_word (a line 'Code word: <word>' matching the word the runner handed out), forbid (forbidden_content.py rules -- the runner calls that part, never re-implements it), require_sections (section_present.py rules), order (order_lint.py rules), phase_gate ({phase, contract} for phase_gate.py). Keep every check backed by one of the parts -- do not invent a check the runner does not know.",
+  "skill": "<skill-name>",
+  "stop_limit": 3,
+  "stages": [
+    {
+      "id": "01-gather",
+      "mode": "talk",
+      "prompt": "prompts/01-gather.md",
+      "out": "out/01-gather.md",
+      "checks": {
+        "headings": ["## Frame"],
+        "min_words": 40,
+        "code_word": true
+      }
+    },
+    {
+      "id": "02-analyze",
+      "mode": "alone",
+      "prompt": "prompts/02-analyze.md",
+      "out": "out/02-analyze.md",
+      "inputs": ["out/01-gather.md"],
+      "checks": {
+        "headings": ["## Analysis"],
+        "min_words": 80,
+        "code_word": true,
+        "forbid": [
+          { "id": "conclusion-early", "term": "<the withheld term>", "mode": "declaration", "why": "spec: named only in a later stage" }
+        ],
+        "order": [
+          { "id": "arc-before-verdict", "before": { "id": "arc", "sequence": ["<a>", "<b>", "<c>"] }, "after": { "id": "verdict", "term": "<the verdict term>" }, "why": "spec: the arc first, then the verdict" }
+        ]
+      }
+    }
+  ]
+}

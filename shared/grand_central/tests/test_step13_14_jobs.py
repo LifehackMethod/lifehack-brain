@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 1 steps 1.3 and 1.4: the fast clock, the morning job and the midnight job (gcjobs.py).
+"""Phase 1 steps 1.3 and 1.4: the fast clock, and the morning job (gcjobs.py; the midnight job is retired).
 SYNTHETIC only: made-up mail, scratch folders, a FAKE pull (nothing touches Google), a FAKE model, a FAKE status light.
 The live database and the live front room are never opened. Each planted bad case below was shown FAILING first
 (see the "planted" notes in phase-1-step-3-result.md and phase-1-step-4-result.md).
@@ -28,12 +28,12 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 import gc_settings, gcjobs, morning, transcripts  # noqa: E402
 import test_step4_morning as t4  # noqa: E402  (its scratch front room, fake model and fixture helpers)
+gcjobs.MORNING_ATTEMPT_WAIT_S = 0 # 4P.3D slice W: the in-run retry wait is a test seam; tests never sleep
 
 # The rows' checks, copied from the ready-to-install list: the tests grade receipts with the SAME grep -E the runner uses.
 CHECKS = {
-    "gc-fast-clock": r"^gc-fast-clock ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} waiting=([0-9]+) cleared=\1 filed=[0-9]+ duplicate=[0-9]+ refused=[0-9]+ calendar=[fs][kre][a-z]+ tasks=[fs][kre][a-z]+ db=[dh][a-z]+ considered=[0-9]+ candidates=[0-9]+ morning=[a-z-]+ at=[0-9]{4}-",
+    "gc-fast-clock": r"^gc-fast-clock ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} waiting=([0-9]+) cleared=\1 filed=[0-9]+ duplicate=[0-9]+ refused=[0-9]+ calendar=[fs][kre][a-z]+ tasks=[fs][kre][a-z]+ db=[dh][a-z]+ considered=[0-9]+ candidates=[0-9]+ morning=[a-z-]+( once_snapshot=[a-z-]+ once_diary_index=[a-z-]+ once_daily=[a-z-]+)? at=[0-9]{4}-",
     "gc-morning": r"^gc-morning ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ new=([0-9]+) accounted=\1 examined=[0-9]+ draft=[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z-]+(-topup[0-9]+)?\.md sources=[a-z]+ at=[0-9]{4}-",
-    "gc-midnight": r"^gc-midnight ok date=[0-9]{4}-[0-9]{2}-[0-9]{2} desk=[a-z-]+ staged_days=([1-9][0-9]*) settled=\1 written=[0-9]+ existing=[0-9]+ newest=[0-9]{4}-[0-9]{2}-[0-9]{2} at=[0-9]{4}-",
 }
 
 
@@ -101,8 +101,12 @@ class Scratch(unittest.TestCase):
     FRESH = "[pull] skipping calendar: fetched successfully within the last 18h (mode=auto)\n[pull] skipping tasks: fetched successfully within the last 18h (mode=auto)\n"
 
     def fast(self, pull=None, login_ok=None, **kw):
-        kw.setdefault("now_local", datetime.datetime(2026, 11, 16, 3, 0))        # before 05:00: the morning is not due
+        kw.setdefault("now_local", datetime.datetime(2026, 11, 16, 3, 0))        # 03:00 local, no draft: the morning is due (no hour gate)
         kw.setdefault("launch", lambda desk, st: self.launched.append(desk))
+        self.envelope_pulls = [] # 4P.3D slice W: the envelope pull and the once-a-day launcher are stubbed per tick
+        kw.setdefault("envelope_pull", lambda after: self.envelope_pulls.append(after) or (0, "[pull] envelopes ok after %s" % after))
+        kw.setdefault("envelope_watermark", lambda: None)
+        kw.setdefault("once", lambda now_local: dict((j, "done") for j in gcjobs.ONCE_A_DAY_JOBS))
         return gcjobs.fast_clock(drop=self.drop, state=os.path.join(self.state, "gc-fast-clock"),
                                  pull=pull or (lambda mode: (0, self.FRESH)), login_ok=login_ok or (lambda: True),
                                  mailroom_uid=os.getuid(), status_light=self.light, out=self.say, **kw)
@@ -117,7 +121,7 @@ class FastClock(Scratch):
         self.assertEqual(rc, 0, self.lines)
         self.assertEqual(os.listdir(self.deliv), [])
         line = self.receipt("gc-fast-clock")
-        self.assertIn("waiting=2 cleared=2 filed=2 duplicate=0 refused=0 calendar=fresh tasks=fresh db=done considered=2 candidates=1 morning=not-due", line)
+        self.assertIn("waiting=2 cleared=2 filed=2 duplicate=0 refused=0 calendar=fresh tasks=fresh db=done considered=2 candidates=1 morning=launched", line)
         self.assertTrue(check_passes("gc-fast-clock", line), line)
         cand = [json.loads(x) for x in slurp(os.path.join(self.front, "alarm-candidates.jsonl")).splitlines()]
         self.assertEqual([c["message_id"] for c in cand], ["a00001"])
@@ -285,9 +289,9 @@ class MorningJob(Scratch):
         self.assertEqual(gcjobs.default_drop(), gc_settings.drop_dir())
 
     def test_PLANTED_a_morning_that_stages_nothing_leaves_no_proof(self):
-        """The model reply is junk: nothing staged, the read says FAILED, and the job writes no success line."""
+        """The model call fails: nothing staged, the read says FAILED, and the job writes no success line."""
         self.put_case()
-        rc = self.job(t4.FakeModel(self.env, "this is not json at all"))
+        rc = self.job(t4.Dead("timeout"))
         self.assertEqual(rc, 1)
         self.assertIsNone(self.receipt("gc-morning"))
         self.assertEqual(os.path.exists(os.path.join(self.notes, "desks", "desk-a", "records", "context", "%s-desk-a.md" % t4.DAY)), False)
@@ -341,65 +345,7 @@ class MorningJob(Scratch):
         self.assertEqual(rc, 75)
 
 
-# ================================================================ 1.4 the midnight job
-class MidnightJob(Scratch):
-    def stage(self, day):
-        rec = morning.records_context_dir(self.notes, "desk-a")
-        os.makedirs(rec, exist_ok=True)
-        with open(os.path.join(rec, "%s-desk-a.md" % day), "w", encoding="utf-8") as f:
-            f.write("# draft\n")
-        fdir = os.path.join(self.front, "catalogue", "morning")
-        os.makedirs(fdir, exist_ok=True)
-        with open(os.path.join(fdir, "%s-desk-a.form.json" % day), "w", encoding="utf-8") as f:
-            json.dump({"coverage": {"a00001": "used"}, "deadlines": [{"date": "2026-11-20"}], "money": [], "needs_him": [{}],
-                       "questions": [], "project_updates": []}, f)
-
-    def run_job(self, today=datetime.date(2026, 11, 16), **kw):
-        return gcjobs.midnight_job(desk="desk-a", today=today, state=os.path.join(self.state, "gc-midnight"), out=self.say, **kw)
-
-    def diary(self, day):
-        return morning.diary_entry_path(os.path.join(self.notes, "desks", "desk-a", "diary"), day, "desk-a", "tree")
-
-    def test_writes_yesterdays_entry_and_the_proof_passes_the_check(self):
-        self.stage("2026-11-15")
-        self.assertEqual(self.run_job(), 0, self.lines)
-        self.assertTrue(os.path.isfile(self.diary("2026-11-15")))
-        line = self.receipt("gc-midnight")
-        self.assertIn("staged_days=1 settled=1 written=1 existing=0 newest=2026-11-15", line)
-        self.assertTrue(check_passes("gc-midnight", line), line)
-
-    def test_PLANTED_the_same_day_run_twice_makes_no_duplicate_and_no_overwrite(self):
-        self.stage("2026-11-15")
-        self.assertEqual(self.run_job(), 0)
-        before = slurp(self.diary("2026-11-15"))
-        mtime = os.path.getmtime(self.diary("2026-11-15"))
-        with open(self.diary("2026-11-15"), "a", encoding="utf-8") as f:           # a later hand edit must survive a second run
-            f.write("added by hand\n")
-        self.assertEqual(self.run_job(), 0, self.lines)
-        self.assertIn("written=0 existing=1", self.receipt("gc-midnight"))
-        self.assertEqual(slurp(self.diary("2026-11-15")), before + "added by hand\n")
-        d = os.path.dirname(self.diary("2026-11-15"))
-        self.assertEqual(os.listdir(d), ["15.md"])               # one entry for the day, nothing else
-        self.assertGreaterEqual(os.path.getmtime(self.diary("2026-11-15")), mtime)
-
-    def test_a_night_the_mac_slept_through_is_caught_up_on_the_next_run(self):
-        self.stage("2026-11-14")
-        self.stage("2026-11-15")
-        self.assertEqual(self.run_job(), 0)
-        self.assertIn("staged_days=2 settled=2 written=2", self.receipt("gc-midnight"))
-        self.assertTrue(os.path.isfile(self.diary("2026-11-14")) and os.path.isfile(self.diary("2026-11-15")))
-
-    def test_today_is_never_written_early(self):
-        self.stage("2026-11-16")
-        self.assertEqual(self.run_job(), 75)
-        self.assertFalse(os.path.exists(self.diary("2026-11-16")))
-
-    def test_PLANTED_nothing_staged_is_75_and_a_forged_zero_proof_fails_the_check(self):
-        self.assertEqual(self.run_job(), 75)
-        self.assertIsNone(self.receipt("gc-midnight"))
-        forged = "gc-midnight ok date=2026-11-16 desk=desk-a staged_days=0 settled=0 written=0 existing=0 newest=2026-11-15 at=2026-11-16T00:00:01Z"
-        self.assertFalse(check_passes("gc-midnight", forged))
-        self.assertFalse(check_passes("gc-midnight", forged.replace("staged_days=0 settled=0", "staged_days=2 settled=1")))
+# (the 1.4 midnight job is retired, 4P.3R: the morning run writes its own diary entry; see test_step4_morning.DiaryEntry)
 
 
 # ================================================================ coordinator conditions, 2026-11-16
@@ -411,41 +357,67 @@ def hold(path, pid=None):
 
 
 class MorningTrigger(Scratch):
-    """1. The fast clock starts the morning detached, once, after 05:00, never twice."""
+    """1. The fast clock starts the morning detached, once, on the first tick of a new local day with no draft, never twice."""
 
     def at(self, hh, mm=0):
         return datetime.datetime(2026, 11, 16, hh, mm)
 
-    def test_before_five_nothing_starts_and_after_five_one_detached_morning_starts(self):
-        self.assertEqual(self.fast(now_local=self.at(4, 59)), 0)
-        self.assertEqual(self.launched, [])
-        self.assertIn("morning=not-due", self.receipt("gc-fast-clock"))
-        self.assertEqual(self.fast(now_local=self.at(5, 0)), 0, self.lines)
+    def test_PLANTED_a_lid_opened_at_0430_with_no_draft_today_starts_the_morning_at_once(self):
+        # the owner's rule (2026-11-20): work happens when the laptop is awake, not at a time on the clock.
+        self.assertEqual(self.fast(now_local=self.at(4, 30)), 0, self.lines)
         self.assertEqual(self.launched, ["desk-a"])
         line = self.receipt("gc-fast-clock")
         self.assertIn("morning=launched", line)
         self.assertTrue(check_passes("gc-fast-clock", line), line)
 
+    def test_a_second_tick_the_same_day_after_a_successful_draft_starts_nothing(self):
+        self.assertEqual(self.fast(now_local=self.at(4, 30)), 0, self.lines)
+        self.assertEqual(self.launched, ["desk-a"])
+        rec = morning.records_context_dir(self.notes, "desk-a")   # the detached morning succeeded: today's draft exists
+        os.makedirs(rec)
+        with open(os.path.join(rec, "2026-11-16-desk-a.md"), "w", encoding="utf-8") as f:
+            f.write("# draft\n")
+        self.assertEqual(self.fast(now_local=self.at(4, 45)), 0, self.lines)
+        self.assertEqual(self.launched, ["desk-a"])
+        self.assertIn("morning=done", self.receipt("gc-fast-clock"))
+
+    def test_the_morning_command_stands_down_75_only_as_the_double_run_guard(self):
+        called = []
+        real = gcjobs.morning_job
+        gcjobs.morning_job = lambda **kw: called.append(kw) or 0
+        try:
+            self.assertEqual(gcjobs.main(["morning", "--desk", "desk-a", "--day", t4.DAY]), 0)   # any hour, no draft: runs
+            self.assertEqual(len(called), 1)
+            rec = morning.records_context_dir(self.notes, "desk-a")
+            os.makedirs(rec)
+            with open(os.path.join(rec, "%s-desk-a.md" % t4.DAY), "w", encoding="utf-8") as f:
+                f.write("# draft\n")
+            self.assertEqual(gcjobs.main(["morning", "--desk", "desk-a", "--day", t4.DAY]), 75)  # today's draft exists
+            self.assertEqual(len(called), 1)
+        finally:
+            gcjobs.morning_job = real
+
     def test_PLANTED_a_morning_already_running_is_not_started_again_and_the_tick_finishes(self):
         hold(gcjobs.morning_run_lock())                            # a live morning holds its own lock
         t0 = time.time()
-        self.assertEqual(self.fast(now_local=self.at(7)), 0, self.lines)
+        self.assertEqual(self.fast(now_local=self.at(4, 30)), 0, self.lines)
         self.assertLess(time.time() - t0, 5)                       # the tick does not wait for the morning
         self.assertEqual(self.launched, [])
         self.assertIn("morning=running", self.receipt("gc-fast-clock"))
 
     def test_a_morning_that_just_started_or_keeps_failing_is_not_hammered(self):
+        # 4P.3D slice W: the failed retries happen INSIDE the detached run; between detached launches the gap is
+        # 1800 s and the day's hard ceiling is 6 attempts (every attempt counts, in-run ones included).
         self.assertEqual(self.fast(now_local=self.at(6, 0)), 0)
         self.assertEqual(self.fast(now_local=self.at(6, 10)), 0)       # 10 minutes later, no draft, nothing running
         self.assertEqual(self.launched, ["desk-a"])
         self.assertIn("morning=backoff", self.receipt("gc-fast-clock"))
-        self.assertEqual(self.fast(now_local=self.at(6, 40)), 0)
-        self.assertEqual(self.fast(now_local=self.at(7, 20)), 0)
-        self.assertEqual(self.fast(now_local=self.at(8, 0)), 0)
-        self.assertEqual(len(self.launched), 3)
-        self.assertEqual(self.fast(now_local=self.at(9, 0)), 0)
-        self.assertEqual(len(self.launched), 3)
+        for hh, mm in ((6, 40), (7, 20), (8, 0), (8, 40), (9, 20)): # 1800 s apart: tries 2..6
+            self.assertEqual(self.fast(now_local=self.at(hh, mm)), 0)
+        self.assertEqual(len(self.launched), 6)
+        self.assertEqual(self.fast(now_local=self.at(9, 50)), 0) # 30 min later, but the ceiling is 6
         self.assertIn("morning=gave-up-today", self.receipt("gc-fast-clock"))
+        self.assertEqual(len(self.launched), 6)
 
     def test_a_staged_draft_for_today_means_done(self):
         rec = morning.records_context_dir(self.notes, "desk-a")

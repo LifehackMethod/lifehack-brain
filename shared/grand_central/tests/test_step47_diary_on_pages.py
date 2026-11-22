@@ -39,6 +39,14 @@ ENTRIES = {   # day -> text
 class Base(t36.Base):
     def setUp(self):
         super().setUp()
+        # 4P.0b: the feeds gate must see a connected feed in these CLI-read tests. source_state is pull.py's
+        # schema (not a migration), so create it here if missing; this DB, not the default store path.
+        import clock as _clock
+        self.c.execute("CREATE TABLE IF NOT EXISTS source_state(source TEXT PRIMARY KEY, last_success_at TEXT, rows INTEGER)")
+        _st = _clock.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        for _src in ("gmail", "calendar", "tasks"):
+            self.c.execute("INSERT OR REPLACE INTO source_state VALUES(?,?,?)", (_src, _st, 0))
+        self.c.commit()
         self.c.row_factory = sqlite3.Row
         self.notes = tempfile.mkdtemp()
         d = os.path.join(self.notes, "desks", "desk-a", "diary", "2026", "11")

@@ -177,12 +177,45 @@ class Prompt(t4.Base):
         b = morning.source_budgets(300000, 500, 90000)
         self.assertEqual((b["share"], b["email"]), (100000, 300000 - 500 - 90000))
 
-    def test_the_instructions_name_the_three_as_equal_and_ids_stay_out_of_the_prompt(self):
-        self.assertIn("EQUAL WEIGHT", morning.INSTRUCTIONS)
-        self.assertIn("calendar, his tasks and his email count the same", morning.INSTRUCTIONS)
-        p = morning.build_prompt(DAY, "desk-a", morning.parse_baseline(None), task_items(2), cal_items(2), None, [], [], [])
+    def test_the_rules_name_the_three_as_equal_and_ids_stay_out_of_the_prompt(self):
+        self.assertIn("Email, calendar and tasks weigh equally", morning.MORNING_RULES)
+        files = morning.build_files(DAY, "desk-a", None, None, None, None, task_items(2), cal_items(2), [], None)
+        p = morning._rh().whole_prompt(morning.MORNING_TASK, files, rules=morning.MORNING_RULES)
         self.assertNotIn('"id"', p)
         self.assertIn("Event number 00", p)
+
+
+    def test_r1_the_prompt_carries_each_events_start_end_zone_and_location_and_the_no_invention_rule(self):
+        ev = [{"title": "Studio session", "start": "2026-11-22T10:00:00-05:00", "end": "2026-11-22T11:30:00-05:00",
+               "location": "Room 4, the Annex", "id": "c1"}]
+        files = morning.build_files(DAY, "desk-a", None, None, None, None, [], ev, [], None)
+        p = morning._rh().whole_prompt(morning.MORNING_TASK, files, rules=morning.MORNING_RULES)
+        for need in ("2026-11-22T10:00:00-05:00", "2026-11-22T11:30:00-05:00", "-05:00", "Room 4, the Annex"):
+            self.assertIn(need, p)
+        self.assertIn('"tz": "-05:00"', p)
+        self.assertIn("A time, place or route that is not in your input is never written; if it matters, ask.", p)
+        line = morning.calendar_line(ev[0])
+        self.assertTrue(line.startswith("2026-11-22: Studio session"))
+        for need in ("10:00:00-05:00", "11:30:00-05:00", "time zone -05:00", "Room 4, the Annex"):
+            self.assertIn(need, line)
+        self.assertIn("place: not stated", morning.calendar_line({"title": "X", "start": "2026-11-22", "end": "2026-11-23", "location": None}))
+
+
+    def test_r4_every_overdue_task_is_listed_by_code_in_date_order_and_the_rule_line_is_in_the_prompt(self):
+        tasks = [{"title": "Overdue chore %d" % i, "status": "open", "due": "2026-11-%02d" % (9 - i), "id": "o%d" % i} for i in range(9)]
+        tasks += [{"title": "Later chore", "status": "open", "due": "2026-11-30", "id": "l1"}, {"title": "No date chore", "status": "open", "due": None, "id": "n1"}]
+        out = morning.run_morning(t4.FakeModel(self.env, t4.reply()), DAY, "desk-a", self.recs, calendar=[], tasks=tasks)
+        self.assertTrue(out["ok"], out)
+        rec = open(out["record_path"], encoding="utf-8").read()
+        sec = rec.split("## Overdue tasks")[1].split("\n## ")[0]
+        found = [ln for ln in sec.splitlines() if ln.startswith("- (due ")]
+        self.assertEqual(len(found), 9)                                         # all nine, no quota
+        self.assertEqual([ln[7:17] for ln in found], sorted(ln[7:17] for ln in found))     # oldest first
+        self.assertNotIn("Later chore", sec)
+        self.assertIn("Tasks are an input equal to email and calendar.", morning.MORNING_RULES)
+        files = morning.build_files(DAY, "desk-a", None, None, None, None, tasks, [], [], None)
+        self.assertIn("OVERDUE: 9 open task(s)", dict(files)["tasks"])
+        self.assertEqual(morning.overdue_tasks([{"title": "a", "status": "completed", "due": "2026-01-01"}], DAY), [])
 
 
 class Accounting(t4.Base):

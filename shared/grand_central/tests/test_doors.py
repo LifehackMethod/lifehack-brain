@@ -27,6 +27,10 @@ class Base(unittest.TestCase):
         store.set_path(self.p)
         self._old = os.environ.get("AGE_NOW")
         os.environ["AGE_NOW"] = "2026-11-12T09:00:00+00:00"
+        import clock as _clock  # 4P.0b: the feeds gate must see a connected feed in these CLI-read tests
+        _st = _clock.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        for _src in ("gmail", "calendar", "tasks"):
+            store.set_source_state(_src, _st, 0)
         self.seed()
 
     def tearDown(self):

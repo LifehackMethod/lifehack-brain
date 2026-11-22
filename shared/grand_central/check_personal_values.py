@@ -434,15 +434,27 @@ def scan(root, terms, mod, matcher, allow):
 
 
 def run(root, setup=None, allow_path=None, out=sys.stdout, db=None):
+    """root: one folder, or a LIST of folders (P20: the skill folder is covered too).
+    With more than one root, each finding's path is prefixed with that root's basename so
+    the two scans cannot be confused; a single root keeps the plain relpath (allow-list
+    matching unchanged)."""
     pr = load_roots()
     sdir = setup_dir(setup, pr)
     terms = build_terms(sdir, pr, db)
     mod, matcher = load_matcher()
-    root = os.path.abspath(root)
-    if not os.path.isdir(root):
-        raise CannotEvaluate("root is not a folder")
+    roots = root if isinstance(root, (list, tuple)) else [root]
+    roots = [os.path.abspath(r) for r in roots]
+    for r in roots:
+        if not os.path.isdir(r):
+            raise CannotEvaluate("root is not a folder: %s" % r)
     allow = load_allow(allow_path or os.path.join(sdir, ALLOW_NAME))
-    found = sorted(set(scan(root, terms, mod, matcher, allow)))
+    found = []
+    for r in roots:
+        for rel, i, cat, hh in set(scan(r, terms, mod, matcher, allow)):
+            if len(roots) > 1:
+                rel = os.path.join(os.path.basename(r), rel)
+            found.append((rel, i, cat, hh))
+    found = sorted(set(found))
     for rel, i, cat, hh in found:
         print("%s:%d:%s:%s" % (rel, i, cat, hh), file=out)
     counts = collections.Counter(c for _, _, c, _ in found)
@@ -470,14 +482,16 @@ def precommit(root, setup=None, allow_path=None, db=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--root", default=HERE)
+    ap.add_argument("--root", action="append", default=None,
+        help="folder(s) to scan; repeatable (P20: e.g. the skill folder beside the engine). Default: this folder")
     ap.add_argument("--setup", default=None)
     ap.add_argument("--allow", default=None)
     ap.add_argument("--db", default=None, help="owner database (default: resolved from the setup; read-only)")
     ap.add_argument("--precommit", action="store_true", help="skip (exit 0) when no setup folder resolves")
     a = ap.parse_args(argv)
+    root = a.root or [HERE]
     try:
-        return (precommit if a.precommit else run)(a.root, a.setup, a.allow, db=a.db)
+        return (precommit if a.precommit else run)(root, a.setup, a.allow, db=a.db)
     except CannotEvaluate as e:
         print("CANNOT EVALUATE: %s" % e)
         return 2

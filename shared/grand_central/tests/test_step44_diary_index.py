@@ -19,7 +19,7 @@ import store_diary as sd  # noqa: E402
 import test_step36_merging as t36  # noqa: E402
 
 ENTRY1 = "---\ntype: planning-diary-daily\ndate: 2026-11-06\nconfidence: low\nmentions: [person:legacy-9, person:legacy-1]\nstaged: [d1, d2]\n---\n\n# Day\nTalked to Joe Example and Jo Example.\n"
-ENTRY2 = "# Midnight diary entry 2026-11-07\nconfidence: low\n\nMet person:legacy-9 for lunch (prose only).\n"
+ENTRY2 = "# Diary entry 2026-11-07\nconfidence: low\n\nMet person:legacy-9 for lunch (prose only).\n"
 
 
 class Base(t36.Base):
