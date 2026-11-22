@@ -20,7 +20,7 @@ trap 'lhb_journal_fire "$?" "guard_sheet_formula_writes.sh" "PreToolUse" "Bash" 
 # REDIRECT: if changing that formula is genuinely what was asked for, show the exact before and after
 #      to the person whose sheet it is, and retry the SAME command with LIFEHACK_SHEET_CONFIRM=1
 #      prefixed. Never add the marker without that yes.
-# SIGNPOST: system/sops/google-sheet-sop.md holds the rule this enforces; the `/google-sheet` skill
+# SIGNPOST: canon/google-sheet-sop.md holds the rule this enforces; the `/google-sheet` skill
 #      holds the 🔒 convention. Change it there.
 # FAIL_POSTURE: closed for a write it can see targeting a sheet — if it cannot read back what it is
 #      about to overwrite, it denies. OPEN for a payload it cannot parse at all; see the note below.
@@ -48,13 +48,13 @@ deny() {
   if [ "$ASK_MODE" = 1 ]; then
     printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/fc_sign.py" drive "sheet:formula:$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)" "@sheet_formula"   # plan fix 23(d)
     [ $? -eq 2 ] && exit 2
-    ask_json "ASK FIRST (sheet formula guard): ${1:-this write targets a FORMULA or lock cell on a Google Sheet.} WHY: the sheet computes its own maths and an owner-credential write can silently overwrite a formula. WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: system/sops/google-sheet-sop.md."
+    ask_json "ASK FIRST (sheet formula guard): ${1:-this write targets a FORMULA or lock cell on a Google Sheet.} WHY: the sheet computes its own maths and an owner-credential write can silently overwrite a formula. WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: canon/google-sheet-sop.md."
     exit 0
   fi
   printf 'BLOCKED (sheet formula guard): %s\n' "${1:-this write targets a FORMULA or 🔒 cell on a Google Sheet.}" >&2
   printf '%s\n' "WHY: the sheet computes its own maths, and a script writing as the file's owner can silently overwrite a formula and corrupt every number downstream of it. Google's own locks do NOT stop an owner write — this does." >&2
   printf '%s\n' "REDIRECT: normal work only APPENDS rows and is never blocked. If changing this formula is genuinely what was asked for, show the exact before and after to the person whose sheet it is, and retry the same command with LIFEHACK_SHEET_CONFIRM=1 prefixed. Never add the marker without that yes." >&2
-  printf '%s\n' "RULE: system/sops/google-sheet-sop.md, and the 🔒 convention in the /google-sheet skill." >&2
+  printf '%s\n' "RULE: canon/google-sheet-sop.md, and the 🔒 convention in the /google-sheet skill." >&2
   exit 2
 }
 deny_unknown() {

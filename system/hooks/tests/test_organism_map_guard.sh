@@ -48,8 +48,8 @@ print(json.dumps({'tool_name': tool, 'tool_input': ti}))" "$tool" "$path" "$body
 }
 
 echo "── ALLOW FIRST: the surgical Edit is the normal authoring path ───────────"
-fire "Edit the manual"            0 Edit  "$REPO/system/organism/manual.md"                0
-fire "Edit the format specs"      0 Edit  "$REPO/system/organism/map-format-specs.md"      0
+fire "Edit the manual"            0 Edit  "$REPO/canon/manual.md"                0
+fire "Edit the format specs"      0 Edit  "$REPO/canon/map-format-specs.md"      0
 fire "Edit an element"            0 Edit  "$REPO/system/organism/elements/canon.md"        0
 fire "Edit a NEW element"         0 Edit  "$REPO/system/organism/elements/invented.md"     0
 
@@ -59,21 +59,21 @@ fire "Write a skill file"         0 Write "$REPO/.claude/skills/save/SKILL.md"
 fire "Write outside the repo"     0 Write "/tmp/scratch-note.md"
 fire "Write a non-.md in elements/" 0 Write "$REPO/system/organism/elements/notes.txt"
 fire "Write system/organism/ sibling" 0 Write "$REPO/system/organism-notes.md"
-fire "another checkout's organism" 0 Write "/tmp/some-other-repo/system/organism/manual.md"
+fire "another checkout's organism" 0 Write "/tmp/some-other-repo/canon/manual.md"
 fire "a Write carrying no path"   0 Write ""
 
 echo "── DENY: a wholesale Write of a protected map file ───────────────────────"
-fire "Write the manual"           2 Write "$REPO/system/organism/manual.md"
-fire "Write the format specs"     2 Write "$REPO/system/organism/map-format-specs.md"
+fire "Write the manual"           2 Write "$REPO/canon/manual.md"
+fire "Write the format specs"     2 Write "$REPO/canon/map-format-specs.md"
 fire "Write an element"           2 Write "$REPO/system/organism/elements/canon.md"
 fire "Write a NEW element"        2 Write "$REPO/system/organism/elements/invented.md"
 
 echo "── ⭐ DENY: the same targets, spelled so a raw string match would miss ────"
 # The donor matched a glob against the raw file_path. Every spelling below resolves to a protected
 # file and every one of them walked past that version.
-fire "relative to the repo"       2 Write "system/organism/manual.md"
-fire "via a .. traversal"         2 Write "$REPO/system/tools/../organism/manual.md"
-fire "via a doubled slash"        2 Write "$REPO/system/organism//manual.md"
+fire "relative to the repo"       2 Write "canon/manual.md"
+fire "via a .. traversal"         2 Write "$REPO/system/tools/../../canon/manual.md"
+fire "via a doubled slash"        2 Write "$REPO/canon//manual.md"
 fire "via a . segment"            2 Write "$REPO/system/organism/./elements/brain.md"
 fire "relative element path"      2 Write "system/organism/elements/hook-plane.md"
 
@@ -110,7 +110,7 @@ if missing: print('deny text missing %s' % ', '.join(missing)); raise SystemExit
 _payload() { python3 -c "
 import json,sys; print(json.dumps({'tool_name':'Write','tool_input':{'file_path':sys.argv[1],'content':'x'}}))" "$1"; }
 
-check_text "deny text: manual"   bash -c "_p=\$(python3 -c \"import json;print(json.dumps({'tool_name':'Write','tool_input':{'file_path':'$REPO/system/organism/manual.md','content':'x'}}))\"); printf '%s' \"\$_p\" | env CLAUDE_PROJECT_DIR='$REPO' bash '$GUARD'"
+check_text "deny text: manual"   bash -c "_p=\$(python3 -c \"import json;print(json.dumps({'tool_name':'Write','tool_input':{'file_path':'$REPO/canon/manual.md','content':'x'}}))\"); printf '%s' \"\$_p\" | env CLAUDE_PROJECT_DIR='$REPO' bash '$GUARD'"
 check_text "deny text: element"  bash -c "_p=\$(python3 -c \"import json;print(json.dumps({'tool_name':'Write','tool_input':{'file_path':'$REPO/system/organism/elements/canon.md','content':'x'}}))\"); printf '%s' \"\$_p\" | env CLAUDE_PROJECT_DIR='$REPO' bash '$GUARD'"
 check_text "deny text: unparseable" bash -c "printf 'not json' | env CLAUDE_PROJECT_DIR='$REPO' bash '$GUARD'"
 
@@ -121,7 +121,7 @@ echo "── COMPONENT PAGES (2026-11-16): a SIGN, not a hard block ────
 # strings reach into the fenced content; an Edit confined to the human parts passes.
 
 # fixture: one component page with both fences, in the repo the suite fires against
-COMPDIR="$REPO/system/organism/components"
+COMPDIR="$REPO/canon/components"
 FIXTURE="$COMPDIR/test-fixture.md"
 mkdir -p "$COMPDIR"
 cat > "$COMPDIR/test-fixture.md" <<'FIX'
@@ -141,7 +141,7 @@ title: "Test fixture"
 Status: unproven (receipt missing)
 <!-- STATUS:END -->
 FIX
-trap 'rm -f "$REPO/system/organism/components/test-fixture.md"; rmdir "$REPO/system/organism/components" 2>/dev/null' EXIT
+trap 'rm -f "$REPO/canon/components/test-fixture.md"; rmdir "$REPO/canon/components" 2>/dev/null' EXIT
 
 fire_edit() { # label expected tool path old_string new_string [repo]
   local label="$1" exp="$2" tool="$3" path="$4" old="$5" new="$6" got repo="${7:-$REPO}"
@@ -196,14 +196,14 @@ fire_edit "Heading above the fences still passes"   0 Edit "$FIXTURE" "# Test fi
 echo "── ROUND 2 FIX 9: a repo path containing a space ─────────────────────────"
 SPACE_BASE="$(mktemp -d)"
 SPACE_REPO="$SPACE_BASE/with space/repo"
-mkdir -p "$SPACE_REPO/system/organism/components" "$SPACE_REPO/system/organism/elements"
-printf 'x\n' > "$SPACE_REPO/system/organism/manual.md"
-cp "$FIXTURE" "$SPACE_REPO/system/organism/components/test-fixture.md"
-trap 'rm -rf "$SPACE_BASE"; rm -f "$REPO/system/organism/components/test-fixture.md"; rmdir "$REPO/system/organism/components" 2>/dev/null' EXIT
-fire  "Space path: Write the manual is denied"  2 Write "$SPACE_REPO/system/organism/manual.md" 1 "$SPACE_REPO"
-fire  "Space path: Write a component is signed" 2 Write "$SPACE_REPO/system/organism/components/test-fixture.md" 1 "$SPACE_REPO"
-fire_edit "Space path: a fence edit is signed"  2 Edit "$SPACE_REPO/system/organism/components/test-fixture.md" "Status: unproven (receipt missing)" "Status: LIVE forged" "$SPACE_REPO"
-fire_edit "Space path: outside-fence edit passes" 0 Edit "$SPACE_REPO/system/organism/components/test-fixture.md" "# Test fixture" "# Test fixture v2" "$SPACE_REPO"
+mkdir -p "$SPACE_REPO/canon/components" "$SPACE_REPO/system/organism/elements"
+printf 'x\n' > "$SPACE_REPO/canon/manual.md"
+cp "$FIXTURE" "$SPACE_REPO/canon/components/test-fixture.md"
+trap 'rm -rf "$SPACE_BASE"; rm -f "$REPO/canon/components/test-fixture.md"; rmdir "$REPO/canon/components" 2>/dev/null' EXIT
+fire  "Space path: Write the manual is denied"  2 Write "$SPACE_REPO/canon/manual.md" 1 "$SPACE_REPO"
+fire  "Space path: Write a component is signed" 2 Write "$SPACE_REPO/canon/components/test-fixture.md" 1 "$SPACE_REPO"
+fire_edit "Space path: a fence edit is signed"  2 Edit "$SPACE_REPO/canon/components/test-fixture.md" "Status: unproven (receipt missing)" "Status: LIVE forged" "$SPACE_REPO"
+fire_edit "Space path: outside-fence edit passes" 0 Edit "$SPACE_REPO/canon/components/test-fixture.md" "# Test fixture" "# Test fixture v2" "$SPACE_REPO"
 
 echo "── ROUND 2 FIX 10: deny JSON survives quote and backslash in the path ────"
 check_text "deny text: double-quote in filename" bash -c "_p=\$(python3 -c \"import json;print(json.dumps({'tool_name':'Write','tool_input':{'file_path':'$COMPDIR/a\\\"b.md','content':'x'}}))\"); printf '%s' \"\$_p\" | env CLAUDE_PROJECT_DIR='$REPO' bash '$GUARD'"
@@ -212,9 +212,9 @@ check_text "deny text: backslash in filename"    bash -c "_p=\$(python3 -c \"imp
 echo "── ROUND 2 FIX 11 (darwin only): case-folded path matching ───────────────"
 case "$(uname -s)" in
   Darwin)
-    fire     "Case variant: Write a component is signed"  2 Write "$REPO/system/organism/COMPONENTS/test-fixture.md"
+    fire     "Case variant: Write a component is signed"  2 Write "$REPO/canon/COMPONENTS/test-fixture.md"
     fire     "Case variant: Write an element is denied"   2 Write "$REPO/system/organism/ELEMENTS/canon.md"
-    fire_edit "Case variant: fence edit is signed"        2 Edit "$REPO/system/organism/COMPONENTS/test-fixture.md" "Status: unproven (receipt missing)" "Status: LIVE forged"
+    fire_edit "Case variant: fence edit is signed"        2 Edit "$REPO/canon/COMPONENTS/test-fixture.md" "Status: unproven (receipt missing)" "Status: LIVE forged"
     ;;
 esac
 

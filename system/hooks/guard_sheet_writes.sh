@@ -21,7 +21,7 @@ trap 'lhb_journal_fire "$?" "guard_sheet_writes.sh" "PreToolUse" "Bash" 2>/dev/n
 #      marker and is judged as a write. OFF = the old text and the old read branch.
 #      For a destructive op, get an in-the-moment YES from the person whose sheet it is. With fc_sign_drive on, the first
 #      attempt is refused with that route (lib/fc_sign.py); later attempts get the ask.
-# SIGNPOST: the rules live in system/sops/google-sheet-sop.md; the design side is the `/google-sheet`
+# SIGNPOST: the rules live in canon/google-sheet-sop.md; the design side is the `/google-sheet`
 #      skill. Change what is gated THERE, then update this file.
 # FAIL_POSTURE: closed for a command it can read that names a sheet; open for a payload it cannot
 #      read at all — see the note below, which is the whole reason this file was rewritten.
@@ -61,12 +61,12 @@ deny() {
   if [ "$ASK_MODE" = 1 ] && [ "$SHEET_KIND" != llm ]; then
     printf '%s' "$INPUT" | python3 "$_lhb_dir/lib/fc_sign.py" drive "sheet:${SIGN_NAME:-sheet_unknown}:$(printf '%s' "$COMMAND" | grep -oE '[A-Za-z0-9_-]{40,}' | head -1)" "@${SIGN_NAME:-sheet_unknown}"
     [ $? -eq 2 ] && exit 2
-    ask_json "ASK FIRST (sheet guard): $1 $2 WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: system/sops/google-sheet-sop.md."
+    ask_json "ASK FIRST (sheet guard): $1 $2 WAY THROUGH: the person answers yes to the prompt that appears; a marker typed into the command no longer counts. RULE: canon/google-sheet-sop.md."
     exit 0
   fi
   printf 'BLOCKED (sheet guard): %s\n' "$1" >&2
   printf '%s\n' "$2" >&2
-  printf '%s\n' "RULE: system/sops/google-sheet-sop.md holds the rules of engagement; the /google-sheet skill holds the design side. Change what is gated there, not here." >&2
+  printf '%s\n' "RULE: canon/google-sheet-sop.md holds the rules of engagement; the /google-sheet skill holds the design side. Change what is gated there, not here." >&2
   exit 2
 }
 deny_llm() {
@@ -89,7 +89,7 @@ deny_struct() {
   SIGN_NAME=sheet_structural
   deny "a structural Google Sheets edit — spreadsheets batchUpdate adds or removes tabs, columns, formatting or protected ranges." \
 "WHY: changing a sheet's STRUCTURE, as opposed to appending a row, can break formulas, break the _CHECKS self-check layer, or quietly damage a sheet other things depend on.
-REDIRECT: read system/sops/google-sheet-sop.md, use the /google-sheet skill (Kickoff or Audit) for the architecture rules, back the sheet up, then retry with LIFEHACK_SHEET_CONFIRM=1. Routine value appends never need this."
+REDIRECT: read canon/google-sheet-sop.md, use the /google-sheet skill (Kickoff or Audit) for the architecture rules, back the sheet up, then retry with LIFEHACK_SHEET_CONFIRM=1. Routine value appends never need this."
 }
 deny_unknown() {
   deny "this gws command hides its operation or its target behind a shell variable or a command substitution, so this guard cannot tell what it would do." \

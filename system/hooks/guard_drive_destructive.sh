@@ -31,7 +31,7 @@ trap 'lhb_journal_fire "$?" "guard_drive_destructive.sh" "PreToolUse" "Bash" 2>/
 #      many Drive files, is stopped to ask; with nobody to answer, the run waits. WAY-THROUGH: the person says yes
 #      and answers the harness prompt (headless it is a refusal), or
 #      the person turns the switch off. One scratch file that is not a Sheet is never asked about.
-# SIGNPOST: the Sheet rules live in system/sops/google-sheet-sop.md; what is gated here is set by the two switches
+# SIGNPOST: the Sheet rules live in canon/google-sheet-sop.md; what is gated here is set by the two switches
 #      and this file. Change the rule here deliberately, never loosen it to fit a refused command.
 # FAIL_POSTURE: closed for what it can read (a Drive delete it cannot tell is a Sheet is ASKED about); open for
 #      an unreadable payload or a command that names no Drive delete, because it sits in front of every Bash command.

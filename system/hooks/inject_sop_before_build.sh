@@ -19,7 +19,7 @@ trap 'lhb_journal_fire "$?" "inject_sop_before_build.sh" "UserPromptSubmit" "" 2
 # REDIRECT: N/A (non-blocking).
 # SIGNPOST: The TRIGGER TABLE in this script IS the rule. SOPs pointed at live in
 #           canon/{skill-building-sop,hook-sop,desk-building-sop,cron-jobs-sop}.md and
-#           system/sops/{google-sheet-sop,design-process-sop}.md. To add a 7th SOP:
+#           canon/google-sheet-sop.md and system/sops/design-process-sop.md. To add a 7th SOP:
 #           add one row to the TABLE list below. Hook doctrine: canon/hook-contract.md.
 # UPDATED: 2026-07-11 (new — SOP build-time pointer injector; council-scoped KISS)
 # UPDATED: 2026-10-29 (v2 2.4) — also points at system/register/toolbox.md and /build.
@@ -105,7 +105,7 @@ TABLE = [
     (r"skills?",                                    "canon/skill-building-sop.md", "skill"),
     (r"hooks?",                                     "canon/hook-sop.md",                "hook"),
     (r"desks?",                                     "canon/desk-building-sop.md",       "desk"),
-    (r"(?:google\s+)?sheets?|spreadsheets?",        "system/sops/google-sheet-sop.md",        "Google Sheet"),
+    (r"(?:google\s+)?sheets?|spreadsheets?",        "canon/google-sheet-sop.md",        "Google Sheet"),
     # DISCONNECTED 2026-10-31 (Enver, decision 5): design-process-sop.md is work in progress, not validated; row kept here as history.
     # (r"dashboards?|views?|screens?",                "system/sops/design-process-sop.md",      "dashboard / view"),
     (r"crons?|scheduled\s+(?:job|task)s?|timers?",  "canon/cron-jobs-sop.md",           "cron job"),
