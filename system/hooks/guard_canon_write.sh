@@ -256,7 +256,9 @@ def _is_repo_canon(pp):
         return False                                  # relative path: cannot prove where it lands
     ci = pn.rfind("/canon/")
     root, rest = (pn[:ci], pn[ci + 7:]) if ci > 0 else ("", "")
-    if not root or not rest or "/" in rest or not os.path.exists(os.path.join(root, ".git")):
+    # Flat file in canon/, OR exactly components/<name>.md (one folder, one level, .md only; no deeper, no other folder).
+    _comp = rest.startswith("components/") and rest.count("/") == 1 and rest.endswith(".md") and len(rest) > len("components/.md")
+    if not root or not rest or ("/" in rest and not _comp) or not os.path.exists(os.path.join(root, ".git")):
         return False
     try:                                              # never the notes: a notes folder kept in git stays notes canon
         sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_lib))))), "shared"))

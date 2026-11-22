@@ -323,6 +323,20 @@ cwfire Write "$CEX" "$(python3 -c 'print("x"*3300)')"; if [ $RC -eq 2 ]; then ok
 cwfire Write "$CEX" "expires: 2027"; if [ $RC -eq 2 ]; then ok; else bad "ON expiry canon Write still denies (rc=$RC)"; fi
 unset ROUNDB_FC_CANON_REPLACE
 
+echo "-- repo canon: canon/components/<file>.md is repo canon (no 3,200-char notes rail); nothing else deeper is"
+RC_REPO="$CD/repo"; mkdir -p "$RC_REPO/.git" "$RC_REPO/canon/components/sub" "$RC_REPO/canon/other"
+for f in canon/manual.md canon/components/pg.md canon/components/sub/x.md canon/other/x.md; do printf -- '- line one\n- line two\n' > "$RC_REPO/$f"; done
+BIGC="$(python3 -c 'print("x"*3300)')"
+export LIFEHACK_ROOT="$CD/notes" ROUNDB_FC_CANON_REPLACE=on
+cwfire Edit "$RC_REPO/canon/manual.md" "$BIGC";               if [ $RC -eq 0 ]; then ok; else bad "repo canon flat file: oversize Edit allowed (rc=$RC)"; fi
+cwfire Edit "$RC_REPO/canon/components/pg.md" "$BIGC";        if [ $RC -eq 0 ]; then ok; else bad "repo canon components/pg.md: oversize Edit allowed (rc=$RC)"; fi
+cwfire Edit "$RC_REPO/canon/components/pg.md" "expires: 2027"; if [ $RC -eq 0 ]; then ok; else bad "repo canon components/pg.md: expiry marker not a notes rail (rc=$RC)"; fi
+cwfire Edit "$RC_REPO/canon/components/sub/x.md" "$BIGC";     if [ $RC -eq 2 ]; then ok; else bad "components/sub/x.md stays under notes rails (rc=$RC)"; fi
+cwfire Edit "$RC_REPO/canon/other/x.md" "$BIGC";              if [ $RC -eq 2 ]; then ok; else bad "canon/other/x.md stays under notes rails (rc=$RC)"; fi
+cwfire Edit "$RC_REPO/canon/components/../other/x.md" "$BIGC"; if [ $RC -eq 2 ]; then ok; else bad "components/../other/x.md stays under notes rails (rc=$RC)"; fi
+cwfire Edit "$RC_REPO/canon/components/pg.txt" "$BIGC";       if [ $RC -eq 2 ]; then ok; else bad "components/pg.txt (not .md) stays under notes rails (rc=$RC)"; fi
+unset LIFEHACK_ROOT ROUNDB_FC_CANON_REPLACE
+
 echo
 echo "fine-china guards: $P passed, $F failed"
 [ "$F" -eq 0 ]
