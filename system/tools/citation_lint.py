@@ -140,6 +140,11 @@ EXEMPT_FILES = {
     "canon/manual.history.md":
         "the manual's history (moved into canon/ 2026-11-22): it holds cut text verbatim, so its quoted "
         "citations describe the tree as it was (e.g. the manual's old system/organism/ home), not the tree",
+    # MERGE-LIST (undo before main): the Vision lives in V2 canon temporarily (COMPASS stays private, his call) (Enver 2026-11-22,
+    # coordinator yes). Its citations point at the owner's private repo and notes folder, where they were written.
+    "canon/v2-architecture-vision.md":
+        "banner at :3 (lives in V2 canon from 2026-11-22, rework before main); written in the private repo, its "
+        "citations point at that repo and the notes folder, not this tree",
     "canon/map-format-specs.history.md":
         "map-format-specs' history (moved into canon/ 2026-11-22): it holds cut text verbatim, so its quoted "
         "citations describe the tree as it was (e.g. the element pages archived 2026-11-22), not the tree",

@@ -47,3 +47,5 @@
 1	system/tools/safe_sheets.py
 2	system/tools/test_agent_pins.py
 3	system/tools/test_planning_diary_capture.py
+# MERGE-LIST (undo before main): the Vision lives in V2 canon temporarily (Enver 2026-11-22, coordinator yes)
+2	canon/v2-architecture-vision.md

@@ -29,3 +29,5 @@
 1	canon/security-canon.md
 1	system/security-posture-baseline.md
 1	system/templates/producer-spec-template.md
+# MERGE-LIST (undo before main): the Vision lives in V2 canon temporarily (Enver 2026-11-22, coordinator yes)
+4	canon/v2-architecture-vision.md
