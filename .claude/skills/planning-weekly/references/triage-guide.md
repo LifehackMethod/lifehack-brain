@@ -59,7 +59,7 @@ time (bulk-defer needs the person's group-level approval before it commits).
 
 ## Worked examples
 
-**Example 1 — Consulting pitch deck (MUST DELIVER)**
+**Example 1 — A client proposal (MUST DELIVER)**
 > Leverage: HIGH — the client presentation is the path to the monthly goal (a new retainer). Urgency:
 > HIGH — meeting is Thursday. Zone: MUST DELIVER → Win candidate.
 

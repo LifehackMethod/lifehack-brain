@@ -5,7 +5,7 @@ Checks, over the step prompts and subagent/reference files given as arguments
 (default: this skill's prompts/ + references/question-style.md):
   1. Every "§ Section" named in a prompt is a scratchpad section from SKILL.md's
      one section table (the "§ Council-<advisor>" row matches any Council-<name>).
-  2. No file holds "desks/cal", a person's name, or a model id (tier words are fine).
+  2. No file holds the planning desk's folder path (read from the desk list), a person's name, or a model id (tier words are fine).
 
 Exit 0 = clean, 1 = violations found. Prints each violation as file:line.
 """
@@ -40,7 +40,22 @@ def person_names():
 
 MODEL_IDS = ["sonnet", "opus", "haiku", "gpt", "claude", "glm", "gemini",
              "llama", "mistral", "deepseek", "kimi", "qwen"]
-LITERAL_BANS = ["desks/cal"]
+
+def literal_bans():
+    """The planning desk's folder path, read from the desk list at run time (shared/desk_list.py) -- never a literal.
+    -> (bans, error). On any error the caller says so and exits non-zero rather than guessing."""
+    try:
+        shared = Path(__file__).resolve().parents[4] / "shared"
+        if not shared.is_dir():
+            shared = Path(os.environ.get("LIFEHACK_CODE_ROOT", "")) / "shared"
+        sys.path.insert(0, str(shared))
+        import desk_list
+        folder, err = desk_list.planning_desk_folder()
+    except Exception as e:
+        return None, "cannot load shared/desk_list.py: %s" % e
+    if err or not folder:
+        return None, err or "desk list returned no planning desk folder"
+    return ["desks/" + folder.lower()], None
 
 SEC_RE = re.compile(r"§\s*([A-Z][A-Za-z0-9<>_'’-]*(?:[ \t]+[A-Za-z0-9<>_'’-]+)*)")
 MD_CH = re.compile(r"[*_`]")
@@ -77,14 +92,14 @@ def tok_ok(tok, allowed):
             return True
     return any(a.startswith(tok + " ") or a == tok for a in allowed)
 
-def check_file(path, allowed):
+def check_file(path, allowed, bans):
     problems = []
     text = path.read_text()
     for tok in section_tokens(text):
         if not tok_ok(tok, allowed):
             problems.append(f"{path}: section not in SKILL.md's table: § {tok}")
     low = text.lower()
-    for ban in LITERAL_BANS:
+    for ban in bans:
         if ban in low:
             problems.append(f"{path}: literal '{ban}'")
     for name in sorted(person_names() | set(MODEL_IDS)):
@@ -93,6 +108,10 @@ def check_file(path, allowed):
     return problems
 
 def main(argv):
+    bans, err = literal_bans()
+    if err:
+        print("check_prompt_sections: " + err, file=sys.stderr)
+        return 2
     allowed = set(load_sections())
     if not allowed:
         print("check_prompt_sections: could not read SKILL.md's section table", file=sys.stderr)
@@ -107,7 +126,7 @@ def main(argv):
     files = [f for f in files if f.exists()]
     problems = []
     for f in files:
-        problems += check_file(f, allowed)
+        problems += check_file(f, allowed, bans)
     for p in problems:
         print("FAIL:", p)
     print(f"checked {len(files)} files; {len(problems)} violation(s)")

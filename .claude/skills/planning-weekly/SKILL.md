@@ -22,7 +22,7 @@ updated_at: 2026-11-20
 >
 > **Then I commit ruthlessly little (minimalist commitment).** The machine can read far more than I ever
 > could, but my week never gets any longer: it has 168 hours (24 hours × 7 days), and nothing the machine
-> does adds one. *(Demir calls this "the 168-hour constraint": AI lifts the limit on how much can be read
+> does adds one. *(The Lifehack Method calls this "the 168-hour constraint": AI lifts the limit on how much can be read
 > and tracked, never the limit on how many hours a person has to live and work in.)* So every choice runs
 > through one question: *which outcome, if achieved, makes all other efforts easier, more impactful, or
 > unnecessary?* I leave with a ranked list — if I can only do one thing, it's number one; if two, numbers
@@ -30,8 +30,8 @@ updated_at: 2026-11-20
 > stand up and clap for.
 >
 > **I keep the pen.** The machine does all the work it can, surfaces problems honestly with a proposed fix,
-> and never decides for me — sometimes the choosing is the point. Putting my life into words gives me
-> clarity too.
+> and never decides for me — sometimes the choosing is the point. Putting my life into words helps me
+> see it clearly too.
 >
 > **Everything I confirm sharpens the machine.** My confirmed week becomes what every morning starts
 > from, and the session's lessons — new filters, urgency changes, fixes to the diary — make next week's
