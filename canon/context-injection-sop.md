@@ -97,7 +97,7 @@ Every session receives the standing floor it needs (the context loaded at every 
 2. **Do:** fit the change inside the loader's order and ceiling.
    - **Expect:** inside the loader, root canon first, the year's aim only when written, one desk at most, and a stop line at the ceiling. The order between separate hooks is not reported anywhere, so nothing relies on it (`system/hooks/inject_work_altitude.sh:23`).
 3. **Do:** check `/read` does not load the same desk canon a second time.
-   - **Expect:** `/read`'s Step 0.6 skips desk canon the loader already printed (`system/organism/manual.md:594`); this is held by the instruction alone, with no conformance friction behind it (`system/organism/manual.md:566`).
+   - **Expect:** `/read`'s Step 0.6 skips desk canon the loader already printed (`canon/manual.md:594`); this is held by the instruction alone, with no conformance friction behind it (`canon/manual.md:566`).
 4. **Do:** print no heading for anything no part of the system writes.
    - **Why:** a heading with no producer teaches a shape that does not exist (`system/hooks/session_context_loader.sh:68-71`).
 5. **Do:** reopen every window; a change to the harness reaches sessions once it is installed as a new plugin version, and a change to the notes reaches the next window opened.
@@ -121,7 +121,7 @@ Every session receives the standing floor it needs (the context loaded at every 
    - **Why:** a cut changes what every student's session receives.
 3. **Do:** prefer a pointer to a payload in standing text, except for canon a session is actually working in, which loads in full (`canon/knowledge-altitude.md:174-178`).
 4. **Do:** when an injector is retired, update every description of it — the organism manual, the harness brief, and this SOP's References — in the same change.
-   - **Why:** a deleted injector's manual line went on claiming a live control after it was gone (`system/organism/manual.history.md:577`).
+   - **Why:** a deleted injector's manual line went on claiming a live control after it was gone (`canon/manual.history.md:577`).
 5. **Do:** run the injector tests after the change; some are slow by design, so give them time before reading a timeout as a failure.
 
 ## When Something Goes Wrong

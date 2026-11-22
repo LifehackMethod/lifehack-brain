@@ -9,20 +9,19 @@
 
 **Building a desk, skill, job, hook or tool? Use the shared layer first.** Common tools live ONCE in `shared/`;
 desks USE them and never copy them. The list of what exists is `system/register/toolbox.md` (generated) — read it
-before writing anything. Detail: `system/organism/elements/shared-layer.md`.
+before writing anything.
 
 > **Chosen by measurement, not argument** (2026-08-03): this map layout beat every alternative — do not
 > restructure it from taste. Evidence and the losing ideas: `system/organism/map-measurement-note.md`.
 >
-> **Deeper layers:** `system/organism/manual.md` (how the parts work together — LOAD-BEARING, holds rules
-> that exist in no element file) + `system/organism/elements/` (49 files, counted 2026-10-30, source-traced from code).
+> **Deeper layer:** `canon/manual.md` (how the parts work together — LOAD-BEARING).
 > ⚠ **Every path on this page is under the PLUGIN ROOT, never your working folder** (manual → THREE HOMES). A
-> window working in a private repo that has its own `system/organism/manual.md` is in the DESKS manual, not this one.
+> window working in a private repo is in that repo's own DESKS manual, not this one.
 
-<!-- ORGANISM v1 --> files = system/organism/elements/<name> · @ you start it · ~ scheduled, unattended · ! fires unasked
+<!-- ORGANISM v1 --> @ you start it · ~ scheduled, unattended · ! fires unasked
 ⚠ CRUDE SIMPLIFICATIONS — a DOOR, not a DEFINITION. Each line names the COMMONEST reason only; every
-part does considerably more than its line says. NEVER answer "what can X do?" from this page — open
-elements/<slug>.md, the exhaustive source. If this map is your only source, you are under-informed by design.
+part does considerably more than its line says. NEVER answer "what can X do?" from this page.
+If this map is your only source, you are under-informed by design.
 @ /save    keep it so a later session finds it | save.md — canon only on YOUR act, never automatic
            ! records a DECISION or a fact. to change what a skill DOES, that is /build below.
            ! SYSTEM knowledge only. subject records (clients, money, contacts) live in the OWNING
@@ -42,7 +41,7 @@ elements/<slug>.md, the exhaustive source. If this map is your only source, you 
 @ /professor       send someone to LEARN this whole system | `.claude/skills/professor/` (SKILL.md + routing-eval.md) — NOT an element;
                    the taught tour. this page ROUTES; that one EXPLAINS.
 @ (open the file)  which of the three layers answers THIS question | brain.md — the map ROUTES, the manual
-                   EXPLAINS how the parts combine, elements/<slug>.md exhausts one part. wrong layer,
+                   EXPLAINS how the parts combine. wrong layer,
                    confidently wrong answer.
 ! (automatic)   a web page or email body is read safely | safe-reader-plane.md ingest-gate.md
 ! (automatic)   a suspicious email is classified | sentinel.md — writes a status tile on EVERY verdict,
@@ -72,7 +71,7 @@ NOT BUILT — admissions, not omissions. knowing now beats inferring a connectio
   primitive; the `calculate` skill is DORMANT (manual.md index); the compute-mechanically gate is LIVE
   (`inject_compute_mechanically.sh` on UserPromptSubmit, `hooks/hooks.json`). you carry the cross-subject part by hand.
 - a weekly/monday cross-subject digest. `/planning-weekly` and `/planning-daily`
-  exist, you start them (`elements/planning.md`); the automatic cross-subject digest is what is not built.
+  exist, you start them; the automatic cross-subject digest is what is not built.
 - a rolled-up count of security events over a week. sentinel logs each one; ⚠ CORRECTED 2026-09-01
   (#62, approved by Enver direct): `sentinel_response.py` computes a running 24h tally
   (`event_count_24h`, `danger_count_24h`, `active_count_24h`, `reviewed_count_24h`) into a
@@ -113,7 +112,7 @@ in the machine's own temp folder, because regenerable files do not belong in an 
 installs it. PRIVATE: your personal code folder (named in the one-line file
 `~/.config/lifehack/personal-code`), your own desks and runners, yours alone. NOTES: the AI Brain —
 plans, records, journals, content not code. Address a file by its home's real root. Full picture:
-`system/organism/manual.md` (THREE HOMES) and `system/organism/elements/where-things-live.md`.
+`canon/manual.md` (THREE HOMES).
 
 If it is not set, the honest answer is "not set" — **never guess a folder, never fall back to the
 current directory.** Putting someone's AI Brain somewhere they did not choose is the failure this rule

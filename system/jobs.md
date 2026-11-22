@@ -23,7 +23,7 @@ block header).
 On a Mac, `install-schedulers.sh --install` writes one `~/Library/LaunchAgents/ai.lifehack.<job>.plist`
 per row of the `jobs` block whose enabled column is `yes`, and each plist runs that job inside
 `system/tools/job-run.sh` (`<job> --if-overdue`); Pulse is not involved there (see the scheduler section
-of `system/organism/manual.md`). `pulse.sh` and the `crontab` block apply to Linux and Windows only.
+of `canon/manual.md`). `pulse.sh` and the `crontab` block apply to Linux and Windows only.
 
 On Linux and Windows, `pulse.sh` runs on a schedule (installed by `install-schedulers.sh` — every 5
 minutes via `cron` on Linux, or via Windows Task Scheduler on Windows; see that script's own header
@@ -261,7 +261,7 @@ mirror-fetch | off | 3600 | This clone's remote-tracking refs are freshly fetche
 ## The OS-level schedule — installed by `install-schedulers.sh`
 
 > This block is read on Linux and Windows only; a Mac builds its launchd jobs from the ```jobs``` block
-> (see "How it works" and `system/organism/manual.md`).
+> (see "How it works" and `canon/manual.md`).
 >
 > This block is NOT Pulse-dispatched (`pulse.sh` only parses the ```jobs``` block above). It is the
 > versioned source of truth for what the OPERATING SYSTEM's own scheduler runs on Linux/Windows:

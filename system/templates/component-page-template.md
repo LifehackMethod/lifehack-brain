@@ -40,7 +40,7 @@
 9. **Then the plan,** worked backwards from the spec. The spec's "to prove" items become the plan's first phase.
 10. **The flip** (the last step of every plan): the state line changes from `spec` to `component` only when every "to prove"
     item has a real check and the file list generates cleanly. Code can verify it, so it can't be faked. Plugin parts then
-    live in `system/organism/components/`.
+    live in `canon/components/`.
 11. **Changing a part that already has a component page:** a change spec uses this same template, and at the flip it merges
     into the existing page rather than replacing it.
 

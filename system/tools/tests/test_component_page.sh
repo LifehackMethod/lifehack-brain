@@ -24,7 +24,7 @@ export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.invalid GIT_COMMITTER_NAME=t
 git init -q --bare -b main "$T/origin.git"
 git clone -q "$T/origin.git" "$T/w" 2>/dev/null
 W="$T/w"; cd "$W" || exit 1
-mkdir -p system/tools/tests system/register hooks canon system/hooks system/organism/components
+mkdir -p system/tools/tests system/register hooks canon system/hooks canon/components
 printf '#!/bin/bash\necho a\n' > system/tools/a.sh
 printf 'print("b")\n' > system/tools/b.py
 printf '#!/bin/bash\necho lib\n' > system/tools/lib.sh
@@ -43,10 +43,10 @@ Bad_Name | yes | 600 | c | l | s | 5 | none | bash x
 ```
 J
 for i in 1 2 3 4 5 6 7 8 9 10; do echo "line $i" >> canon/demo-sop.md; done
-echo "References: system/organism/components/demo.md" >> canon/demo-sop.md
+echo "References: canon/components/demo.md" >> canon/demo-sop.md
 git add -A && git commit -qm base && git push -q origin main 2>/dev/null
 
-PAGE="$W/system/organism/components/demo.md"
+PAGE="$W/canon/components/demo.md"
 cat > "$PAGE" <<'P'
 ---
 component: demo
@@ -210,7 +210,7 @@ PY
 stamp --now "$NOW"
 status_line | grep -qF "unproven (receipt is for another component)" && ok "receipt with no component key -> unproven (another component)" || bad "no comp key: $(status_line)"
 tile "$CUR2" 1 2026-11-16T10:00:00+00:00 PASS 1 1
-PAGE3="$W/system/organism/components/nosource.md"
+PAGE3="$W/canon/components/nosource.md"
 cat > "$PAGE3" <<'P3'
 ---
 component: demo
@@ -342,8 +342,8 @@ has "$PAGE" "origin as of last fetch (fetch failed)" "a failed fetch is recorded
 git remote set-url origin "$T/origin.git"
 
 # ── reviewer fixes: a page with no checks does not crash ──
-PAGE2="$W/system/organism/components/noprobes.md"
-cat > "$W/system/organism/components/noprobes.md" <<'P2'
+PAGE2="$W/canon/components/noprobes.md"
+cat > "$W/canon/components/noprobes.md" <<'P2'
 ---
 component: demo
 title: "Demo (no probes)"
@@ -361,7 +361,7 @@ has "$PAGE2" "Status: untested — no check exists · not built yet: (no check d
 # ── step 6(b): DORMANT and "not run here" ──
 tile "$CUR2" 1 2026-11-16T10:00:00+00:00 PASS 1 1
 
-PAGE4="$W/system/organism/components/dormant-demo.md"
+PAGE4="$W/canon/components/dormant-demo.md"
 cat > "$PAGE4" <<'PAGE4'
 ---
 component: demo
@@ -383,7 +383,7 @@ python3 "$TOOL" stamp "$PAGE4" --repo "$W" --brain "$BRAIN" --now "$NOW" > /dev/
 grep -m1 '^Status:' "$PAGE4" | grep -qE "^Status: LIVE · .* · 1 dormant" && ok "mixed page: the non-DORMANT checks roll up, dormant counted beside" || bad "mixed dormant: $(grep -m1 '^Status:' "$PAGE4")"
 grep -F "| probe-d |" "$PAGE4" | grep -qF "DORMANT (built, not in use)" && ok "dormant check row reads DORMANT, outside the roll-up" || bad "dormant row: $(grep -F '| probe-d |' "$PAGE4")"
 
-PAGE5="$W/system/organism/components/all-dormant.md"
+PAGE5="$W/canon/components/all-dormant.md"
 cat > "$PAGE5" <<'PAGE5'
 ---
 component: demo
@@ -402,7 +402,7 @@ PAGE5
 python3 "$TOOL" stamp "$PAGE5" --repo "$W" --brain "$BRAIN" --now "$NOW" > /dev/null 2>&1
 grep -m1 '^Status:' "$PAGE5" | grep -qF "Status: DORMANT (all 2 checks dormant)" && ok "an all-DORMANT page reads DORMANT" || bad "all dormant: $(grep -m1 '^Status:' "$PAGE5")"
 
-PAGE6="$W/system/organism/components/notrun.md"
+PAGE6="$W/canon/components/notrun.md"
 cat > "$PAGE6" <<'PAGE6'
 ---
 component: demo

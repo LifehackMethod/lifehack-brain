@@ -117,8 +117,8 @@ not currently carry for it. Concretely:
   frontmatter is structured (a new required field, a renamed key) would break that parsing without any
   warning surfacing here — this repo's CI does not know a Codex adapter exists and cannot flag it.
 - **Cross-references inside skill files.** Several skills reference other repo machinery directly —
-  brain-root resolution (`shared/brain_root.py`), the organism map (`system/organism/manual.md`,
-  `system/organism/elements/`), hooks, SOPs under `system/sops/`. A skill's instructions read correctly
+  brain-root resolution (`shared/brain_root.py`), the organism map (`canon/manual.md`,
+  `system/organism/elements/`), hooks, SOPs under `system/sops/`. ⛔ archived 2026-11-22 (V1 element page, now in archive/organism-elements-v1-2026-11-22/; look for its V2 replacement) A skill's instructions read correctly
   inside Claude Code partly *because* Claude Code's session has this whole repo, its hooks, and its
   `CLAUDE.md` loaded alongside it. Forwarding only a skill's `SKILL.md` text to Codex, without the
   surrounding repo context and without Codex's own equivalent of this repo's hook/guard layer, means the

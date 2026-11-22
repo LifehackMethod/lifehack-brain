@@ -120,7 +120,7 @@ Every producer leaves one tile, named for the producer, at `<brain>/status/<prod
 - **A writer whose bare call runs its self-test** — failed because a caller saw "PASSED" while no tile was written. Proof: `system/tools/emit_status.py:135-143`.
 - **Tile writing left optional per runner, outside the exit trap** — failed because three store writers died every run for a night and no tile said so. Proof: `system/tools/status-tile.lib.sh:5-11`.
 - **A hand-written fallback behind the writer's import** — failed because, while the writer was missing, a fallback sometimes wrote nothing and the run still reported success. Proof: `system/tools/emit_status.py:9`, `:18-19` (the 2026-08-15 port made the writer the preferred path; the fallbacks remain until removed).
-- **A central log of individual check findings** — retired on 2026-10-29 because nothing read it; a real problem reaches the person through a job's own check failing. Proof: `system/organism/manual.md:367-368`.
+- **A central log of individual check findings** — retired on 2026-10-29 because nothing read it; a real problem reaches the person through a job's own check failing. Proof: `canon/manual.md:367-368`.
 - **An example pasted from a real run** — failed because it carried real figures into the public repo. Proof: `system/tools/emit_status.py:34-44`.
 - **Reading a missing tile as a job that is not running** — failed because the jobs were running into machine-local folders. Proof: `canon/canonical-principles-sop.md:1016`, `:1075`.
 - **A heartbeat that rewrites the whole tile** — failed because it erased the producer's payload (written up 2026-11-06).

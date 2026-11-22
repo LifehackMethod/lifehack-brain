@@ -22,7 +22,7 @@
 # writes ~/Library/LaunchAgents/ai.lifehack.<job>.plist per `yes` row of the ```jobs``` block, each
 # launching job-run.sh (<job> --if-overdue); job-run.sh's exit contract is 0 = output check passed ·
 # 75 = stood down · 2 = transient · else failed, and its alarm is an ntfy text. pulse.sh and the
-# ```crontab``` block are Linux/Windows only. See system/organism/manual.md (scheduler section).
+# ```crontab``` block are Linux/Windows only. See canon/manual.md (scheduler section).
 #
 # ⛔ A38, ADDRESSED DIRECTLY (found in the donor's own dead-end record, `system/sops/skill-building-
 # sop.md:1207` / `records/logs/2026-05-26-cross-machine-sync-infrastructure.md`): launchd was tried

@@ -31,7 +31,7 @@ Reason: the 2026-10-27 CORRECTED banner and its 'used to say' (K12; Batch 4 item
 > writes one `~/Library/LaunchAgents/ai.lifehack.<job>.plist` per row of the `jobs` block whose
 > enabled column is `yes`, and each plist runs that job inside `system/tools/job-run.sh`
 > (`<job> --if-overdue`). Pulse is not involved on a Mac. See the scheduler section of
-> `system/organism/manual.md`. **`pulse.sh` and the `crontab` block apply to Linux and Windows only.**
+> `canon/manual.md`. **`pulse.sh` and the `crontab` block apply to Linux and Windows only.**
 ````
 
 ## G2-106 · moved 2026-11-14 · frozen L65-68
@@ -112,7 +112,7 @@ Reason: the 2026-10-27 CORRECTED banner and its 'originally said' (Batch 4 item 
 ````
 > ⚠ **CORRECTED 2026-10-27:** this block is **Linux and Windows only**. macOS does not read it: a Mac
 > installs launchd LaunchAgents built from the `jobs` block (see "How it works" above and
-> `system/organism/manual.md`). The text below originally said "crontab on Mac/Linux".
+> `canon/manual.md`). The text below originally said "crontab on Mac/Linux".
 ````
 
 ## G2-115 · 2026-11-14 · frozen L180-196

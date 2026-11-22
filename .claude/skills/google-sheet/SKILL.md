@@ -36,7 +36,7 @@ You have two primary operating modes and one optional mode. Determine which appl
 
 ---
 
-## Rules of Engagement (READ FIRST — `system/sops/google-sheet-sop.md`)
+## Rules of Engagement (READ FIRST — `canon/google-sheet-sop.md`)
 
 This skill operates under the **Google Sheet SOP**. Before designing or writing anything:
 - **Principle #1 — the sheet computes; you interpret.** Push ALL math/calculation into the sheet (formulas / `ARRAYFORMULA`), then Apps Script (via `clasp`) when a formula won't do; the LLM **NEVER computes** — it only folds what the sheet already computed, verbatim. (Cross-desk law in `CLAUDE.md`: "Compute mechanically, never in the model.")
@@ -46,7 +46,7 @@ This skill operates under the **Google Sheet SOP**. Before designing or writing 
 - **Apps Script** is optional, and its source is code — it lives in this repo, never under your notes; authed via `clasp` (`~/.clasprc.json`, machine-local, gitignored). `INSTALL.md` walks the setup.
 - **Don't run a "design" loop inside the grid.** The LOOK is a by-hand/UI job; the API does data + **tiny field-masked patches** only (never `values.batchUpdate` for format; never resize a column blind — width is whole-column). Reuse a look via **`sheets:copyTo`** (a whole styled tab) or an extracted **Style Kit** — never paste-format onto populated cells (silently drops widths/heights/protections). No live preview: publish-to-web → render the URL, or you're guessing. Real visual design → **HTML**, not Sheets. Full rules: SOP → *"Formatting / design in a Sheet."*
 
-Full rules + enforcement detail: **`system/sops/google-sheet-sop.md`**.
+Full rules + enforcement detail: **`canon/google-sheet-sop.md`**.
 
 ---
 
@@ -369,7 +369,7 @@ Read the user's request and context:
 
 | what | where | status |
 |---|---|---|
-| the rules of engagement | `system/sops/google-sheet-sop.md` | ✅ here |
+| the rules of engagement | `canon/google-sheet-sop.md` | ✅ here |
 | the read-the-guide-first / destructive-op guard | `system/hooks/guard_sheet_writes.sh` | ✅ here |
 | the don't-overwrite-a-formula guard | `system/hooks/guard_sheet_formula_writes.sh` | ✅ here |
 | the `gws` CLI, and your own Google account wired to it | `INSTALL.md` | ✅ here — the account is yours; nothing about it ships |

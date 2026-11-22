@@ -506,7 +506,7 @@ def cmd_asbuilt(args):
     out.append("not on origin: %d" % (len(diff) + len(untracked)))
 
     # pointed at by
-    needle = "system/organism/components/%s.md" % component
+    needle = "canon/components/%s.md" % component
     pointed = []
     for p in all_paths:
         if p.startswith("canon/"):

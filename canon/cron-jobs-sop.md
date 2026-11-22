@@ -5,7 +5,7 @@ title: "Cron jobs SOP: how a scheduled job is added, checked and switched on"
 record_type: playbook
 status: active
 authority: user
-reader_note: "How it works lives in system/organism/manual.md (CRON AND ALARMS); this file is the HOW-TO. If either disagrees with the code: the code is what runs; check it."
+reader_note: "How it works lives in canon/manual.md (CRON AND ALARMS); this file is the HOW-TO. If either disagrees with the code: the code is what runs; check it."
 history: "canon/cron-jobs-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
@@ -31,9 +31,9 @@ route:
 
 **Read this first.** A scheduled job is an alarm clock plus an envelope around something you could run by hand. This SOP owns the alarm clock and the envelope: the **Cron** subsystem (it runs jobs) and the **Alarms** subsystem (it tells you one broke). It does NOT own what happens inside the routine, and nothing in this SOP is a reason to edit a skill. The one exception is a job being brought into line (section 11a): that changes the job's own code, and does not change what the job reads, writes or sends, apart from its own receipt line and exit code (the two allowed fixes are the presence-grade check and the "nothing to do" exit 75). Every path here is in the HARNESS folder, resolved from the plugin root (manual, THREE FOLDERS), never relative to your working folder. `$CODE` below is the harness code root: whatever `$HOME/.config/lifehack/code-root` says. Never type it as a path.
 
-On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for what that leaves out, read the manual's "Non-Mac is unchanged" paragraph (`system/organism/manual.md`, CRON AND ALARMS). Because `pulse.sh` has none of the steps below, until Linux and Windows have the same steps the installer installs plain-code rows only off the Mac (model `none`); a row with an AI step is refused there.
+On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for what that leaves out, read the manual's "Non-Mac is unchanged" paragraph (`canon/manual.md`, CRON AND ALARMS). Because `pulse.sh` has none of the steps below, until Linux and Windows have the same steps the installer installs plain-code rows only off the Mac (model `none`); a row with an AI step is refused there.
 
-> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
+> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them. ⛔ archived 2026-11-22 (V1 element page, now in archive/organism-elements-v1-2026-11-22/; look for its V2 replacement)
 
 ## 1. The three layers
 

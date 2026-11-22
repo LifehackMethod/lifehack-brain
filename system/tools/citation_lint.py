@@ -137,6 +137,12 @@ EXEMPT_FILES = {
     "canon/skill-building-sop.history.md":
         "the new skills SOP's history (2026-11-10): it holds superseded wording verbatim, cut-logged "
         "before each cut, so its quoted citations describe the text as it was, not the tree",
+    "canon/manual.history.md":
+        "the manual's history (moved into canon/ 2026-11-22): it holds cut text verbatim, so its quoted "
+        "citations describe the tree as it was (e.g. the manual's old system/organism/ home), not the tree",
+    "canon/map-format-specs.history.md":
+        "map-format-specs' history (moved into canon/ 2026-11-22): it holds cut text verbatim, so its quoted "
+        "citations describe the tree as it was (e.g. the element pages archived 2026-11-22), not the tree",
 }
 
 # Scripts living in system/hooks/ that are NOT registered in settings.json, and correctly so --

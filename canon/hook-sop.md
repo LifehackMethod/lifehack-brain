@@ -23,7 +23,7 @@ route:
 
 > **This doc owns WHEN to build a hook and WHICH kind. `canon/hook-contract.md` owns the mechanics; where this doc restates one, the copies agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical files, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
-> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
+> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them. ⛔ archived 2026-11-22 (V1 element page, now in archive/organism-elements-v1-2026-11-22/; look for its V2 replacement)
 
 ## §1 — When to reach for a hook at all
 - A hook is for a **hard invariant that has to survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.

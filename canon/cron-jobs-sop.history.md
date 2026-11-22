@@ -35,7 +35,7 @@ title: "Jobs SOP: how a scheduled job is added, checked and switched on"
 - Original lines: 8
 
 ```
-reader_note: "Self-monitoring task 5.8, written 2026-10-29 from the build window's draft and corrected for the 2026-10-28/29 rulings. How it works lives in system/organism/manual.md (CRON AND ALARMS); this file is the HOW-TO. If either disagrees with the code, the code wins."
+reader_note: "Self-monitoring task 5.8, written 2026-10-29 from the build window's draft and corrected for the 2026-10-28/29 rulings. How it works lives in canon/manual.md (CRON AND ALARMS); this file is the HOW-TO. If either disagrees with the code, the code wins."
 ```
 
 ## 2026-10-31 · FIX · line 11 · page heading
@@ -53,7 +53,7 @@ reader_note: "Self-monitoring task 5.8, written 2026-10-29 from the build window
 
 - Date: 2026-10-31
 - Action: FIX
-- Reason: 2.3 (approved as called, DECISIONS 2026-10-31): everything after the alarm clock works on a Mac only. The cell now reads "launchd (macOS). Linux and Windows use `pulse.sh`, which has none of the steps below." The manual (`system/organism/manual.md`, "Non-Mac is unchanged") says `pulse.sh` is driven by a cron line on Linux and Task Scheduler on Windows; a pointer to that paragraph was added under "Read this first".
+- Reason: 2.3 (approved as called, DECISIONS 2026-10-31): everything after the alarm clock works on a Mac only. The cell now reads "launchd (macOS). Linux and Windows use `pulse.sh`, which has none of the steps below." The manual (`canon/manual.md`, "Non-Mac is unchanged") says `pulse.sh` is driven by a cron line on Linux and Task Scheduler on Windows; a pointer to that paragraph was added under "Read this first".
 - Original lines: 21
 
 ```
@@ -362,7 +362,7 @@ an unbroken run of them longer than 2 x the interval sends one 'paused' text, an
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-001, ids in drafts/cron-jobs-sop/applied.md
 
 ~~~~
-reader_note: "How it works lives in system/organism/manual.md (CRON AND ALARMS); this file is the HOW-TO. If either disagrees with the code, the code wins."
+reader_note: "How it works lives in canon/manual.md (CRON AND ALARMS); this file is the HOW-TO. If either disagrees with the code, the code wins."
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: cron-jobs-sop hunk-002, ids in drafts/cron-jobs-sop/applied.md
@@ -713,7 +713,7 @@ These lines were PROPOSED in the live text, not ruled. They wait here, word for 
 ## 2026-11-16 - reason: step 4b (round five), CJ3 (DOWN: a copy of a higher ruling into this document), on Enver's 'land it' (old wording, word for word)
 
 ~~~~
-On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for what that leaves out, read the manual's "Non-Mac is unchanged" paragraph (`system/organism/manual.md`, CRON AND ALARMS).
+On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for what that leaves out, read the manual's "Non-Mac is unchanged" paragraph (`canon/manual.md`, CRON AND ALARMS).
 ~~~~
 
 ~~~~

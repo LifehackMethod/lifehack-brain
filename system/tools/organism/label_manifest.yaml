@@ -37,7 +37,7 @@
 #   that writes to `$REPO/system/tools/organism/scratch-probe.md` and asserts it MUST PASS
 #   (exit 0). The fire-test that grades that guard LIVE is the same test that demonstrates this
 #   directory is wide open — the claim above was refuted 300 lines below it, in this file.
-#   ⚠ `guard_organism_map.sh` does not cover it either: it fires on `system/organism/manual.md`,
+#   ⚠ `guard_organism_map.sh` does not cover it either: it fires on `canon/manual.md`,
 #   `map-format-specs.md` and `system/organism/elements/*.md` — a different directory, Write only.
 #
 #   WHAT ACTUALLY PROTECTS THIS FILE, stated in full:
@@ -49,7 +49,7 @@
 #     · what nothing catches — the live, unmitigated exposure: DELETING a row (the guard silently
 #       stops being checked, and no count anywhere notices it went missing), or weakening a
 #       `violations:` payload so a real guard's blind spot is never fired at.
-#   ⚖ This gap is recorded CORRECTLY elsewhere in the shipped tree — `system/organism/manual.md`
+#   ⚖ This gap is recorded CORRECTLY elsewhere in the shipped tree — `canon/manual.md`
 #     (label-checker entry: "gap because label_manifest.yaml is unguarded (Feature 1.6 not yet
 #     built)") and `system/organism/elements/label-checker.md` (`gap_disposition_note`: "C5
 #     unguarded ground truth"). This header was the ONE place in the repo claiming otherwise. It
@@ -72,7 +72,7 @@
 #        the count on the line above went from three to two. The history is kept rather than
 #        overwritten, because the SHAPE of this mistake is the reusable part:
 #        ~~`guard_organism_map.sh` (donor: "organism-map-write-guard") — protects
-#        `system/organism/manual.md` / `system/organism/map-format-specs.md`, which are part of
+#        `canon/manual.md` / `canon/map-format-specs.md`, which are part of
 #        the donor's own self-documentation apparatus. `system/organism/` does not exist in
 #        this repo at all (confirmed absent) — same exclusion class as `organism-health.py`.~~
 #        ⚠ CORRECTED 2026-08-15 (an earlier lane) — THE STRUCK SENTENCE WAS FALSE, AND IT WAS THIS
@@ -273,16 +273,16 @@ guards:
       - {event: PreToolUse, matcher: Write}
     violations:
       - desc: wholesale Write of the reference index (manual.md)
-        payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/manual.md", content: "clobbered"}}
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/canon/manual.md", content: "clobbered"}}
       - desc: wholesale Write of the label-criteria file (map-format-specs.md)
-        payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/map-format-specs.md", content: "clobbered"}}
+        payload: {tool_name: Write, tool_input: {file_path: "$REPO/canon/map-format-specs.md", content: "clobbered"}}
       - desc: wholesale Write of an elements/ encyclopedia file — the unguarded 96% in the
           donor's original scope, in scope here from the first line
         payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/elements/hook-plane.md", content: "clobbered"}}
       - desc: THE SPELLING THE DONOR MISSED — a plain RELATIVE path. The donor matched a raw glob
-          ("*/system/organism/manual.md") against file_path, which a relative path walks straight
+          ("*/canon/manual.md") against file_path, which a relative path walks straight
           past; this port resolves realpath against the repo root first.
-        payload: {tool_name: Write, tool_input: {file_path: "system/organism/manual.md", content: "clobbered"}}
+        payload: {tool_name: Write, tool_input: {file_path: "canon/manual.md", content: "clobbered"}}
       - desc: the same file named through a .. traversal
         payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/tools/../organism/manual.md", content: "clobbered"}}
       - desc: unparseable stdin must fail CLOSED (never allow-on-parse-error)
@@ -290,7 +290,7 @@ guards:
     allow:
       - desc: ⭐ THE REDIRECT ITSELF — a surgical Edit of the manual is the normal authoring path
           and must never be blocked. A guard that blocks ordinary work gets unregistered.
-        payload: {tool_name: Edit, tool_input: {file_path: "$REPO/system/organism/manual.md", old_string: "a", new_string: "b"}}
+        payload: {tool_name: Edit, tool_input: {file_path: "$REPO/canon/manual.md", old_string: "a", new_string: "b"}}
       - desc: a surgical Edit of an element file (the element-backfill path)
         payload: {tool_name: Edit, tool_input: {file_path: "$REPO/system/organism/elements/canon.md", old_string: "a", new_string: "b"}}
       - desc: an ordinary Write elsewhere in the repo (proves it discriminates by subject rather
@@ -300,7 +300,7 @@ guards:
         payload: {tool_name: Write, tool_input: {file_path: "$REPO/system/organism/elements/notes.txt", content: "x"}}
       - desc: another checkout's organism tree — this guard is anchored to THIS repo root and must
           not reach across into a different clone (the donor's unanchored glob did)
-        payload: {tool_name: Write, tool_input: {file_path: "/tmp/some-other-repo/system/organism/manual.md", content: "x"}}
+        payload: {tool_name: Write, tool_input: {file_path: "/tmp/some-other-repo/canon/manual.md", content: "x"}}
 
   # ── ELEMENT: gws-plane (auth half) ────────────────────────────────────────
   # The single most destructive command in the system: a logout destroys credentials for

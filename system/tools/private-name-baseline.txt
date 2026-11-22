@@ -23,7 +23,7 @@
 14	system/organism/elements/hook-plane.md
 2	system/organism/elements/label-checker.md
 8	system/organism/elements/skill-system.md
-6	system/organism/manual.md
+6	canon/manual.md
 1	system/schemas/email-summary-schema.md
 2	system/schemas/ingest-gate-signature.md
 1	canon/security-canon.md

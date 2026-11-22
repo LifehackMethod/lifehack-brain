@@ -17,8 +17,8 @@ history: "canon/status-health-proof-sop.history.md"
   made, where it is kept, and how a label — LIVE, PARTIAL or DORMANT — points to it and goes stale on its own. A
   future session reading "LIVE" can then trust the word, because a receipt earned it, not a model's sentence.
 - **Use it when:** a session built or changed a part (a guard or other hook, a tool, a skill, a desk) and is about to
-  say it works; when writing or checking a label on the map, the manual (`system/organism/manual.md`) or an element
-  file (`system/organism/elements/`); when a status claim may be out of date.
+  say it works; when writing or checking a label on the map, the manual (`canon/manual.md`) or an element
+  file (`system/organism/elements/`); when a status claim may be out of date. ⛔ archived 2026-11-22 (V1 element page, now in archive/organism-elements-v1-2026-11-22/; look for its V2 replacement)
 - **Don't use it when:** you need the detail of how a scheduled job proves itself. That is canon in
   `canon/cron-jobs-sop.md`; this SOP only points there (The Procedure, *A scheduled job*). What a session prints at start, including the one-line job-health line, is `canon/context-injection-sop.md`'s; this SOP covers only what the line proves.
 - **Covers / doesn't cover:** covers proof, receipts, the session-start health line, and labels; the tile contract is `canon/status-emission-sop.md`'s. Doesn't
@@ -157,7 +157,7 @@ Evidence tiers are canon's, as `canon/canonical-principles-sop.md` THE FRAME def
 ### A label
 
 1. **Do:** run `label_checker.py write-labels`; it computes each label by firing and stamps the element's
-   AUTO-COMPUTED block (the machine-written part of each entry in `system/organism/manual.md`) with the label, the
+   AUTO-COMPUTED block (the machine-written part of each entry in `canon/manual.md`) with the label, the
    date and the receipt pointer.
    - **Why:** the base label is machine-computed; a hand-set label drifts from the code, and so does a hand-updated
      pointer.
@@ -245,7 +245,7 @@ Every real thing this SOP points at, one line each. Paths are relative to the ha
 - `system/tools/organism/label_checker.py` — computes labels by firing and stamps them (`write-labels`).
 - `system/tools/tests/job-sim.sh` — the job test rig.
 - `system/tools/mirror_line.sh` — the session-start MIRROR line; reports, blocks nothing (a sign).
-- `system/organism/manual.md` — the manual whose AUTO-COMPUTED blocks carry labels.
+- `canon/manual.md` — the manual whose AUTO-COMPUTED blocks carry labels.
 - `system/jobs.md` — the job rows.
 - **not built yet:** the weekly guard fire-test job switched on. Serves: "Green means ran + fresh + produced the expected output" (`canon/canonical-principles-sop.md:594-595`).
 - **not built yet:** `label_checker.py` stamping every label with its date and receipt pointer, emitting DORMANT, dropping TARGET, reading the registry at run time, and downgrading an expired label to "unproven". Serves: same.

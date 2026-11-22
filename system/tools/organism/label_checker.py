@@ -64,7 +64,7 @@ WHAT CHANGED IN THIS PORT (generalisation, not a redesign):
      `os.path.expandvars`, so this is additive: any payload written before this change
      that used a literal `$HOME`/`~` still works exactly as before.
   3. `DEFAULT_ELEMENTS_DIR`/`DEFAULT_INDEX` point at `system/organism/elements` /
-     `system/organism/manual.md`. ✅ CORRECTED 2026-08-15: ~~the donor's own self-documentation
+     `canon/manual.md`. ✅ CORRECTED 2026-08-15: ~~the donor's own self-documentation
      apparatus, which does not exist in this repo (confirmed absent)~~ — Phase 9 landed that
      tree HERE. `system/organism/` now holds `manual.md`, `map-format-specs.md` and 42
      `elements/*.md`, so both defaults resolve and `cmd_write_labels` has a real target.
@@ -134,7 +134,7 @@ REGISTRATION_CANDIDATE_SOURCES = [
     "system/reference/settings.json",
 ]
 DEFAULT_MANIFEST = REPO / "system" / "tools" / "organism" / "label_manifest.yaml"
-DEFAULT_INDEX = REPO / "system" / "organism" / "manual.md"
+DEFAULT_INDEX = REPO / "canon" / "manual.md"
 DEFAULT_ELEMENTS_DIR = REPO / "system" / "organism" / "elements"
 
 # label ordering for downgrade detection (higher = more enforced)

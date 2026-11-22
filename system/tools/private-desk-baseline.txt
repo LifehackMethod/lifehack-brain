@@ -35,7 +35,7 @@
 2	system/organism/elements/sentinel.md
 1	system/organism/elements/skill-system.md
 2	system/organism/elements/statusline-hud.md
-130	system/organism/manual.md
+130	canon/manual.md
 3	system/security-posture-baseline.md
 1	system/templates/component-page-template.md
 2	system/tools/architecture_reason.py

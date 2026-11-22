@@ -30,7 +30,7 @@ grep -q "door-row:calendar-store-sync" "$T/smoke.out" && ok "door-rows smoke run
 grep -q "receipt:" "$T/smoke.out" && ok "door-rows smoke run wrote a receipt" || bad "no receipt from smoke run"
 
 # the repo is unchanged by the runs
-if git -C "$ROOT" status --porcelain | grep -v -E '^([??A]|AM|M)  system/(tools/organism/checks/planning_(door_rows|guard_tests|data_path|weekly_receipt)_check\.py|tools/tests/test_planning_desk_checks\.sh|organism/components/planning-desk\.md)$' > "$T/dirty.out"; then
+if git -C "$ROOT" status --porcelain | grep -v -E '^([??A]|AM|M)  system/(tools/organism/checks/planning_(door_rows|guard_tests|data_path|weekly_receipt)_check\.py|tools/tests/test_planning_desk_checks\.sh|canon/components/planning-desk\.md)$' > "$T/dirty.out"; then
   [ -s "$T/dirty.out" ] && { bad "the runs changed files outside the new-file set:"; cat "$T/dirty.out"; } || ok "repo unchanged outside the new-file set"
 else
   ok "repo unchanged outside the new-file set"

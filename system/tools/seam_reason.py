@@ -86,7 +86,7 @@ REPO = Path(__file__).resolve().parents[2]
 ELEMENTS = REPO / "system" / "organism" / "elements"
 MANIFEST = REPO / "system" / "tools" / "organism" / "label_manifest.yaml"
 GRAPH = REPO / "system" / "organism" / "generated" / "organism-map.json"
-MANUAL = REPO / "system" / "organism" / "manual.md"
+MANUAL = REPO / "canon" / "manual.md"
 
 PRODUCER = "seam-reason"
 ALTITUDE = "SUBSYSTEM"
