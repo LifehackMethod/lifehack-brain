@@ -6,7 +6,7 @@
 > definition; this file is its source and its working detail). Triage is by THEME/initiative, never
 > a raw N-item list.
 >
-> Carried from `_legacy/references/triage-guide.md` (scrubbed to roles: the session, the person;
+> Carried from `archive/planning-weekly-legacy-2026-11-20/references/triage-guide.md` (scrubbed to roles: the session, the person;
 > no named assistant or desk).
 
 ---

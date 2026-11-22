@@ -24,7 +24,7 @@ Common mis-classifications to catch:
 - **"Feels urgent" is not "high urgency."** No real deadline or consequence this week → low urgency →
   the honest zone for compounding work is Win-zone.
 
-Source: `_legacy/references/triage-guide.md` lines 30–41 (the zone table and the MUST DELIVER /
+Source: `archive/planning-weekly-legacy-2026-11-20/references/triage-guide.md` lines 30–41 (the zone table and the MUST DELIVER /
 WIN ZONE definitions, where Win-zone is High-Leverage / **Low**-Urgency). Carried and restated here
 as the single authority; the producer spec's earlier "and urgent" lines for Win-zone were drafting
 errors, corrected 2026-11-20.

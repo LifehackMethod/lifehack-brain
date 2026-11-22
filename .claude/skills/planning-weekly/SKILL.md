@@ -3,11 +3,12 @@ skill: planning-weekly
 title: Planning Weekly
 shape: interactive-workflow
 status: draft
-description: Use when planning the week ahead with the person — "plan my week", "weekly review", "set my week", "what's my week". Walks eight interview stages from a morning machine picture to a confirmed, written-back week. Not for daily planning ("plan my day" does not fire this).
+description: (NOT READY: being connected) Use when planning the week ahead with the person — "plan my week", "weekly review", "set my week", "what's my week". Walks eight interview stages from a morning machine picture to a confirmed, written-back week. Not for daily planning ("plan my day" does not fire this).
 triggers: [plan my week, weekly review, set my week, what's my week]
 created_at: 2026-11-20
 updated_at: 2026-11-20
 ---
+**STOP: not ready yet: being connected (plan 4P.5). Tell the person, and do nothing else.**
 
 # Planning Weekly
 ### Turns the morning run's blurry machine picture into a confirmed, written-back week — the person keeps the pen throughout.
@@ -64,7 +65,7 @@ One definition only — every prompt and reference that names a zone points here
 | **Shallow-trap** | low | high | feels urgent, isn't important — batch, delegate or cut |
 | **Kill-or-push** | low | low | kill it, or push it out of the week |
 
-Source: `_legacy/references/triage-guide.md` lines 30–41 and `_legacy/prompts/03-prioritization.md` line 28. The producer spec's lines 154 and 525 ("and urgent" for Win-zone) are drafting errors; this table is the single authority.
+Source: `archive/planning-weekly-legacy-2026-11-20/references/triage-guide.md` lines 30–41 and `archive/planning-weekly-legacy-2026-11-20/prompts/03-prioritization.md` line 28. The producer spec's lines 154 and 525 ("and urgent" for Win-zone) are drafting errors; this table is the single authority.
 
 ## Procedure
 
