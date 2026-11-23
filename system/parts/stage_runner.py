@@ -45,26 +45,12 @@ WHAT IT OWNS
       the artifact exists. Do not patch with a "substantive?" heuristic; that was built,
       measured and reverted (see phase_gate's header).
 
-USAGE
-  stage_runner.py start --card CARD [--run-id ID] [--workdir DIR]
-  stage_runner.py status  [--workdir DIR] [--json]
-  stage_runner.py check   [--workdir DIR]
-  stage_runner.py advance [--workdir DIR] [--via cli|next|back-cmd|stop|speech]
-  stage_runner.py back    [--workdir DIR]
-  stage_runner.py recover [--workdir DIR]
-  stage_runner.py verify  [--workdir DIR]     # the no-AI finish check command
-  stage_runner.py statusline [--inner CMD]    # stdin: Claude Code status JSON
-  stage_runner.py --selftest
-
-EXIT CODES (the part contract)
-  0 OK -- done, verified, or handed over
-  2 USAGE/CANNOT EVALUATE -- bad arguments, missing card, a card naming a check part
-        that is not beside this file (fail-closed: an un-evaluable check is never a pass)
-  3 CHECKFAIL -- the current stage's checks refuse; nothing was advanced
-  4 NOTHING -- no-op (run complete, back with nowhere to go, no dangling intent)
-  5 NORUN -- no active run found from the workdir
-  6 DAMAGED -- the run record failed verification; everything but `verify` refuses
-  7 DANGLING -- a pass was recorded but the handover never completed; run `recover`
+USAGE AND EXIT CODES -- the ONE list is system/templates/skill-template/RUNNER.md (commands,
+  events, the person-turn rule, the alone/talk difference, exit codes). RUNNER.md and this
+  docstring point at each other; change the list THERE. In short: start, status, check,
+  advance, back, person-turn, resume, abandon, snooze, recover, verify, statusline, --selftest;
+  exits 0 OK · 2 usage/bad choice · 3 check failed / no person turn / taken over ·
+  4 nothing to do / repeat turn · 5 no run · 6 damaged · 7 dangling.
 
 CARD FORMAT (JSON; lives with the skill, e.g. system/templates/skill-template/card.template.json)
   { "skill": "<name>", "stop_limit": 3,
@@ -153,6 +139,12 @@ def load_record(run_dir):
         o["hash"] = h
         lines.append(o)
         prev = h
+    try:
+        derive(lines)          # the replay rule: lines must make sense in order, not just chain
+    except Damaged:
+        raise
+    except Exception:
+        raise Damaged("record lines do not replay (a line has the wrong shape)")
     return lines
 
 
@@ -196,25 +188,101 @@ def append(run_dir, event, stage=None, data=None, run=None):
 
 
 def derive(lines):
-    """Run state FROM the record, never from a stored copy."""
+    """Run state FROM the record, never from a stored copy. Also the REPLAY RULE: a forward
+    handover (`intent`) needs a `pass` of the step it leaves since that step opened; a `back`
+    handover needs its `back` line; `done` needs its `intent`; `complete` needs the run to be at
+    COMPLETE. Anything else raises Damaged (a rebuilt chain without passes is not a real run)."""
     s = {"cur": None, "code": None, "complete": False, "pending": None,
-         "run": None, "card": None, "skill": None, "fails": 0}
+         "run": None, "card": None, "skill": None, "fails": 0, "card_sha": None,
+         "persons": {}, "superseded": {}, "snoozed": False, "abandoned": False,
+         "passed": False, "backed": None}
     for l in lines:
         e, d = l["event"], l["data"]
         if e == "start":
             s.update(run=l["run"], card=d["card"], skill=d.get("skill"),
-                     cur=d["first"], code=d.get("code_hash"))
+                     cur=d["first"], code=d.get("code_hash"), card_sha=d.get("card_sha"),
+                     passed=False, backed=None)
+        elif e == "person":
+            s["persons"][d["turn"]] = {"cmd": d["cmd"], "consumed": False}
+            s["snoozed"] = False
+        elif e == "pass":
+            if l["stage"] != s["cur"]:
+                raise Damaged("a pass for a step that is not the open step")
+            s["passed"] = True
+            _consume(s, d)
+        elif e == "back":
+            s["backed"] = (l["stage"], d.get("to"))
+            _consume(s, d)
+        elif e in ("handover",):
+            _consume(s, d)
         elif e == "intent":
+            if l["stage"] != s["cur"]:
+                raise Damaged("a handover from a step that is not the open step")
+            if d.get("back"):
+                if s["backed"] != (l["stage"], d.get("to")):
+                    raise Damaged("a back handover without its back line")
+            elif not s["passed"]:
+                raise Damaged("a forward handover without a pass of the step it leaves")
             s["pending"] = l
         elif e == "done":
-            s.update(pending=None, cur=d["to"], code=d.get("code_hash") or None)
-            if d.get("to") == "COMPLETE":
-                s["cur"] = "COMPLETE"
+            if not s["pending"] or s["pending"]["data"].get("to") != d.get("to"):
+                raise Damaged("a done without its handover intent")
+            s.update(pending=None, cur=d["to"], code=d.get("code_hash") or None,
+                     passed=False, backed=None)
         elif e == "fail":
             s["fails"] += 1
+            _consume(s, d)
         elif e == "complete":
+            if s["cur"] != "COMPLETE":
+                raise Damaged("complete without a pass of the last step")
             s["complete"] = True
+        elif e == "reissue":
+            if s["code"]:
+                s["superseded"][s["code"]] = l["t"]
+            s.update(code=d.get("code_hash"), snoozed=False)
+        elif e == "abandoned":
+            s["abandoned"] = True
+        elif e == "snoozed":
+            s["snoozed"] = True
     return s
+
+
+def _consume(s, d):
+    """A person line is used up by the first advance/back that names its turn, whatever the result."""
+    t = d.get("turn")
+    if t is not None and t in s["persons"]:
+        s["persons"][t]["consumed"] = True
+
+
+def check_order(lines, card):
+    """Replay against the card's step order (needs the card): forward handovers go exactly one
+    step on (or to COMPLETE from the last step); back handovers go exactly one step back."""
+    for l in lines:
+        if l["event"] != "intent":
+            continue
+        d = l["data"]
+        i, to = stage_index(card, l["stage"]), d.get("to")
+        if i < 0:
+            raise Damaged("a handover from a step the card does not have")
+        if d.get("back"):
+            ok = i > 0 and to == card["stages"][i - 1]["id"]
+        elif to == "COMPLETE":
+            ok = i == len(card["stages"]) - 1
+        else:
+            ok = i + 1 < len(card["stages"]) and to == card["stages"][i + 1]["id"]
+        if not ok:
+            raise Damaged("a handover that skips a step")
+
+
+def card_sha(path, card):
+    """sha256 of card.json plus every prompt file, in stage order."""
+    h = hashlib.sha256()
+    h.update(open(path, "rb").read())
+    for st in card["stages"]:
+        if st.get("prompt"):
+            h.update(b"\0" + st["prompt"].encode() + b"\0")
+            h.update(open(os.path.join(card["_dir"], st["prompt"]), "rb").read())
+    return h.hexdigest()
 
 
 # ---------------------------------------------------------------- card, run discovery
@@ -255,14 +323,30 @@ def load_card(path):
     return c
 
 
+def find_marker(start):
+    """(workdir, marker path) walking up from `start`, without reading it, or None."""
+    d = os.path.abspath(start or os.getcwd())
+    for _ in range(8):
+        m = os.path.join(d, MARKER)
+        if os.path.isfile(m):
+            return d, m
+        if os.path.dirname(d) == d:
+            break
+        d = os.path.dirname(d)
+    return None
+
+
 def find_run(start):
-    """(workdir, run_dir) walking up from `start`, or None."""
+    """(workdir, run_dir) walking up from `start`, or None. A marker that is valid JSON but not
+    an object (or whose run_dir is not text) raises Damaged -- never a traceback."""
     d = os.path.abspath(start or os.getcwd())
     for _ in range(8):
         m = os.path.join(d, MARKER)
         if os.path.isfile(m):
             try:
                 j = json.load(open(m, encoding="utf-8"))
+                if not isinstance(j, dict) or not isinstance(j.get("run_dir"), str):
+                    raise Damaged("the run marker %s is not a JSON object naming a run folder" % m)
                 return d, j["run_dir"]
             except (OSError, ValueError, KeyError) as e:
                 sys.stderr.write("stage_runner: unreadable marker %s: %r (hooks stay inert)\n"
@@ -354,7 +438,7 @@ def delegated_checks(stage, text, run_dir):
 
 
 # ---------------------------------------------------------------- own checks
-def run_checks(card, stage, run_dir, code_hash):
+def run_checks(card, stage, run_dir, code_hash, superseded=None):
     """All checks for one stage: the runner's own, then the delegated gates."""
     problems = []
     out = os.path.join(run_dir, stage["out"])
@@ -363,6 +447,10 @@ def run_checks(card, stage, run_dir, code_hash):
                          "detail": "output file %s is missing or empty" % stage["out"]})
         return problems
     text = open(out, encoding="utf-8", errors="replace").read()
+    if not text.strip():
+        problems.append({"code": "missing_file",
+                         "detail": "output file %s is missing or empty" % stage["out"]})
+        return problems
     ck = stage.get("checks", {})
     for h in ck.get("headings", []):
         if not re.search(r"^%s[ \t]*$" % re.escape(h), text, re.M):
@@ -370,8 +458,14 @@ def run_checks(card, stage, run_dir, code_hash):
                              "detail": "missing heading %s (a line exactly: %s)" % (h, h)})
     m = re.search(r"^Code word:\s*(\S+)\s*$", text, re.M)
     if ck.get("code_word") and not (m and chash(m.group(1)) == code_hash):
-        problems.append({"code": "code_word",
-                         "detail": "missing or wrong code word (the word handed out for this stage)"})
+        when = (superseded or {}).get(chash(m.group(1))) if m else None
+        if when is not None:
+            problems.append({"code": "taken_over",
+                             "detail": "another window took over this run at %s -- stop working on it here"
+                                       % time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(when))})
+        else:
+            problems.append({"code": "code_word",
+                             "detail": "missing or wrong code word (the word handed out for this stage)"})
     body = re.sub(r"^(#+ .*|Code word:.*)$", "", text, flags=re.M)
     nw = len(re.findall(r"\w+", body))
     if nw < ck.get("min_words", 0):
@@ -421,37 +515,64 @@ def inputs_report(card, run_dir, i):
     lines, bad = [], []
     for rel in stage_inputs(card, i):
         p = os.path.join(run_dir, rel)
-        if not os.path.isfile(p):
+        txt = open(p, encoding="utf-8", errors="replace").read() if os.path.isfile(p) else ""
+        if not txt.strip():                      # missing, 0 bytes, or only whitespace
             lines.append("INPUTS: %s · MISSING" % rel)
             bad.append(rel)
             continue
-        txt = open(p, encoding="utf-8", errors="replace").read()
         n = len(txt.splitlines())
         lines.append("INPUTS: %s · %d line%s" % (rel, n, "" if n == 1 else "s"))
     return lines, bad
 
 
+MOVER_BODY = ("The mover ran before you saw this, if a [RUN STEP] line is above. "
+              "If there is none, the mover didn't run: tell the person.\n")
+_OLD_BODIES = {
+    "next": ("The runner code already ran before you saw this message. Follow the handover "
+             "injected for you this turn. If none was injected, say there is nothing new.\n"),
+    "back": ("The runner code already ran before you saw this message. Follow the handover "
+             "injected for you this turn. If none was injected, say nothing changed.\n"),
+}
+
+
 def ensure_commands(wd):
     """Write /next and /back as project commands (an unregistered slash command never
     reaches the hooks -- the rig's P3 lesson). Skill hook rows are registered through
-    the plugin's register at build time (4P.5); this only covers the two commands."""
+    the plugin's register at build time (4P.5); this only covers the two commands.
+    A file whose body is the OLD runner text is rewritten to the new body; any other
+    (custom) body is left alone."""
     cd = os.path.join(wd, ".claude", "commands")
     os.makedirs(cd, exist_ok=True)
-    for name, desc, body in (
-            ("next", "move to the next stage of the run",
-             "The runner code already ran before you saw this message. Follow the handover "
-             "injected for you this turn. If none was injected, say there is nothing new.\n"),
-            ("back", "go back and re-open the previous stage",
-             "The runner code already ran before you saw this message. Follow the handover "
-             "injected for you this turn. If none was injected, say nothing changed.\n")):
+    for name, desc in (("next", "move to the next stage of the run"),
+                       ("back", "go back and re-open the previous stage")):
         fp = os.path.join(cd, name + ".md")
+        new = "---\ndescription: %s\n---\n%s" % (desc, MOVER_BODY)
         if not os.path.exists(fp):
-            open(fp, "w", encoding="utf-8").write("---\ndescription: %s\n---\n%s" % (desc, body))
+            open(fp, "w", encoding="utf-8").write(new)
+            continue
+        old = "---\ndescription: %s\n---\n%s" % (desc, _OLD_BODIES[name])
+        if open(fp, encoding="utf-8").read() == old:
+            open(fp, "w", encoding="utf-8").write(new)
 
 
 # ---------------------------------------------------------------- actions
-def do_advance(run_dir, card, via):
-    """Verify the current stage, then hand over. Under lock. Returns (rc, text)."""
+def _turn_gate(st, turn, cmd):
+    """The person-turn rule. Returns (None, tdata) when an unconsumed person line of `cmd` names
+    `turn`; else ((rc, text), None). A consumed turn is a repeat (4); no such line is `no person turn` (3)."""
+    p = st["persons"].get(turn) if turn else None
+    if p and p["consumed"]:
+        return (NOTHING, "stage_runner: that turn was already used (one person turn moves the run "
+                         "at most one step). Nothing changed."), None
+    if not p or p["cmd"] != cmd:
+        return (CHECKFAIL, "stage_runner: no person turn -- only the person's typed /%s moves this "
+                           "step. Ask them to type /%s." % (cmd, cmd)), None
+    return None, {"turn": turn}
+
+
+def do_advance(run_dir, card, via, turn=None):
+    """Verify the current stage, then hand over. Under lock. Returns (rc, text).
+    A TALK step also needs an unconsumed person{cmd:next} with the same turn; an ALONE step
+    advances on a verified pass alone (a matching person line, if any, is consumed)."""
     with locked(run_dir):
         st = derive(load_record(run_dir))
         if st["pending"]:
@@ -461,14 +582,21 @@ def do_advance(run_dir, card, via):
             return NOTHING, "stage_runner: the run is complete, nothing to advance."
         i = stage_index(card, st["cur"])
         stage = card["stages"][i]
-        problems = run_checks(card, stage, run_dir, st["code"])
+        pl = st["persons"].get(turn) if turn else None
+        if stage.get("mode", "talk") == "talk":
+            refused, td = _turn_gate(st, turn, "next")
+            if refused:
+                return refused
+        else:
+            td = {"turn": turn} if pl and not pl["consumed"] and pl["cmd"] == "next" else {}
+        problems = run_checks(card, stage, run_dir, st["code"], st["superseded"])
         if problems:
-            append(run_dir, "fail", st["cur"], {"via": via, "problems": problems})
-            append(run_dir, "handover", st["cur"], {"via": via, "result": "fail"})
+            append(run_dir, "fail", st["cur"], dict({"via": via, "problems": problems}, **td))
+            append(run_dir, "handover", st["cur"], dict({"via": via, "result": "fail"}, **td))
             return CHECKFAIL, ("stage_runner: step %s is not finished. Missing:\n%s"
                                % (st["cur"], "\n".join("- " + p["detail"] for p in problems)))
-        append(run_dir, "pass", st["cur"], {"via": via})
-        append(run_dir, "handover", st["cur"], {"via": via, "result": "pass"})
+        append(run_dir, "pass", st["cur"], dict({"via": via}, **td))
+        append(run_dir, "handover", st["cur"], dict({"via": via, "result": "pass"}, **td))
         to_i = i + 1
         to = card["stages"][to_i]["id"] if to_i < len(card["stages"]) else "COMPLETE"
         code = new_code() if to != "COMPLETE" else None
@@ -489,25 +617,72 @@ def do_advance(run_dir, card, via):
         return OK, "%s\n%s\n\n%s" % (head, "\n".join(ilines), prompt or "")
 
 
-def do_back(run_dir, card, via="cli"):
-    """Re-open the previous stage with a fresh code word. Under lock."""
+def do_back(run_dir, card, via="cli", turn=None):
+    """Re-open the previous stage with a fresh code word. Under lock. Going back ALWAYS needs an
+    unconsumed person{cmd:back} with the same turn; exactly one step."""
     with locked(run_dir):
         st = derive(load_record(run_dir))
         if st["pending"]:
             return DANGLING, "pending handover without done: run `recover` first"
         if st["complete"] or st["cur"] == "COMPLETE":
             return NOTHING, "stage_runner: the run is complete; back does not reopen it."
+        refused, td = _turn_gate(st, turn, "back")
+        if refused:
+            return refused
         i = stage_index(card, st["cur"])
         if i <= 0:
+            append(run_dir, "handover", st["cur"], dict({"via": via, "result": "noop"}, **td))
             return NOTHING, "stage_runner: already at the first stage; nothing to go back to."
         to = card["stages"][i - 1]["id"]
         code = new_code()
-        append(run_dir, "back", st["cur"], {"via": via, "to": to})
+        append(run_dir, "back", st["cur"], dict({"via": via, "to": to}, **td))
         append(run_dir, "intent", st["cur"], {"to": to, "code_hash": chash(code), "via": via, "back": True})
         prompt = render_prompt(card, run_dir, i - 1, code)
         append(run_dir, "done", to, {"to": to, "code_hash": chash(code)})
         return OK, ("stage_runner: the previous step %s is open again. A FRESH code word was issued: "
                     "update the output's `Code word:` line to it before the step can pass.\n\n%s" % (to, prompt))
+
+
+def do_person_turn(run_dir, turn, cmd):
+    """Append the person's typed command. ONLY this writes `person` lines. A used turn id is a repeat."""
+    with locked(run_dir):
+        st = derive(load_record(run_dir))
+        if st["complete"] or st["cur"] == "COMPLETE":
+            return NOTHING, "stage_runner: the run is complete; nothing to move."
+        if turn in st["persons"]:
+            return NOTHING, "stage_runner: turn %s was already used. Nothing changed." % turn
+        append(run_dir, "person", None, {"turn": turn, "cmd": cmd})
+        return OK, "person turn recorded: /%s" % cmd
+
+
+def do_resume(run_dir, card):
+    """Reissue the CURRENT step with a fresh code word. Never writes pass/done/complete."""
+    with locked(run_dir):
+        st = derive(load_record(run_dir))
+        if st["pending"]:
+            return DANGLING, "stage_runner: a handover was left half-done: run recover first."
+        if st["complete"] or st["cur"] == "COMPLETE":
+            return NOTHING, "stage_runner: the run is finished; nothing to resume."
+        if st["abandoned"]:
+            return NOTHING, "stage_runner: the run was abandoned; nothing to resume."
+        i = stage_index(card, st["cur"])
+        code = new_code()
+        append(run_dir, "reissue", st["cur"], {"code_hash": chash(code), "choice": "continue"})
+        prompt = render_prompt(card, run_dir, i, code)
+        out = os.path.join(run_dir, card["stages"][i]["out"])
+        return OK, ("stage_runner: resumed at step %s (%d of %d). A FRESH code word was issued and the "
+                    "old one no longer works: %s\nUpdate the Code word line in %s to the new word. "
+                    "The step and its checks are unchanged.\n\n%s"
+                    % (st["cur"], i + 1, len(card["stages"]), code, out, prompt))
+
+
+def do_snooze(run_dir):
+    with locked(run_dir):
+        st = derive(load_record(run_dir))
+        if st["complete"] or st["cur"] == "COMPLETE" or st["abandoned"]:
+            return NOTHING, "stage_runner: the run is finished or abandoned; nothing to quiet."
+        append(run_dir, "snoozed", st["cur"], {"choice": "leave-it"})
+        return OK, "stage_runner: left alone. The pickup question stays quiet for this run until it is brought up."
 
 
 def do_recover(run_dir, card):
@@ -533,7 +708,11 @@ def do_recover(run_dir, card):
 
 # ---------------------------------------------------------------- commands
 def get_ctx(args):
-    f = find_run(getattr(args, "workdir", None))
+    try:
+        f = find_run(getattr(args, "workdir", None))
+    except Damaged as e:
+        print("stage_runner: record damaged: %s. Everything but `verify` and `abandon` refuses." % e)
+        return None, DAMAGED
     if not f:
         print("no active run in %s" % os.path.abspath(getattr(args, "workdir", None) or os.getcwd()))
         return None, NORUN
@@ -549,7 +728,29 @@ def get_ctx(args):
     except (OSError, ValueError) as e:
         print("stage_runner: the run's card is unreadable: %s" % e)
         return None, DAMAGED
+    try:
+        if st["card_sha"] and card_sha(st["card"], card) != st["card_sha"]:
+            print("stage_runner: DAMAGED -- card changed mid-run (the card or a prompt file was edited "
+                  "after the run started). Everything but `verify` refuses.")
+            return None, DAMAGED
+        check_order(lines, card)
+    except OSError as e:
+        print("stage_runner: the run's card is unreadable: %s" % e)
+        return None, DAMAGED
+    except Damaged as e:
+        print("stage_runner: record damaged: %s. Everything but `verify` refuses." % e)
+        return None, DAMAGED
     return (wd, run_dir, lines, st, card), OK
+
+
+def _set_aside(marker, tag):
+    """Rename the marker to <marker>.<tag> (never delete); returns the new path."""
+    tag = re.sub(r"[^A-Za-z0-9_.-]", "_", str(tag))[:80]
+    dst = "%s.%s" % (marker, tag)
+    if os.path.exists(dst):
+        dst = "%s-%d" % (dst, int(time.time()))
+    os.rename(marker, dst)
+    return dst
 
 
 def cmd_start(a):
@@ -571,10 +772,26 @@ def cmd_start(a):
                           "is not beside stage_runner.py (%s). Deploy them together."
                           % (s["id"], key, DELEGATES[key], HERE))
                     return USAGE
-    if find_run(wd):
-        print("stage_runner: a run is already active in %s. Nothing was changed. "
-              "Use a different --workdir to start fresh." % wd)
-        return NOTHING
+    try:
+        found = find_run(wd)
+    except Damaged as e:
+        print("stage_runner: record damaged: %s. Nothing was changed; have the person choose "
+              "start over (abandon) first." % e)
+        return DAMAGED
+    if found:
+        try:
+            old = derive(load_record(found[1]))
+        except (Damaged, OSError) as e:
+            print("stage_runner: the run in %s is damaged (%s). Nothing was changed; have the "
+                  "person choose start over (abandon) first." % (found[0], e))
+            return DAMAGED
+        if not (old["complete"] or old["cur"] == "COMPLETE"):
+            print("stage_runner: a run is already active in %s. Nothing was changed. "
+                  "Use a different --workdir to start fresh." % wd)
+            return NOTHING
+        # a finished run: set its marker aside (kept, not deleted) and begin a NEW run
+        mp = os.path.join(found[0], MARKER)
+        _set_aside(mp, "done-" + (old["run"] or os.path.basename(found[1])))
     rid = a.run_id or time.strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(2)
     run_dir = os.path.join(wd, "runs", rid)
     if os.path.exists(run_dir):
@@ -584,7 +801,8 @@ def cmd_start(a):
     first = card["stages"][0]["id"]
     code = new_code()
     append(run_dir, "start", None, {"card": os.path.abspath(a.card), "skill": card.get("skill", ""),
-                                    "first": first, "code_hash": chash(code)}, run=rid)
+                                    "first": first, "code_hash": chash(code),
+                                    "card_sha": card_sha(a.card, card)}, run=rid)
     json.dump({"run_dir": run_dir, "run_id": rid, "card": os.path.abspath(a.card)},
               open(os.path.join(wd, MARKER), "w", encoding="utf-8"))
     ensure_commands(wd)
@@ -601,14 +819,15 @@ def cmd_status(a):
     wd, run_dir, lines, st, card = c
     problems = []
     if not (st["complete"] or st["cur"] == "COMPLETE"):
-        problems = run_checks(card, card["stages"][stage_index(card, st["cur"])], run_dir, st["code"])
+        problems = run_checks(card, card["stages"][stage_index(card, st["cur"])], run_dir, st["code"],
+                              st["superseded"])
     i = stage_index(card, st["cur"])
     done = st["complete"] or st["cur"] == "COMPLETE"
     mode = card["stages"][i].get("mode", "talk") if 0 <= i < len(card["stages"]) else ""
     j = {"run": st["run"], "skill": st["skill"], "stage": st["cur"],
          "index": len(card["stages"]) if done else i + 1, "total": len(card["stages"]),
          "mode": mode, "complete": st["complete"], "pending": bool(st["pending"]),
-         "fails": st["fails"],
+         "fails": st["fails"], "snoozed": st["snoozed"], "abandoned": st["abandoned"],
          "summary": "RUN done" if done else "RUN %d/%d %s (%s)" % (i + 1, len(card["stages"]), st["cur"], mode),
          "missing": [p["detail"] for p in problems], "lines": len(lines)}
     if a.json:
@@ -628,7 +847,8 @@ def cmd_check(a):
         print("PASS (run complete)")
         return OK
     try:
-        problems = run_checks(card, card["stages"][stage_index(card, st["cur"])], run_dir, st["code"])
+        problems = run_checks(card, card["stages"][stage_index(card, st["cur"])], run_dir, st["code"],
+                              st["superseded"])
     except (PartMissing, CannotEvaluate) as e:
         print("stage_runner: CANNOT EVALUATE -- %s" % e)
         return USAGE
@@ -644,7 +864,7 @@ def cmd_advance(a):
     if not c:
         return rc
     try:
-        rc, txt = do_advance(c[1], c[4], a.via)
+        rc, txt = do_advance(c[1], c[4], a.via, a.turn)
     except (PartMissing, CannotEvaluate) as e:
         print("stage_runner: CANNOT EVALUATE -- %s" % e)
         return USAGE
@@ -656,9 +876,91 @@ def cmd_back(a):
     c, rc = get_ctx(a)
     if not c:
         return rc
-    rc, txt = do_back(c[1], c[4], "cli")
+    rc, txt = do_back(c[1], c[4], "cli", a.turn)
     print(txt)
     return rc
+
+
+MENU = {"resume": "continue", "abandon": "start-over", "snooze": "leave-it"}
+
+
+def _bad_choice(cmd, choice):
+    """Exit 2 unless --choice is this command's menu word (closed menu: continue / start-over / leave-it)."""
+    if choice == MENU[cmd]:
+        return None
+    print("stage_runner: %r is not a menu word for %s (the closed menu is continue / start-over / "
+          "leave-it; %s takes %s). Ask the person again." % (choice, cmd, cmd, MENU[cmd]))
+    return USAGE
+
+
+def cmd_person_turn(a):
+    if not a.turn or not a.cmd_:
+        print("stage_runner: person-turn needs --turn and --cmd next|back")
+        return USAGE
+    c, rc = get_ctx(a)
+    if not c:
+        return rc
+    rc, txt = do_person_turn(c[1], a.turn, a.cmd_)
+    print(txt)
+    return rc
+
+
+def cmd_resume(a):
+    bad = _bad_choice("resume", a.choice)
+    if bad:
+        return bad
+    c, rc = get_ctx(a)
+    if not c:
+        return rc
+    rc, txt = do_resume(c[1], c[4])
+    print(txt)
+    return rc
+
+
+def cmd_snooze(a):
+    bad = _bad_choice("snooze", a.choice)
+    if bad:
+        return bad
+    c, rc = get_ctx(a)
+    if not c:
+        return rc
+    rc, txt = do_snooze(c[1])
+    print(txt)
+    return rc
+
+
+def cmd_abandon(a):
+    """Set the run aside. Works on a damaged record, an unreadable card or a bad marker: the
+    marker is renamed in every case; `abandoned` is appended only if the record verifies. Never
+    writes pass / done / complete; nothing is deleted."""
+    bad = _bad_choice("abandon", a.choice)
+    if bad:
+        return bad
+    found = find_marker(a.workdir)
+    if not found:
+        print("no active run in %s" % os.path.abspath(a.workdir or os.getcwd()))
+        return NORUN
+    wd, mp = found
+    rid = run_dir = None
+    try:
+        j = json.load(open(mp, encoding="utf-8"))
+        if isinstance(j, dict):
+            rid = j.get("run_id") if isinstance(j.get("run_id"), str) else None
+            run_dir = j.get("run_dir") if isinstance(j.get("run_dir"), str) else None
+    except (OSError, ValueError):
+        pass
+    note = ""
+    if run_dir:
+        try:
+            lines = load_record(run_dir)
+            rid = rid or lines[0]["run"]
+            append(run_dir, "abandoned", derive(lines)["cur"], {"choice": "start-over"})
+        except (Damaged, OSError, IndexError, KeyError):
+            note = " (the record does not verify, so no abandoned line was written)"
+    dst = _set_aside(mp, "abandoned-" + (rid or (os.path.basename(run_dir) if run_dir else None)
+                                          or "unknown-%d" % int(time.time())))
+    print("stage_runner: run set aside%s. Marker moved to %s. Nothing was deleted." % (note, dst))
+    return OK
 
 
 def cmd_recover(a):
@@ -671,18 +973,39 @@ def cmd_recover(a):
 
 
 def cmd_verify(a):
-    """The no-AI finish check command: verify the chain, report, never write."""
-    f = find_run(a.workdir)
+    """The no-AI finish check command: verify the chain, the replay rule and the mover log;
+    report, never write. A `person` line whose turn is not in <run folder>/mover.log is
+    reported (tamper-evidence, not prevention) and exits 3."""
+    try:
+        f = find_run(a.workdir)
+    except Damaged as e:
+        print("DAMAGED: %s" % e)
+        return DAMAGED
     if not f:
         print("no active run")
         return NORUN
     try:
-        n = len(load_record(f[1]))
-        print("OK %d lines" % n)
-        return OK
+        lines = load_record(f[1])
+        st = derive(lines)
+        try:
+            check_order(lines, load_card(st["card"]))
+        except (OSError, ValueError):
+            pass                      # an unreadable card is reported by the other commands
     except Damaged as e:
         print("DAMAGED: %s" % e)
         return DAMAGED
+    logged = set()
+    try:
+        logged = set(x.strip() for x in open(os.path.join(f[1], "mover.log"), encoding="utf-8"))
+    except OSError:
+        pass
+    ghosts = [l["data"]["turn"] for l in lines if l["event"] == "person" and l["data"]["turn"] not in logged]
+    if ghosts:
+        print("UNLOGGED: person line not written by the mover: turn %s (%d line%s)"
+              % (", ".join(ghosts), len(ghosts), "" if len(ghosts) == 1 else "s"))
+        return CHECKFAIL
+    print("OK %d lines" % len(lines))
+    return OK
 
 
 def cmd_statusline(a):
@@ -746,6 +1069,12 @@ def _run(args, cwd=None):
                           capture_output=True, text=True, cwd=cwd)
 
 
+def _person_advance(wd, turn):
+    """The person types /next: person-turn, then advance --turn (what the mover does)."""
+    _run(["person-turn", "--turn", turn, "--cmd", "next", "--workdir", wd])
+    return _run(["advance", "--turn", turn, "--workdir", wd])
+
+
 def _stage1_body(code):
     return ("## Frame\n\nThe monthly goal is confirmed as written and the deltas are "
             "gathered here for the week ahead.\n\nCode word: %s\n" % code)
@@ -758,7 +1087,7 @@ def _broken_variant(td, sabotage):
     marks = {
         "chain": ('            assert o["seq"] == i and o["prev"] == prev and _hash(prev, o) == h',
                   '            assert o["seq"] == i'),
-        "gate": ('        problems = run_checks(card, stage, run_dir, st["code"])',
+        "gate": ('        problems = run_checks(card, stage, run_dir, st["code"], st["superseded"])',
                  '        problems = []'),
         "sibling": ('    if not os.path.isfile(p):\n        raise PartMissing(part)',
                     '    if not os.path.isfile(p):\n        class _P:\n'
@@ -809,9 +1138,14 @@ def selftest():
                p.stdout.strip())
 
         # -- (2) out-of-order: stage 1 unmet -> advance refused ----------------
-        p = _run(["advance", "--workdir", wd])
+        p = _person_advance(wd, "s0")
         report("advance with stage 1 unmet exits CHECKFAIL", p.returncode == CHECKFAIL,
                "exit %d" % p.returncode)
+        p = _run(["advance", "--workdir", wd])
+        report("a talk step refuses an advance with no person turn (exit 3, no person turn)",
+               p.returncode == CHECKFAIL and "no person turn" in p.stdout, "exit %d" % p.returncode)
+        p = _run(["advance", "--turn", "s0", "--workdir", wd])
+        report("a used person turn is a repeat (exit 4)", p.returncode == NOTHING, "exit %d" % p.returncode)
         p2 = _run(["check", "--workdir", wd])
         report("check on the unmet stage exits CHECKFAIL", p2.returncode == CHECKFAIL,
                "exit %d" % p2.returncode)
@@ -824,7 +1158,7 @@ def selftest():
         # satisfy stage 1 properly and advance
         out1 = os.path.join(wd, "runs", rid, "out", "01-frame.md")
         open(out1, "w", encoding="utf-8").write(_stage1_body(code1))
-        p = _run(["advance", "--workdir", wd])
+        p = _person_advance(wd, "s1")
         report("advance after a passing stage exits OK", p.returncode == OK,
                "exit %d %s" % (p.returncode, p.stdout[:80]))
         m = re.search(r"(RUN-[0-9A-Z]{6})", p.stdout)
@@ -926,10 +1260,13 @@ def selftest():
         # gate sabotage: advance with stage 1 unmet must SUCCEED on the broken runner
         gcopy = os.path.join(td, "bgate")
         shutil.copytree(bwd, gcopy)
-        bg = _run_broken(_broken_variant(td, "gate"), ["advance", "--workdir", gcopy])
+        json.dump({"run_dir": os.path.join(gcopy, "runs", brid), "run_id": brid},
+                  open(os.path.join(gcopy, MARKER), "w", encoding="utf-8"))
+        _run(["person-turn", "--turn", "g1", "--cmd", "next", "--workdir", gcopy])
+        bg = _run_broken(_broken_variant(td, "gate"), ["advance", "--turn", "g1", "--workdir", gcopy])
         report("FAILING-FIRST: out-of-order advance SUCCEEDS on the broken runner",
                bg.returncode == OK, "broken exit %d" % bg.returncode)
-        rg = _run(["advance", "--workdir", bwd])
+        rg = _person_advance(bwd, "b1")
         report("...and the real runner REFUSES it", rg.returncode == CHECKFAIL,
                "exit %d" % rg.returncode)
 
@@ -996,8 +1333,13 @@ def main():
     add("start", cmd_start, ("--card", dict(required=True)), ("--run-id", dict(default=None)))
     add("status", cmd_status, ("--json", dict(action="store_true")))
     add("check", cmd_check)
-    add("advance", cmd_advance, ("--via", dict(default="cli")))
-    add("back", cmd_back)
+    add("advance", cmd_advance, ("--via", dict(default="cli")), ("--turn", dict(default=None)))
+    add("back", cmd_back, ("--turn", dict(default=None)))
+    add("person-turn", cmd_person_turn, ("--turn", dict(default=None)),
+        ("--cmd", dict(dest="cmd_", choices=["next", "back"], default=None)))
+    add("resume", cmd_resume, ("--choice", dict(default=None)))
+    add("abandon", cmd_abandon, ("--choice", dict(default=None)))
+    add("snooze", cmd_snooze, ("--choice", dict(default=None)))
     add("recover", cmd_recover)
     add("verify", cmd_verify)
     add("statusline", cmd_statusline, ("--inner", dict(default="")))

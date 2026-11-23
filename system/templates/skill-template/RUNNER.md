@@ -11,7 +11,7 @@ Read with `card.template.json` (beside this file) and the skill-building SOP.
   re-verified whole on every read. ONLY the runner writes it. Damaged record → exit 6 and
   every command but `verify` refuses.
 - **Next / back.** `advance` hands over to the next stage; `back` re-opens the previous one
-  with a fresh code word.
+  with a fresh code word. On a talk step both need the person's typed command (see below).
 - **The status line.** `statusline` prints `RUN n/N stage (mode)`.
 
 ## Wiring, in order
@@ -38,7 +38,55 @@ Read with `card.template.json` (beside this file) and the skill-building SOP.
    refused (exit 2). Each is shown FAILING first against a deliberately broken runner
    variant built in a temp dir.
 
+## Commands (the ONE list; the docstring of `stage_runner.py` points here)
+
+All take `--workdir DIR` (default: the current folder).
+
+| Command | What it does |
+|---|---|
+| `start --card CARD [--run-id ID]` | Begins a run (stores `card_sha`). Marker's run complete: the marker is renamed `.stage-runner.json.done-<run>` and a NEW run starts from step 1 (old code words fail). After `abandon`: starts a new run. Run unfinished: exit 4. |
+| `status [--json]` | Where the run is. `--json` adds `snoozed` and `abandoned`. |
+| `check` | Runs the current step's checks; writes nothing. |
+| `advance [--turn T] [--via V]` | Checks the step, then hands over. |
+| `back [--turn T]` | Re-opens the previous step, exactly one, with a fresh code word. |
+| `person-turn --turn T --cmd next\|back` | Appends the person's typed command as a `person` line. The ONLY writer of `person` lines. A used turn id: exit 4. A finished run: exit 4. |
+| `resume --choice continue` | Reissues the CURRENT step's instructions with a fresh code word ("update the Code word line in <out file>"). Half-done handover: exit 7 (run `recover` first); finished or abandoned: exit 4. Writes no pass/done. The old code word is then refused: "another window took over this run at <time>" (exit 3). |
+| `abandon --choice start-over` | Appends `abandoned` if the record verifies; always renames the marker to `.stage-runner.json.abandoned-<run>`, even on a damaged record, unreadable card or bad marker. Deletes nothing; never writes pass/done/complete. |
+| `snooze --choice leave-it` | Appends `snoozed`; the reader stays quiet for this run until a later `person` or `reissue` line (a later `resume` lifts it). |
+| `recover` | Completes a handover that died between `intent` and `done`. |
+| `verify` | Chain + replay rule + mover log; writes nothing. Reports a `person` line whose turn is not in `<run folder>/mover.log` ("person line not written by the mover", exit 3). The mover hook writes `mover.log` (one `prompt_id` per line); the runner never does. |
+| `statusline [--inner CMD]` | Reads Claude Code's status JSON; prints `RUN n/N stage (mode)`. |
+| `--selftest` | The no-AI finish check. |
+
+`--choice` is validated against the closed menu (`continue` / `start-over` / `leave-it`, each command
+takes its own word); anything else is exit 2, "ask the person again".
+
+## Record events
+
+`start` (with `card_sha`) · `person {turn, cmd}` · `pass` · `fail` · `handover` · `back` · `intent` ·
+`done` · `complete` · `reissue {code_hash, choice}` · `abandoned {choice}` · `snoozed {choice}` ·
+`recover`. Replay rule: a forward `intent` needs a `pass` of the step it leaves since that step
+opened, `done` needs its `intent`, `complete` needs the last step's pass; a card or prompt file
+edited mid-run reads as DAMAGED ("card changed mid-run").
+
+## The person-turn rule, and talk vs alone
+
+- A **talk** step moves only on the person's typed command: `advance` needs an unconsumed
+  `person{cmd:next}` with the same `--turn` (none: exit 3 "no person turn"; turn already used:
+  exit 4). `back` always needs an unconsumed `person{cmd:back}` with its `--turn`.
+- A **person line is consumed by its first use, whatever the result**: a failed check means the
+  person types /next again. One person turn moves the run at most one step; typing /back
+  twice with one turn id goes back one step.
+- An **alone** step advances on a verified pass alone, as before; no person is needed.
+- Only `person-turn` writes `person` lines. Friction, not perfect enforcement: forging the record
+  is a named bypass, and it shows as damage or a `person` line missing from `mover.log`.
+
 ## Exit codes
 
-0 OK · 2 USAGE / cannot-evaluate · 3 CHECKFAIL (stage refused) · 4 NOTHING (no-op) ·
-5 NORUN · 6 DAMAGED (record failed verification) · 7 DANGLING (run `recover`).
+0 OK · 2 USAGE / cannot-evaluate / bad `--choice` · 3 CHECKFAIL (stage refused; also "no person
+turn", "another window took over this run", unlogged person line in `verify`) · 4 NOTHING (no-op,
+repeat turn, unfinished run on `start`) · 5 NORUN · 6 DAMAGED (record failed verification,
+card changed, bad marker) · 7 DANGLING (run `recover`).
+
+**A job wrapper maps 4 to the cron stand-down code itself** — the runner's 4 means "nothing to do",
+and the wrapper decides what that means to the scheduler.
