@@ -16,7 +16,7 @@ trap 'lhb_journal_fire "$?" "report_read_coverage.sh" "SubagentStop" "" 2>/dev/n
 #      a document was read through the shell (not countable), or the record itself could not be
 #      counted. Exit 0 always.
 # ⚠ DELIVERY: a message printed on the SubagentStop event is NOT shown to the model. The status
-#      tile IS the delivery — it lands on Enver's status screen (<brain_root>/state/status/),
+#      tile IS the delivery — it lands on Enver's status screen (<brain_root>/status/),
 #      written through system/tools/emit_status.py (its own envelope; never a hand-written tile),
 #      plus one dated line in the plugin's state folder. No stdout is needed for this event.
 # REDIRECT: the counter's tool is shared/tools/read_coverage.py (card 6.3). The structural fix
@@ -96,7 +96,7 @@ except Exception:
     sys.exit(0)   # no tile writer on this install: degrade-safe; the log line stands
 
 files = [ln for ln in coverage.splitlines() if ln and not ln.startswith(("EXAMINED", "WARNING", "COULD"))]
-tile = os.path.join(root, "state", "status", "reading-harness-coverage.json")
+tile = os.path.join(root, "status", "reading-harness-coverage.json")
 try:
     emit_status(
         tile,

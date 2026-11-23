@@ -33,7 +33,7 @@ STOPP() { printf '{"session_id":"%s","agent_transcript_path":"%s"}' "$1" "$2"; }
 # override the switch reader honors (ROUNDB_READ_COVERAGE_REPORT=on); the OFF case passes =off.
 runhook() { env -i PATH="$PATH" HOME="$SB/home" LIFEHACK_STATE_DIR="$SB/state" LIFEHACK_ROOT="$SB/brain" CLAUDE_PLUGIN_ROOT="$PLUGIN" ROUNDB_READ_COVERAGE_REPORT=on bash "$HOOK"; }
 # brain root: the hook resolves the tile path through brain_root.py; point it at the sandbox
-mkdir -p "$SB/brain/state/status"
+mkdir -p "$SB/brain/status"
 
 echo "-- ALLOW: never blocks, any input"
 printf '%s' '{"garbage":true}' | runhook >/dev/null 2>&1; [ $? = 0 ] && ok || bad "garbage payload" "nonzero exit"
@@ -43,10 +43,10 @@ printf '%s' '{"session_id":"s1","agent_transcript_path":"/nonexistent/x.jsonl"}'
 
 echo "-- full read of every document: nothing reported (exit 0, no tile, no log line)"
 mkrecord "$SB/full.jsonl" "$DOC" 1 2000
-BEFORE=$(cat "$SB/brain/state/status/reading-harness-coverage.json" 2>/dev/null | wc -c)
+BEFORE=$(cat "$SB/brain/status/reading-harness-coverage.json" 2>/dev/null | wc -c)
 printf '%s' "$(STOPP sess-full "$SB/full.jsonl")" | runhook >/dev/null 2>&1; RC=$?
 [ "$RC" = 0 ] && ok || bad "full read rc" "rc=$RC"
-AFTER=$(cat "$SB/brain/state/status/reading-harness-coverage.json" 2>/dev/null | wc -c)
+AFTER=$(cat "$SB/brain/status/reading-harness-coverage.json" 2>/dev/null | wc -c)
 [ "$BEFORE" = "$AFTER" ] && ok || bad "full read tile" "tile written on a full read"
 [ ! -s "$SB/state/reading-harness/coverage.log" ] && ok || bad "full read log" "log line written on a full read"
 
@@ -65,30 +65,30 @@ assert d["status"] in ("NEEDS_REVIEW", "ERROR"), d["status"]
 assert d["rc"] == 1, d["rc"]
 assert any("plan-note.md" in f for f in d["files_report"]), d["files_report"]
 assert "tile is the delivery" in d["note"], d["note"]
-' "$SB/brain/state/status/reading-harness-coverage.json" && ok || bad "tile envelope" "tile missing envelope fields or wrong shape"
+' "$SB/brain/status/reading-harness-coverage.json" && ok || bad "tile envelope" "tile missing envelope fields or wrong shape"
 grep -q "sess-partial" "$SB/state/reading-harness/coverage.log" && grep -q "plan-note.md" "$SB/state/reading-harness/coverage.log" && ok || bad "dated log line" "log lacks session/file"
 
 echo "-- shell read (not counted): reported"
 mkrecord "$SB/shell.jsonl" "$DOC" 1 2000 "cat $DOC"
-rm -f "$SB/brain/state/status/reading-harness-coverage.json"
+rm -f "$SB/brain/status/reading-harness-coverage.json"
 printf '%s' "$(STOPP sess-shell "$SB/shell.jsonl")" | runhook >/dev/null 2>&1
-[ -f "$SB/brain/state/status/reading-harness-coverage.json" ] && ok || bad "shell read tile" "no tile on a shell read"
+[ -f "$SB/brain/status/reading-harness-coverage.json" ] && ok || bad "shell read tile" "no tile on a shell read"
 
 echo "-- broken transcript (no valid JSON lines, rc 4): reported, exit 0"
 printf 'this is not json\nnor is this\n' > "$SB/broken.jsonl"
-rm -f "$SB/brain/state/status/reading-harness-coverage.json"
+rm -f "$SB/brain/status/reading-harness-coverage.json"
 printf '%s' "$(STOPP sess-broken "$SB/broken.jsonl")" | runhook >/dev/null 2>&1; RC=$?
 [ "$RC" = 0 ] && ok || bad "broken rc" "rc=$RC"
 python3 -c '
 import json, sys
 d = json.load(open(sys.argv[1]))
 assert d["rc"] == 4 and d["status"] == "ERROR", (d["rc"], d["status"])
-' "$SB/brain/state/status/reading-harness-coverage.json" && ok || bad "broken tile" "expected rc=4 ERROR"
+' "$SB/brain/status/reading-harness-coverage.json" && ok || bad "broken tile" "expected rc=4 ERROR"
 
 echo "-- switch OFF: exactly the old behaviour (nothing at all)"
-rm -f "$SB/brain/state/status/reading-harness-coverage.json"
+rm -f "$SB/brain/status/reading-harness-coverage.json"
 printf '%s' "$(STOPP sess-off "$SB/partial.jsonl")" | env -i PATH="$PATH" HOME="$SB/home" LIFEHACK_STATE_DIR="$SB/state" LIFEHACK_ROOT="$SB/brain" CLAUDE_PLUGIN_ROOT="$PLUGIN" ROUNDB_READ_COVERAGE_REPORT=off bash "$HOOK" >/dev/null 2>&1; RC=$?
 [ "$RC" = 0 ] && ok || bad "switch off rc" "rc=$RC"
-[ ! -f "$SB/brain/state/status/reading-harness-coverage.json" ] && ok || bad "switch off tile" "tile written while off"
+[ ! -f "$SB/brain/status/reading-harness-coverage.json" ] && ok || bad "switch off tile" "tile written while off"
 
 echo; echo "passed $pass, failed $fail"; [ "$fail" = 0 ]
