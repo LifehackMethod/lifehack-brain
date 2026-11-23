@@ -50,11 +50,11 @@ All take `--workdir DIR` (default: the current folder).
 | `advance [--turn T] [--via V]` | Checks the step, then hands over. |
 | `back [--turn T]` | Re-opens the previous step, exactly one, with a fresh code word. |
 | `person-turn --turn T --cmd next\|back` | Appends the person's typed command as a `person` line. The ONLY writer of `person` lines. A used turn id: exit 4. A finished run: exit 4. |
-| `resume --choice continue` | Reissues the CURRENT step's instructions with a fresh code word ("update the Code word line in <out file>"). Half-done handover: exit 7 (run `recover` first); finished or abandoned: exit 4. Writes no pass/done. The old code word is then refused: "another window took over this run at <time>" (exit 3). |
-| `abandon --choice start-over` | Appends `abandoned` if the record verifies; always renames the marker to `.stage-runner.json.abandoned-<run>`, even on a damaged record, unreadable card or bad marker. Deletes nothing; never writes pass/done/complete. |
-| `snooze --choice leave-it` | Appends `snoozed`; the reader stays quiet for this run until a later `person` or `reissue` line (a later `resume` lifts it). |
+| `resume --choice continue` | Reissues the CURRENT step's instructions with a fresh code word ("update the Code word line in <out file>"). Half-done handover: exit 7 (run `recover` first); finished or abandoned: exit 4. Writes no pass/done. The old code word is then refused: "another window took over this run at <time>" (exit 3). Records the newest person prompt from `<run folder>/person.log` in its record line. |
+| `abandon --choice start-over` | Appends `abandoned` (with the newest person prompt) if the record verifies; always renames the marker to `.stage-runner.json.abandoned-<run>` (a COMPLETE run gets `.done-<run>`), even on a damaged record, unreadable card or bad marker. Deletes nothing; never writes pass/done/complete. |
+| `snooze --choice leave-it` | Appends `snoozed` (with the newest person prompt); the reader stays quiet for this run until a later `person` or `reissue` line (a later `resume` lifts it). |
 | `recover` | Completes a handover that died between `intent` and `done`. |
-| `verify` | Chain + replay rule + mover log; writes nothing. Reports a `person` line whose turn is not in `<run folder>/mover.log` ("person line not written by the mover", exit 3). The mover hook writes `mover.log` (one `prompt_id` per line); the runner never does. |
+| `verify` | Chain + replay rule + the mover's logs; writes nothing. Reports a `person` line whose turn is not in `<run folder>/mover.log` ("person line not written by the mover", exit 3); a `reissue`/`abandoned`/`snoozed` line whose recorded person prompt is missing from `<run folder>/person.log` or older than the last reissue (exit 3); a changed or unreadable card (exit 6); any record line after `abandoned` (exit 6). The mover hook writes `mover.log` (one `prompt_id` per line) and `person.log` (`prompt_id` and unix time for EVERY person prompt while a run is open); the runner never does. |
 | `statusline [--inner CMD]` | Reads Claude Code's status JSON; prints `RUN n/N stage (mode)`. |
 | `--selftest` | The no-AI finish check. |
 
@@ -78,8 +78,12 @@ edited mid-run reads as DAMAGED ("card changed mid-run").
   person types /next again. One person turn moves the run at most one step; typing /back
   twice with one turn id goes back one step.
 - An **alone** step advances on a verified pass alone, as before; no person is needed.
-- Only `person-turn` writes `person` lines. Friction, not perfect enforcement: forging the record
-  is a named bypass, and it shows as damage or a `person` line missing from `mover.log`.
+- Only `person-turn` writes `person` lines. Renaming a `.abandoned-` marker back revives
+  nothing: `advance`, `back` and `person-turn` refuse once the record says `abandoned` (exit 4),
+  and `verify` reports any line after `abandoned` as damaged.
+- Friction, not perfect enforcement: forging the record is a named bypass, and it shows as damage,
+  a `person` line missing from `mover.log`, or a `reissue`/`abandoned`/`snoozed` line whose person
+  prompt is missing from `person.log`.
 
 ## Exit codes
 

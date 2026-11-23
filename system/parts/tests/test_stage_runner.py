@@ -919,6 +919,227 @@ def test_the_runner_never_writes_the_mover_log(tmp_path):
     assert not os.path.exists(os.path.join(r.run_dir, "mover.log"))
 
 
+# ======================================================================================
+# Phase 4c fix pass (fix list + attacker round, 2026-11-23): every kept fix planted
+# failing-first. Run: python3 -m pytest system/parts/tests/test_stage_runner.py -q
+# ======================================================================================
+PARTS = os.path.abspath(os.path.join(HERE, ".."))
+
+
+def _forge(run_dir, events):
+    """Append hand-built events through stage_runner's own writer, exactly as a forger
+    with python -c would (the no-tracks attack from the attacker round)."""
+    calls = "; ".join(
+        "s.append(%r, %r, %r, %r)" % (run_dir, e, st, d) for e, st, d in events)
+    prog = ("import sys; sys.path.insert(0, %r); import stage_runner as s; %s"
+            % (PARTS, calls))
+    p = subprocess.run([sys.executable, "-c", prog], capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+
+
+def test_empty_record_is_damaged(tmp_path):
+    """Fix 4: a record that is empty (or whose first line is not start) is DAMAGED, not a
+    TypeError traceback or a clean OK."""
+    r = R(tmp_path)
+    open(os.path.join(r.run_dir, "record.jsonl"), "w", encoding="utf-8").close()
+    p = r.cmd("verify")
+    assert p.returncode == DAMAGED and "Traceback" not in text(p), text(p)
+
+
+def test_first_line_not_start_is_damaged(tmp_path):
+    r = R(tmp_path)
+    _forge(r.run_dir, [("person", None, {"turn": "z", "cmd": "next"})])
+    rewrite_record(r.run_dir, lambda o: o["event"] == "start")
+    p = r.cmd("verify")
+    assert p.returncode == DAMAGED and "start" in text(p), text(p)
+
+
+def test_unknown_open_step_is_damaged_not_a_traceback(tmp_path):
+    """Fix 5: a record whose open step is not in the card reads DAMAGED (stage_index -1),
+    on advance, back, resume and status -- never an IndexError."""
+    r = R(tmp_path)
+    r.write(0)
+    assert r.move("t1").returncode == OK          # gather -> shape (talk, needs the person)
+    _forge(r.run_dir, [
+        ("person", None, {"turn": "f1", "cmd": "next"}),
+        ("pass", "shape", {"via": "forged", "turn": "f1"}),
+        ("handover", "shape", {"via": "forged", "result": "pass", "turn": "f1"}),
+        ("intent", "shape", {"to": "ghost", "code_hash": "0" * 16, "via": "forged"}),
+        ("done", "ghost", {"to": "ghost", "code_hash": "0" * 16}),
+    ])
+    for args in (["advance"], ["back", "--turn", "x"], ["status"], ["check"],
+                 ["resume", "--choice", "continue"]):
+        p = r.cmd(*args)
+        assert p.returncode == DAMAGED and "Traceback" not in text(p), (args, text(p))
+
+
+def test_advance_on_a_complete_run_writes_nothing(tmp_path):
+    """Fix 7: advance past the end is a NOTHING that appends no handover noop."""
+    r = R(tmp_path)
+    r.to_step(2)
+    r.write(2)
+    assert r.adv().returncode == OK
+    n = len(r.lines())
+    assert r.adv().returncode == NOTHING, text(r.adv)
+    assert len(r.lines()) == n
+
+
+def test_relative_run_dir_in_marker_resolves_against_the_marker_folder(tmp_path):
+    """Fix 8: the marker may name the run folder relatively; it resolves against the
+    marker's folder (matching the mover), from any process cwd."""
+    r = R(tmp_path)
+    r.to_step(1)
+    json.dump({"run_dir": "runs/%s" % r.rid, "run_id": r.rid},
+              open(os.path.join(r.wd, ".stage-runner.json"), "w", encoding="utf-8"))
+    p = subprocess.run([sys.executable, os.path.abspath(RUNNER), "status", "--json",
+                        "--workdir", r.wd], capture_output=True, text=True, cwd="/")
+    assert p.returncode == OK, p.stdout + p.stderr
+    assert json.loads(p.stdout)["index"] == 2
+
+
+def test_abandon_on_a_complete_run_uses_the_done_tag(tmp_path):
+    r = R(tmp_path)
+    r.to_step(2)
+    r.write(2)
+    assert r.adv().returncode == OK
+    assert r.cmd("abandon", "--choice", "start-over").returncode == OK
+    assert os.path.isfile(os.path.join(r.wd, ".stage-runner.json.done-" + r.rid))
+    assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid))
+
+
+def test_marker_pointing_outside_its_folder_is_refused_by_every_command(tmp_path):
+    """A4: the folder check lives in find_run, so the runner, the reader and the mover all
+    refuse a marker whose run folder sits outside the marker's folder."""
+    r = R(tmp_path)
+    outside = os.path.join(r.td, "outside")
+    shutil.rmtree(outside, ignore_errors=True)
+    os.makedirs(outside)
+    json.dump({"run_dir": outside, "run_id": r.rid},
+              open(os.path.join(r.wd, ".stage-runner.json"), "w", encoding="utf-8"))
+    for args in (["status"], ["check"], ["advance"], ["verify"], ["recover"],
+                 ["resume", "--choice", "continue"]):
+        p = r.cmd(*args)
+        assert p.returncode == DAMAGED and "outside" in text(p), (args, text(p))
+        assert "Traceback" not in text(p)
+
+
+def test_a_talk_pass_without_a_person_turn_is_damaged(tmp_path):
+    """A1 (no tracks): the python -c append forgery -- a pass/handover/intent/done on a
+    talk step with no person turn -- must read DAMAGED, not verify OK."""
+    r = R(tmp_path)
+    r.write(0)
+    _forge(r.run_dir, [
+        ("pass", "gather", {"via": "forged"}),
+        ("handover", "gather", {"via": "forged", "result": "pass"}),
+        ("intent", "gather", {"to": "shape", "code_hash": "0" * 16, "via": "forged"}),
+        ("done", "shape", {"to": "shape", "code_hash": "0" * 16}),
+    ])
+    p = r.cmd("verify")
+    assert p.returncode == DAMAGED and "person turn" in text(p), text(p)
+    assert r.cmd("status").returncode == DAMAGED
+
+
+def test_a_back_without_a_person_turn_is_damaged(tmp_path):
+    r = R(tmp_path)
+    r.to_step(1)
+    _forge(r.run_dir, [("back", "shape", {"via": "forged", "to": "gather"})])
+    p = r.cmd("verify")
+    assert p.returncode == DAMAGED and "person turn" in text(p), text(p)
+
+
+def test_the_mover_shaped_still_verifies(tmp_path):
+    """Control: a talk pass carrying the mover's person turn still verifies OK."""
+    r = R(tmp_path)
+    r.write(0)
+    assert r.move("t1").returncode == OK
+    open(os.path.join(r.run_dir, "mover.log"), "w", encoding="utf-8").write("t1\n")
+    p = r.cmd("verify")
+    assert p.returncode == OK, text(p)
+
+
+def test_resume_snooze_abandon_record_the_newest_person_prompt(tmp_path):
+    """A3: resume/abandon/snooze record the newest person.log line (id + time)."""
+    r = R(tmp_path)
+    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t% d\n" % time.time())
+    for args, event in ((["resume", "--choice", "continue"], "reissue"),
+                        (["snooze", "--choice", "leave-it"], "snoozed")):
+        assert r.cmd(*args).returncode == OK, text(r.cmd(*args))
+        last = r.lines()[-1]
+        assert last["event"] == event, last
+        assert last["data"]["person"]["id"] == "p1", last
+    r2 = R(tmp_path / "ab")
+    open(os.path.join(r2.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t%d\n" % time.time())
+    r2.write(0)
+    assert r2.move("t2").returncode == OK
+    open(os.path.join(r2.run_dir, "person.log"), "a", encoding="utf-8").write("t2\t%d\n" % time.time())
+    assert r2.cmd("abandon", "--choice", "start-over").returncode == OK
+    last = r2.lines()[-1]
+    assert last["event"] == "abandoned" and last["data"]["person"]["id"] == "t2", last
+
+
+def test_verify_flags_a_reissue_whose_person_prompt_is_not_logged(tmp_path):
+    """A3 verify: a reissue whose recorded person prompt is not in person.log (or none
+    recorded at all) is reported, exit 3 -- tamper evidence."""
+    r = R(tmp_path)
+    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    v = r.cmd("verify")
+    assert v.returncode == CHECKFAIL and "person prompt" in text(v), text(v)
+
+
+def test_verify_flags_a_reissue_older_than_the_last_reissue(tmp_path):
+    r = R(tmp_path)
+    t0 = time.time() - 100
+    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t%d\n" % t0)
+    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    assert r.cmd("resume", "--choice", "continue").returncode == OK  # no person prompt since
+    v = r.cmd("verify")
+    assert v.returncode == CHECKFAIL and "older" in text(v), text(v)
+
+
+def test_verify_passes_when_the_person_prompt_is_logged_and_fresh(tmp_path):
+    r = R(tmp_path)
+    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t%d\n" % time.time())
+    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8").write("p2\t%d\n" % time.time())
+    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    v = r.cmd("verify")
+    assert v.returncode == OK, text(v)
+
+
+def test_an_abandoned_run_refuses_advance_back_and_person_turn(tmp_path):
+    """A5: renaming the .abandoned- marker back must not revive a run."""
+    r = R(tmp_path)
+    r.to_step(1)
+    r.write(0)
+    assert r.cmd("abandon", "--choice", "start-over").returncode == OK
+    shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid),
+                os.path.join(r.wd, ".stage-runner.json"))
+    assert r.person("t1", "next").returncode == NOTHING, text(r.person("t1", "next"))
+    assert r.adv("t1").returncode == NOTHING, text(r.adv("t1"))
+    assert r.bk("t1").returncode == NOTHING
+    assert r.step()["index"] == 2                     # nothing moved
+
+
+def test_verify_flags_a_record_line_after_abandoned(tmp_path):
+    r = R(tmp_path)
+    assert r.cmd("abandon", "--choice", "start-over").returncode == OK
+    shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid),
+                os.path.join(r.wd, ".stage-runner.json"))
+    _forge(r.run_dir, [("snoozed", None, {"choice": "leave-it"})])
+    v = r.cmd("verify")
+    assert v.returncode == DAMAGED and "abandoned" in text(v), text(v)
+
+
+def test_verify_reports_a_changed_card(tmp_path):
+    """Fix 3: verify checks card_sha like get_ctx -- a card edited mid-run is DAMAGED."""
+    r = R(tmp_path)
+    c = json.load(open(r.card, encoding="utf-8"))
+    c["stages"][0]["checks"]["min_words"] = 1
+    json.dump(c, open(r.card, "w", encoding="utf-8"))
+    v = r.cmd("verify")
+    assert v.returncode == DAMAGED and "card" in text(v), text(v)
+
+
 # ---------------------------------------------------------------- the legacy script checks
 def test_legacy_script_checks_still_pass():
     del _results[:]

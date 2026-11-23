@@ -139,6 +139,10 @@ def load_record(run_dir):
         o["hash"] = h
         lines.append(o)
         prev = h
+    if not lines:
+        raise Damaged("record.jsonl is empty")
+    if lines[0]["event"] != "start":
+        raise Damaged("the first record line is not start")
     try:
         derive(lines)          # the replay rule: lines must make sense in order, not just chain
     except Damaged:
@@ -198,6 +202,8 @@ def derive(lines):
          "passed": False, "backed": None}
     for l in lines:
         e, d = l["event"], l["data"]
+        if s["abandoned"]:
+            raise Damaged("a record line after abandoned (a run set aside cannot move)")
         if e == "start":
             s.update(run=l["run"], card=d["card"], skill=d.get("skill"),
                      cur=d["first"], code=d.get("code_hash"), card_sha=d.get("card_sha"),
@@ -256,7 +262,32 @@ def _consume(s, d):
 
 def check_order(lines, card):
     """Replay against the card's step order (needs the card): forward handovers go exactly one
-    step on (or to COMPLETE from the last step); back handovers go exactly one step back."""
+    step on (or to COMPLETE from the last step); back handovers go exactly one step back.
+    Also the PERSON-TURN replay rule: a pass on a talk step must carry data.turn naming a
+    person{cmd:next} line before it, and every back must name a person{cmd:back}; the pass
+    and the back are the anchors -- an intent/done leaving a talk step needs its pass (the
+    replay rule in derive), so no forward move from a talk step can exist without one."""
+    persons = {}
+    for l in lines:
+        e, d = l["event"], l["data"]
+        if e == "person":
+            persons[d["turn"]] = {"cmd": d.get("cmd"), "used": False}
+            continue
+        if e == "back":
+            p = persons.get(d.get("turn"))
+            if not p or p["used"] or p["cmd"] != "back":
+                raise Damaged("a back moved a step without a person turn")
+            p["used"] = True
+            continue
+        if e != "pass":
+            continue
+        i = stage_index(card, l["stage"])
+        if i < 0 or card["stages"][i].get("mode", "talk") != "talk":
+            continue
+        p = persons.get(d.get("turn"))
+        if not p or p["used"] or p["cmd"] != "next":
+            raise Damaged("a talk step moved without a person turn")
+        p["used"] = True
     for l in lines:
         if l["event"] != "intent":
             continue
@@ -347,7 +378,13 @@ def find_run(start):
                 j = json.load(open(m, encoding="utf-8"))
                 if not isinstance(j, dict) or not isinstance(j.get("run_dir"), str):
                     raise Damaged("the run marker %s is not a JSON object naming a run folder" % m)
-                return d, j["run_dir"]
+                run_dir = j["run_dir"]
+                if not os.path.isabs(run_dir):
+                    run_dir = os.path.join(d, run_dir)
+                rr, rw = os.path.realpath(run_dir), os.path.realpath(d)
+                if rr != rw and not (rr + os.sep).startswith(rw + os.sep):
+                    raise Damaged("the run folder %s sits outside the marker's folder" % m)
+                return d, run_dir
             except (OSError, ValueError, KeyError) as e:
                 sys.stderr.write("stage_runner: unreadable marker %s: %r (hooks stay inert)\n"
                                  % (m, e))
@@ -525,6 +562,22 @@ def inputs_report(card, run_dir, i):
     return lines, bad
 
 
+def _newest_person(run_dir):
+    """The newest person prompt the mover logged, from <run folder>/person.log (one
+    prompt_id<TAB>unix_time per line, written by the mover for every person prompt), or None."""
+    try:
+        with open(os.path.join(run_dir, "person.log"), encoding="utf-8") as f:
+            rows = [l.split("\t") for l in f if l.strip()]
+    except OSError:
+        return None
+    if not rows:
+        return None
+    try:
+        return {"id": rows[-1][0].strip(), "t": float(rows[-1][1])}
+    except (IndexError, ValueError):
+        return None
+
+
 MOVER_BODY = ("The mover ran before you saw this, if a [RUN STEP] line is above. "
               "If there is none, the mover didn't run: tell the person.\n")
 _OLD_BODIES = {
@@ -578,9 +631,12 @@ def do_advance(run_dir, card, via, turn=None):
         if st["pending"]:
             return DANGLING, "pending handover to %r without done: run `recover` first" % st["pending"]["data"].get("to")
         if st["complete"] or st["cur"] == "COMPLETE":
-            append(run_dir, "handover", None, {"via": via, "result": "noop"})
             return NOTHING, "stage_runner: the run is complete, nothing to advance."
+        if st["abandoned"]:
+            return NOTHING, "stage_runner: the run was abandoned; nothing to advance."
         i = stage_index(card, st["cur"])
+        if i < 0:
+            return DAMAGED, "stage_runner: the open step %r is not in the card." % st["cur"]
         stage = card["stages"][i]
         pl = st["persons"].get(turn) if turn else None
         if stage.get("mode", "talk") == "talk":
@@ -626,10 +682,14 @@ def do_back(run_dir, card, via="cli", turn=None):
             return DANGLING, "pending handover without done: run `recover` first"
         if st["complete"] or st["cur"] == "COMPLETE":
             return NOTHING, "stage_runner: the run is complete; back does not reopen it."
+        if st["abandoned"]:
+            return NOTHING, "stage_runner: the run was abandoned; nothing to reopen."
+        i = stage_index(card, st["cur"])
+        if i < 0:
+            return DAMAGED, "stage_runner: the open step %r is not in the card." % st["cur"]
         refused, td = _turn_gate(st, turn, "back")
         if refused:
             return refused
-        i = stage_index(card, st["cur"])
         if i <= 0:
             append(run_dir, "handover", st["cur"], dict({"via": via, "result": "noop"}, **td))
             return NOTHING, "stage_runner: already at the first stage; nothing to go back to."
@@ -649,6 +709,8 @@ def do_person_turn(run_dir, turn, cmd):
         st = derive(load_record(run_dir))
         if st["complete"] or st["cur"] == "COMPLETE":
             return NOTHING, "stage_runner: the run is complete; nothing to move."
+        if st["abandoned"]:
+            return NOTHING, "stage_runner: the run was abandoned; nothing to record."
         if turn in st["persons"]:
             return NOTHING, "stage_runner: turn %s was already used. Nothing changed." % turn
         append(run_dir, "person", None, {"turn": turn, "cmd": cmd})
@@ -666,8 +728,11 @@ def do_resume(run_dir, card):
         if st["abandoned"]:
             return NOTHING, "stage_runner: the run was abandoned; nothing to resume."
         i = stage_index(card, st["cur"])
+        if i < 0:
+            return DAMAGED, "stage_runner: the open step %r is not in the card." % st["cur"]
         code = new_code()
-        append(run_dir, "reissue", st["cur"], {"code_hash": chash(code), "choice": "continue"})
+        append(run_dir, "reissue", st["cur"], {"code_hash": chash(code), "choice": "continue",
+                                               "person": _newest_person(run_dir)})
         prompt = render_prompt(card, run_dir, i, code)
         out = os.path.join(run_dir, card["stages"][i]["out"])
         return OK, ("stage_runner: resumed at step %s (%d of %d). A FRESH code word was issued and the "
@@ -681,7 +746,8 @@ def do_snooze(run_dir):
         st = derive(load_record(run_dir))
         if st["complete"] or st["cur"] == "COMPLETE" or st["abandoned"]:
             return NOTHING, "stage_runner: the run is finished or abandoned; nothing to quiet."
-        append(run_dir, "snoozed", st["cur"], {"choice": "leave-it"})
+        append(run_dir, "snoozed", st["cur"], {"choice": "leave-it",
+                                               "person": _newest_person(run_dir)})
         return OK, "stage_runner: left alone. The pickup question stays quiet for this run until it is brought up."
 
 
@@ -732,6 +798,10 @@ def get_ctx(args):
         if st["card_sha"] and card_sha(st["card"], card) != st["card_sha"]:
             print("stage_runner: DAMAGED -- card changed mid-run (the card or a prompt file was edited "
                   "after the run started). Everything but `verify` refuses.")
+            return None, DAMAGED
+        if st["cur"] != "COMPLETE" and stage_index(card, st["cur"]) < 0:
+            print("stage_runner: record damaged: the open step %r is not in the card. "
+                  "Everything but 'verify' refuses." % st["cur"])
             return None, DAMAGED
         check_order(lines, card)
     except OSError as e:
@@ -950,15 +1020,20 @@ def cmd_abandon(a):
     except (OSError, ValueError):
         pass
     note = ""
+    tag = "abandoned-"
     if run_dir:
         try:
             lines = load_record(run_dir)
+            st = derive(lines)
             rid = rid or lines[0]["run"]
-            append(run_dir, "abandoned", derive(lines)["cur"], {"choice": "start-over"})
+            if st["complete"] or st["cur"] == "COMPLETE":
+                tag = "done-"        # a finished run set aside was never abandoned mid-way
+            append(run_dir, "abandoned", st["cur"], {"choice": "start-over",
+                                                     "person": _newest_person(run_dir)})
         except (Damaged, OSError, IndexError, KeyError):
             note = " (the record does not verify, so no abandoned line was written)"
-    dst = _set_aside(mp, "abandoned-" + (rid or (os.path.basename(run_dir) if run_dir else None)
-                                          or "unknown-%d" % int(time.time())))
+    dst = _set_aside(mp, tag + (rid or (os.path.basename(run_dir) if run_dir else None)
+                                or "unknown-%d" % int(time.time())))
     print("stage_runner: run set aside%s. Marker moved to %s. Nothing was deleted." % (note, dst))
     return OK
 
@@ -988,9 +1063,21 @@ def cmd_verify(a):
         lines = load_record(f[1])
         st = derive(lines)
         try:
-            check_order(lines, load_card(st["card"]))
-        except (OSError, ValueError):
-            pass                      # an unreadable card is reported by the other commands
+            card = load_card(st["card"])
+        except (OSError, ValueError) as e:
+            print("DAMAGED: the run's card is unreadable (%s)" % e)
+            return DAMAGED
+        try:
+            if st["card_sha"] and card_sha(st["card"], card) != st["card_sha"]:
+                print("DAMAGED: card changed mid-run")
+                return DAMAGED
+            check_order(lines, card)
+        except OSError as e:
+            print("DAMAGED: the run's card is unreadable (%s)" % e)
+            return DAMAGED
+        except Damaged as e:
+            print("DAMAGED: %s" % e)
+            return DAMAGED
     except Damaged as e:
         print("DAMAGED: %s" % e)
         return DAMAGED
@@ -1000,9 +1087,47 @@ def cmd_verify(a):
     except OSError:
         pass
     ghosts = [l["data"]["turn"] for l in lines if l["event"] == "person" and l["data"]["turn"] not in logged]
+    pids, ptimes = set(), {}
+    try:
+        for ln in open(os.path.join(f[1], "person.log"), encoding="utf-8"):
+            ln = ln.strip()
+            if not ln:
+                continue
+            pid_, _, t_ = ln.partition("\t")
+            pids.add(pid_)
+            try:
+                ptimes[pid_] = float(t_)
+            except ValueError:
+                pass
+    except OSError:
+        pass
+    nprompts = []
+    last_reissue_t = None
+    for l in lines:
+        e = l["event"]
+        if e in ("reissue", "abandoned", "snoozed"):
+            rec = l["data"].get("person")
+            where = "line %d" % (l["seq"] + 1)
+            if not rec:
+                nprompts.append("%s at %s: no person prompt recorded" % (e, where))
+            elif rec.get("id") not in pids:
+                nprompts.append("%s at %s: its person prompt %r is not in person.log"
+                                % (e, where, rec.get("id")))
+            elif last_reissue_t is not None and ptimes.get(rec.get("id"), 0.0) + 1.0 < last_reissue_t:
+                nprompts.append("%s at %s: its person prompt is older than the last reissue"
+                                % (e, where))
+        if e == "reissue":
+            last_reissue_t = l["t"]
     if ghosts:
         print("UNLOGGED: person line not written by the mover: turn %s (%d line%s)"
               % (", ".join(ghosts), len(ghosts), "" if len(ghosts) == 1 else "s"))
+        ghosts_report = True
+    else:
+        ghosts_report = False
+    if nprompts:
+        print("UNLOGGED: a resume/abandon/snooze without a logged person prompt (%d):\n%s"
+              % (len(nprompts), "\n".join("- " + x for x in nprompts)))
+    if ghosts_report or nprompts:
         return CHECKFAIL
     print("OK %d lines" % len(lines))
     return OK

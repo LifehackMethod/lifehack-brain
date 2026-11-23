@@ -96,14 +96,11 @@ def _run_state(workdir):
         return (None, None, None, None, None, None)  # no marker at all: silent
     try:
         f = find_run(workdir)
-    except Damaged:
-        return (None, None, None, None, None, "the run marker is not a JSON object naming a run folder")
+    except Damaged as e:  # a non-object marker, or a run folder outside the marker's
+        return (None, None, None, None, None, str(e))  # folder: the check lives in find_run
     if not f:
         return (None, None, None, None, None, "the run marker is unreadable")
     wd, run_dir = f
-    rwd, rrun = os.path.realpath(wd), os.path.realpath(run_dir)  # /tmp is a symlink on macOS
-    if not (rrun + os.sep).startswith(rwd + os.sep) and rrun != rwd:
-        return (None, None, None, None, None, "run folder outside this folder")
     try:
         lines, st, card = _look(wd, run_dir)
     except Damaged as e:
