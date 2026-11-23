@@ -65,7 +65,7 @@ try:
 except Exception:
     _NOTES_ROOT = None
 DRIVE = _NOTES_ROOT or os.path.expanduser("~/.cache/ingest-gate")
-PROVENANCE_LOG = os.environ.get("INGEST_PROVENANCE_LOG", f"{DRIVE}/state/status/ingest-provenance.jsonl")
+PROVENANCE_LOG = os.environ.get("INGEST_PROVENANCE_LOG", f"{DRIVE}/status/ingest-provenance.jsonl")
 
 # POSTURE (Window 5): "enforce" (default since the W5 cutover 2026-06-20) = fail-CLOSED — a read that
 # can't be gated is DENIED — for every channel EXCEPT email. Email stays fail-open even under enforce: it

@@ -1,7 +1,7 @@
 {
   "_note": "EXAMPLE to edit: copy to <personal code folder>/tools/grand-central/setup/status_lights.json and replace every placeholder path with the person's own. The morning proof file does not exist until the morning job writes its proof line there.",
   "desk": "example-desk",
-  "status_dir": "/path/to/notes/state/status",
+  "status_dir": "/path/to/notes/status",
   "pass_file": "/path/to/gc-drop/facts/_reader_pass.json",
   "ingest_status": "/path/to/data/front-room/ingest-status.json",
   "morning_proof": "/path/to/data/state/morning/last-proof.txt",

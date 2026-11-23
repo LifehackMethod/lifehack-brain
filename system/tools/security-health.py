@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""security-health.py — compose `state/status/_security.json` ⛔ not a repo path — written under
-the resolved AI Brain root (`<brain_root>/state/status/_security.json`, see `resolve_brain_root()`
+"""security-health.py — compose `status/_security.json` ⛔ not a repo path — written under
+the resolved AI Brain root (`<brain_root>/status/_security.json`, see `resolve_brain_root()`
 below), never committed to this repo — for a Security-tab dashboard
 (PORTED 2026-08-14 from the donor repo's system/tools/security-health.py).
 
@@ -20,7 +20,7 @@ Channels match the donor Helm dashboard's 5 Security-tab preview rows, kept for 
   injection · l0 (L0 sanitizer) · cal_email_defense · web_fetch · mcp (MCP surface).
 
 ⚠ NO DASHBOARD CONSUMES THIS TILE YET. Helm itself is an excluded personal-desk dashboard
-(the Desk Ruling) and does not ship here — this file's `state/status/_security.json` output
+(the Desk Ruling) and does not ship here — this file's `status/_security.json` output
 currently has no reader. What DOES have a live reader: the `emit_finding()` calls in
 `_emit_findings()` below, which land in Hospital's findings store exactly like every other
 detector in this repo, and ARE read back by `findings_reader.py` / `health_line.py`. Ported
@@ -28,7 +28,7 @@ anyway per the migration law (broken/half-consumed is fine; the tile-write half 
 infrastructure waiting on a dashboard, not dead code) — flagged plainly in this port's report
 rather than silently claimed as fully wired.
 
-Tile schema (`state/status/_security.json`):
+Tile schema (`status/_security.json`):
   { schema_version, pulse_job, emit_mode, stale_after_s, last_run, rc,
     status: OK|FLAGS|DANGER,
     channels: [{key,label,value,tone}],   # tone ∈ g-a(ok) g-b(warn) g-c(bad) ''(neutral)
@@ -74,7 +74,7 @@ try:
 except Exception:
     _ROOT_SOURCE, _ROOT = None, None
 
-STATUS = f"{_ROOT}/state/status" if _ROOT else None
+STATUS = f"{_ROOT}/status" if _ROOT else None
 HOOKS = f"{CODE_ROOT}/system/hooks"
 OUT = f"{STATUS}/_security.json" if STATUS else None
 SETTINGS = f"{CODE_ROOT}/.claude/settings.json"
@@ -274,7 +274,7 @@ _TONE_STATUS = {"g-a": "OK", "": "OK", "g-b": "NEEDS_REVIEW", "g-c": "ERROR"}
 
 ID_MIRRORED_BY_SENTINEL = "injection"
 # ── WHY THE `injection` CHANNEL EMITS NO FINDING ──────────────────────────────────────────
-# It is a MIRROR, not a measurement. read_sentinel() above reads `state/status/sentinel.json`
+# It is a MIRROR, not a measurement. read_sentinel() above reads `status/sentinel.json`
 # — the tile `sentinel-health.py` (already shipped in this repo) itself writes — and
 # republishes its verdict. So both producers would emit an ERROR finding derived from ONE
 # underlying fact (Sentinel's DANGER count), and Hospital, which cannot know they share a

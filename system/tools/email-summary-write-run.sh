@@ -13,7 +13,7 @@
 #      NO claude token (the write path is mechanical). Writes ONLY: the v2 store (via the janitor's
 #      own HARD-guarded writer), the health tile (via the janitor), a machine-local {rc,ts} proof.
 #      A write ERROR no longer texts from here (2.5c, 2026-10-27): job-run.sh is the one alarm.
-# REDIRECT: v2 store threads-v2/ + tile state/status/email-summary.json (both written by the python);
+# REDIRECT: v2 store threads-v2/ + tile status/email-summary.json (both written by the python);
 #      machine-local proof $OUT_DIR/last-run.json (trap) + $OUT_DIR/last-write.log (the run's output).
 # ⚖ PORT NOTE: donor's PRIMARY-machine gate (state/primary-machine marker election between two machines)
 #      is DELETED, not translated — a student has one computer, so there is nothing to elect between.
@@ -70,7 +70,7 @@ _on_exit() {
   # 2026-10-27 (self-monitoring 2.5c): this runner no longer sends its own text. job-run.sh is now the ONE
   # alarm for this job (it pages on the 2nd consecutive miss and sends the recovery). The trap still writes
   # last-run.json and the Drive status tile, so the failure stays visible; rc=75 (no gws creds) is a stand-down.
-  # Drive-visible status tile (state/status/email-summary-write.json) — emitted on EVERY outcome so
+  # Drive-visible status tile (status/email-summary-write.json) — emitted on EVERY outcome so
   # system-health never renders this job NO-TILE while it is silently dying (the 2026-08-27 failure).
   write_status_tile "$SUBSYSTEM_NAME" "$RC" $(( STALE_AFTER_HOURS * 3600 )) \
     "email v2 store write ok" "email v2 store write failed — store not refreshing" \

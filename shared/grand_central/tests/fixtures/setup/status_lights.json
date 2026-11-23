@@ -1,7 +1,7 @@
 {
   "_note": "SYNTHETIC test fixture: tmp-style paths for status_lights.py. Same shape as a real setup/status_lights.json.",
   "desk": "example-desk",
-  "status_dir": "/tmp/gc-example/notes/state/status",
+  "status_dir": "/tmp/gc-example/notes/status",
   "pass_file": "/tmp/gc-example/drop/facts/_reader_pass.json",
   "ingest_status": "/tmp/gc-example/data/front-room/ingest-status.json",
   "morning_proof": "/tmp/gc-example/data/state/morning/last-proof.txt",

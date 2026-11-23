@@ -14,7 +14,7 @@ One run, in order:
                      apply-label    an approved rule matches the new item (the label is the rule's folder/kind)
                      flag-urgent    subject has a clock word or job phrase from the keywords table
                    Deduped on (kind, subject_ref) over ALL statuses, so a dismissed question is never re-asked.
-  6. tile          <NOTES>/state/status/gc-daily.json  (OK | WARN | ERROR, counts).
+  6. tile          <NOTES>/status/gc-daily.json  (OK | WARN | ERROR, counts).
   7. watermark     source_state['daily'] = this run's START time, set ONLY after every step above succeeded.
 
 HARD LIMITS: this file never writes to Gmail, never imports or calls the mover, never imports a Google module.
@@ -64,7 +64,7 @@ def _parse(s):
 def tile_path():
     import gc_settings
     root = gc_settings.notes_root()       # AGE_NOTES_ROOT, else gc.json notes_root
-    return os.path.join(root, "state", "status", "gc-daily.json")
+    return os.path.join(root, "status", "gc-daily.json")
 
 
 # ---------------------------------------------------------------------------------------------- watermark / window
@@ -346,7 +346,7 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true", help="skip pull/backup/watermark/tile file; use the existing DB")
     ap.add_argument("--max-threads", type=int, default=DEFAULT_MAX_THREADS)
     ap.add_argument("--first-days", type=int, default=DEFAULT_FIRST_DAYS, help="window for the very first run")
-    ap.add_argument("--tile", default=None, help="tile path (default <NOTES>/state/status/gc-daily.json)")
+    ap.add_argument("--tile", default=None, help="tile path (default <NOTES>/status/gc-daily.json)")
     a = ap.parse_args(argv)
     res = run(max_threads=a.max_threads, dry_run=a.dry_run, first_days=a.first_days)
     tile = build_tile(res)

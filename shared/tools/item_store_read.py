@@ -357,7 +357,7 @@ def active_counts_by_type():
 # (the writer stopped running). Independent of the writers so it fires even when a writer is down.
 # ---------------------------------------------------------------------------
 ITEM_FRESHNESS_MAX_STALE_HOURS = 30   # writers run ~daily; DEGRADED if the newest record is older than this
-ITEM_STATUS_TILE_PATH = os.path.join(DRIVE, "state", "status", "item-store.json")
+ITEM_STATUS_TILE_PATH = os.path.join(DRIVE, "status", "item-store.json")
 
 # ── "never configured" signal — the SAME gate the two writers themselves preflight on
 # (calendar-store-sync-run.sh / tasks-store-sync-run.sh, which as of 2026-08-15 both call
@@ -392,7 +392,7 @@ def _google_configured():
 
 
 def _write_item_store_tile(status, summary, payload):
-    """The ONE tile writer for state/status/item-store.json — factored out of freshness_check() so
+    """The ONE tile writer for status/item-store.json — factored out of freshness_check() so
     both its branches (the never-configured carve-out and the normal OK/ERROR path) share one write
     path instead of two. Behavior unchanged from before the carve-out existed."""
     payload = dict(payload)
@@ -404,7 +404,7 @@ def _write_item_store_tile(status, summary, payload):
     # system/tools/emit_status.py, and the import below resolves — it is the preferred path.
     # The ImportError branch stays as a fallback: without it, an emit_status failure would be
     # swallowed by a bare `except Exception`, freshness_check() would return as if it had
-    # succeeded, and state/status/item-store.json would NEVER be created — a job that reports
+    # succeeded, and status/item-store.json would NEVER be created — a job that reports
     # success and leaves no artifact (the exact "prints PASSED, writes no file" antipattern this
     # repo has a measured history of). Mirrors shared/tools/email_summary_sync.py's
     # write_status_tile(): try the real validator first, ImportError falls through to a

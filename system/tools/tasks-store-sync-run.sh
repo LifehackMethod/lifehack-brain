@@ -69,7 +69,7 @@ _on_exit() {
       --message "tasks_store_sync --sync errored (rc=$RC) — tasks store not refreshing. See $STATUS_ARTIFACT." \
       || echo "[$SUBSYSTEM_NAME] WARN: the failure alert (notify-send) itself failed (rc=$?)" >&2
   fi
-  # Drive-visible status tile (state/status/tasks-store-sync.json) — emitted on EVERY outcome so
+  # Drive-visible status tile (status/tasks-store-sync.json) — emitted on EVERY outcome so
   # system-health never renders this job NO-TILE while it is silently dying (the 2026-08-27 failure).
   write_status_tile "$SUBSYSTEM_NAME" "$RC" $(( STALE_AFTER_HOURS * 3600 )) \
     "tasks store sync ok" "tasks store sync failed — store not refreshing" \

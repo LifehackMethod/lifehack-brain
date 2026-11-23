@@ -9,7 +9,7 @@ NO LLM (mechanical + ported only):
                           FORMAT-TOLERANT by contract — the journal writes six shapes and all
                           six are read; see "JOURNAL FORMAT TOLERANCE" below before touching it.
                           Locked by system/tools/test_planning_diary_capture.py — run it after any edit.
-  - state/status/*.json : each desk's current-state snapshot (labelled "as of last_run")
+  - status/*.json : each desk's current-state snapshot (labelled "as of last_run")
   - Google Tasks        : tasks completed on the date (Life Map list), via gws
   - Calendar            : timed events that occurred on the date (personal + Agent Ops), via gws
 
@@ -51,7 +51,7 @@ if not DRIVE:
         "Set it once:  python3 shared/brain_root.py --set \"<the folder your notes live in>\"\n")
     sys.exit(2)
 JOURNAL = os.path.join(DRIVE, "system/journal.md")
-STATUS_DIR = os.path.join(DRIVE, "state/status")
+STATUS_DIR = os.path.join(DRIVE, "status")
 # The planning desk's folder comes from the desk list (shared/desk_list.py — the ONE reader of
 # <notes>/desks/desk-registry.yaml), NEVER a literal `desks/cal`: the owner has ruled the planning
 # desk's folder will move (desks/cal → desks/planning, one sitting, later), and the registry row's

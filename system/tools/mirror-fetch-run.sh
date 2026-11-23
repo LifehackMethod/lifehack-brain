@@ -86,7 +86,7 @@ DRIVE="$(python3 "$CODE_ROOT/shared/brain_root.py" --quiet 2>/dev/null)"
 if [ -n "$DRIVE" ]; then
   _STATUS_STR="$( [ "$RC" -eq 0 ] && echo "OK" || echo "HELD" )"
   _SUMMARY="$( [ "$RC" -eq 0 ] && echo "fetched origin --prune ok" || echo "fetch held (rc=$RC)" )"
-  MF_TILE="$DRIVE/state/status/mirror-fetch.json" \
+  MF_TILE="$DRIVE/status/mirror-fetch.json" \
   MF_NOW="$_NOW" MF_RC="$RC" MF_STATUS="$_STATUS_STR" MF_SUMMARY="$_SUMMARY" \
   MF_BEHIND="$BEHIND" MF_AHEAD="$AHEAD" \
   python3 -c "

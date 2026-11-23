@@ -61,7 +61,7 @@ except Exception:
     _BR_PATH = None
 _DATA_ROOT = _BR_PATH or os.path.expanduser("~/.cache/lifehack-email-convert")
 EMAIL_READ_LOG = os.environ.get(
-    "EMAIL_READ_LOG", os.path.join(_DATA_ROOT, "state", "status", "email-reads.jsonl"))
+    "EMAIL_READ_LOG", os.path.join(_DATA_ROOT, "status", "email-reads.jsonl"))
 
 # Heuristic injection scan → route through the ON-PATH ingest gate (shared/gate/ingest_gate.py).
 # THE EMAIL-ROUTING HOLE (now closed): a scan that only prints to stderr never reaches the Sentinel

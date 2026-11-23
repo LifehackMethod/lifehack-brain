@@ -99,11 +99,11 @@ _on_exit() {
   [ "${RC:-1}" -ne 0 ] && _summary="planning-vault-weekly run failed (rc=${RC:-1})"
   python3 -c "
 import json, os
-os.makedirs('$DRIVE/state/status', exist_ok=True)
+os.makedirs('$DRIVE/status', exist_ok=True)
 d={'schema_version':1,'emit_mode':'manual','last_run':'$(date -u +%FT%TZ)','rc':${RC:-1},'stale_after_s':$STALE_AFTER_S,'status':'$_status','summary':'$_summary','no_pulse':True}
-tmp='$DRIVE/state/status/planning-vault-weekly.json.tmp'
+tmp='$DRIVE/status/planning-vault-weekly.json.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
-os.replace(tmp,'$DRIVE/state/status/planning-vault-weekly.json')
+os.replace(tmp,'$DRIVE/status/planning-vault-weekly.json')
 " || echo "[${SUBSYSTEM_NAME}] WARN: status tile write failed (non-fatal)" >&2
 }
 trap _on_exit EXIT INT TERM

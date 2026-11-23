@@ -529,7 +529,7 @@ fi
 # fails the daemon; skipped entirely if no notes root is configured (fresh install, nothing to watch
 # yet — system-health.py degrades the same way on the read side).
 if [ "$MODE" != "--status" ] && [ -n "$NOTES_ROOT" ]; then
-  python3 - "$STATE" "$NOTES_ROOT/state/status" <<'PYEOF' 2>/dev/null
+  python3 - "$STATE" "$NOTES_ROOT/status" <<'PYEOF' 2>/dev/null
 import json, sys, time, os
 state_path, out_dir = sys.argv[1], sys.argv[2]
 def iso(epoch):

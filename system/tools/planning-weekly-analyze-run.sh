@@ -352,7 +352,7 @@ do_work() {
   # ── STATUS TILE EMIT — planning-weekly-analyze runs weekly; a health sweeper watches this tile
   #    (stale_after_s=604800 = 7 days). CR-9 step 2(c) (move 18, one tile home): through the ONE
   #    writer, emit_status.py, into <brain>/status/ — was a hand-rolled json.dump second writer
-  #    under state/status/. The brain root comes from shared/brain_root.py ($DRIVE), never a
+  #    under status/. The brain root comes from shared/brain_root.py ($DRIVE), never a
   #    hard-coded desk folder; a contract violation exits non-zero and is named, not swallowed.
   printf '{"iso_week": "%s", "no_pulse": true}' "$ISO_WEEK" | \
     python3 "$CODE_ROOT/system/tools/emit_status.py" \

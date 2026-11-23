@@ -204,7 +204,7 @@ fi
 # ── STATUS TILE EMIT — planning-analyze is chained from planning-vault and runs nightly; a health sweeper
 #    watches this tile (stale_after_s=86400). ──
 _ANALYZE_NOW="$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")"
-_ANALYZE_STATUS_DIR="$DRIVE/state/status"
+_ANALYZE_STATUS_DIR="$DRIVE/status"
 _ANALYZE_TILE="$_ANALYZE_STATUS_DIR/planning-analyze.json"
 _ANALYZE_STATUS="$( [ "$_PLANNING_ANALYZE_RC" -eq 0 ] && echo "OK" || echo "ERROR" )"
 _ANALYZE_SUMMARY="$( [ "$_PLANNING_ANALYZE_RC" -eq 0 ] && echo "planning-analyze panel ok — dominoes-draft.md written" || echo "planning-analyze panel failed — dominoes-draft.md missing" )"

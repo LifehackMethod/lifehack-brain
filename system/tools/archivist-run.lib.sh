@@ -75,7 +75,7 @@ ARCH_MODEL="${ARCH_MODEL:-$MODEL_ID_MEDIUM}"   # medium tier: mechanical/structu
 
 _alog() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${ARCH_LABEL}: $*"; }
 
-# ── status tile: one shared archivist.json under state/status/, each mode owns its own sub-key ──
+# ── status tile: one shared archivist.json under status/, each mode owns its own sub-key ──
 _write_tile() {  # args: status count summary
   local status="${1:-SILENT}" count="${2:-0}" summary="${3:-}"
   [ -n "$DATA" ] || { _alog "WARN: no data root — skipping tile write."; return 0; }
@@ -84,7 +84,7 @@ _write_tile() {  # args: status count summary
   python3 -c 'import json,sys; print(json.dumps({sys.argv[1]: {"finding_count": int(sys.argv[2]), "headline": sys.argv[3]}}))' \
     "$ARCH_MODE" "${count:-0}" "$summary" | \
     python3 "$CODE_ROOT/system/tools/emit_status.py" \
-      --out "$DATA/state/status/archivist.json" --desk archivist --pulse-job "archivist-$ARCH_MODE" \
+      --out "$DATA/status/archivist.json" --desk archivist --pulse-job "archivist-$ARCH_MODE" \
       --stale-after-s 1209600 --status "$status" --rc 0 --summary "$summary" --json - || \
     _alog "WARN: tile write failed (non-fatal)"
 }

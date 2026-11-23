@@ -254,6 +254,20 @@ def resolve_brain_root():
     return None, None
 
 
+# ── WHERE STATUS TILES LIVE: <brain>/status/ — the one name, asked here (2026-11-23) ────────────────
+# Canon puts status tiles at <brain>/status/ (canon/data-layout.md, canon/status-emission-sop.md);
+# the old home <brain>/state/status/ was retired with `state/` itself (Enver's 2026-11-12 ruling:
+# "the root folder is the ClaudeOps desk = the brain folder, and `state/` goes"). Python callers use
+# status_dir(root); shell callers write "$DRIVE/status" and name this constant in a comment.
+STATUS_DIR_NAME = "status"
+
+
+def status_dir(root):
+    """The status-tile folder under a resolved brain root: <root>/status. Pure path math — it does
+    not resolve the root (callers already hold it from resolve_brain_root) and does not create it."""
+    return os.path.join(root, STATUS_DIR_NAME)
+
+
 def read_persisted():
     """The RAW value in BRAIN_ROOT_CONFIG, or None. Deliberately NOT `resolve_brain_root()`.
 

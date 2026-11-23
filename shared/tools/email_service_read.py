@@ -47,13 +47,13 @@ THREADS_V2_DIR = os.path.join(STORE_ROOT, "threads-v2")
 # Deep-cold tier (Wr-5): very old cold records are RELOCATED here (never deleted); the adapter checks
 # it as a fallback so a deep-cold record is still fully retrievable.
 THREADS_V2_COLD_DIR = os.path.join(STORE_ROOT, "threads-v2-cold")
-STATUS_TILE_PATH = os.path.join(DRIVE, "state", "status", "email-summary.json")
+STATUS_TILE_PATH = os.path.join(DRIVE, "status", "email-summary.json")
 
 # LOUD FALLBACK (2026-07-11, "Grand Central" CT-6): every store-MISS is appended here so a coverage gap
 # SURFACES instead of hiding behind a silent raw re-fetch. A desk falling back to raw is expected for
 # brand-new mail (MISS-SYNCLAG — Grand Central hasn't pulled it yet); a MISS-NEW is a GENUINE gap worth
-# watching. `grep MISS-NEW state/status/email-fallback-events.jsonl` shows real breaks.
-FALLBACK_LOG_PATH = os.path.join(DRIVE, "state", "status", "email-fallback-events.jsonl")
+# watching. `grep MISS-NEW status/email-fallback-events.jsonl` shows real breaks.
+FALLBACK_LOG_PATH = os.path.join(DRIVE, "status", "email-fallback-events.jsonl")
 # Flags that mean "the store could NOT serve it" → logged. DISABLED (blue-green off) is config, not a gap.
 _FALLBACK_FLAGS = {"MISS-NEW", "MISS-SYNCLAG", "STORE-TAMPERED"}
 

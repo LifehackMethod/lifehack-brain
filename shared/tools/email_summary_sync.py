@@ -135,7 +135,7 @@ DEEP_COLD_DAYS = 365
 RECENCY_FLOOR_DAYS = 30
 
 # Health tile the janitor emits (best-effort — see write_status_tile()).
-STATUS_TILE_PATH = os.path.join(DRIVE, "state", "status", "email-summary.json")
+STATUS_TILE_PATH = os.path.join(DRIVE, "status", "email-summary.json")
 
 # Label ID → display-name cache. Populated by resolve_label_ids() from the one labels.list call;
 # read by get_thread_metadata() so stored labels[] are display NAMES, not raw Label_* IDs (a desk

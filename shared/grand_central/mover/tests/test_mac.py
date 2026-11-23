@@ -109,7 +109,7 @@ class Usage(Isolated):
         self.assertNotIn("timer has not run", json.dumps(t))
 
     def test_default_paths_come_from_settings(self):
-        self.assertTrue(U.tile_path().endswith("/state/status/gc-mover.json"))
+        self.assertTrue(U.tile_path().endswith("/status/gc-mover.json"))
         self.assertTrue(U.tile_path().startswith(gc_settings.notes_root()))
         self.assertEqual(U.mover_dir(), gc_settings.gc("mover_dir"))
         self.assertEqual(self.tile([])["desk"], gc_settings.pulse_desk())

@@ -242,11 +242,11 @@ if [ "$CADENCE" = "daily" ]; then
   _DIARY_SUMMARY="$( [ "$RC" -eq 0 ] && echo "daily diary capture ok" || echo "daily diary capture failed (planning-diary-capture.py)" )"
   python3 -c "
 import json, os
-os.makedirs('$DRIVE/state/status', exist_ok=True)
+os.makedirs('$DRIVE/status', exist_ok=True)
 d={'schema_version':1,'emit_mode':'manual','last_run':'$_DIARY_NOW','rc':$RC,'stale_after_s':93600,'status':'$_DIARY_STATUS','summary':'$_DIARY_SUMMARY','no_pulse':True}
-tmp='$DRIVE/state/status/planning-diary.json.tmp'
+tmp='$DRIVE/status/planning-diary.json.tmp'
 json.dump(d,open(tmp,'w'),indent=2)
-os.replace(tmp,'$DRIVE/state/status/planning-diary.json')
+os.replace(tmp,'$DRIVE/status/planning-diary.json')
 " || echo "[planning-diary] WARN: status tile write failed (non-fatal)" >&2
   exit "$RC"   # daily is SILENT — no buzz
 fi

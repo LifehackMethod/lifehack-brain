@@ -54,7 +54,7 @@
 # REGISTERS successfully but is silently denied at FIRE time (permission, a wrong path, anything)
 # would look identical to a healthy install if the only check is "is the crontab entry there." It is
 # NOT the only check here: the proof this design relies on is downstream of the scheduler entirely —
-# each job's OWN tile write (state/status/<job>.json, produced by that job's REAL work, not by this
+# each job's OWN tile write (status/<job>.json, produced by that job's REAL work, not by this
 # installer) and `health-deadman-check.sh` watching for that tile going stale. If cron itself were
 # silently blocked, tiles would stop refreshing and the deadman would flag it within 45 minutes —
 # UNLESS the deadman's OWN cron entry is equally blocked, which this design cannot rule out by
@@ -779,7 +779,7 @@ install_mac_linux() {
     echo "[install-schedulers] REGISTRATION check (proves the entry exists, NOT that it will fire): crontab -l"
     echo "[install-schedulers] REAL verification (proves it actually RAN — do this in ~10 min): "
     echo "  bash system/tools/pulse.sh --status   # shows DUE/waiting per job, no side effects"
-    echo "  then check a tile's own last_run, e.g.: cat <your notes folder>/state/status/sentinel.json"
+    echo "  then check a tile's own last_run, e.g.: cat <your notes folder>/status/sentinel.json"
     echo "  A fresh last_run there was written by that job's REAL work — a registered-but-silently-"
     echo "  denied cron entry (the A38 failure class) would leave that timestamp stuck, not fake-fresh."
   else
@@ -941,7 +941,7 @@ install_windows() {
     echo "[install-schedulers] REGISTRATION check (proves the task exists, NOT that it will fire): schtasks /Query /TN Lifehack-Pulse"
     echo "[install-schedulers] REAL verification (proves it actually RAN — do this in ~10 min): "
     echo "  bash pulse.sh --status   # from Git Bash, in this repo's system/tools/"
-    echo "  then check a tile's own last_run under your notes folder's state/status/ — see the"
+    echo "  then check a tile's own last_run under your notes folder's status/ — see the"
     echo "  Mac/Linux branch's identical note above for why registration alone is not proof."
   fi
 }

@@ -753,5 +753,21 @@ class TestTheCompletePathAdviceIsTrueOnTheMachineItRunsOn(BrainRootCase):
                 self.assertIn("AI Brain", msg, f"{bad!r} under {os_name} names no example")
 
 
+class StatusDirIsCanonsHome(unittest.TestCase):
+    """Status tiles live at <brain>/status/ (canon/data-layout.md), never the retired
+    <brain>/state/status/ — the move of 2026-11-23 (plans/status-folder-move.plan.md)."""
+
+    def test_status_dir_is_brain_slash_status(self):
+        self.assertEqual(brain_root.status_dir("/tmp/brain"), os.path.join("/tmp/brain", "status"))
+
+    def test_status_dir_never_names_the_old_state_home(self):
+        self.assertNotIn("state", brain_root.status_dir("/tmp/brain").split(os.sep))
+
+    def test_status_dir_creates_nothing(self):
+        with tempfile.TemporaryDirectory() as root:
+            brain_root.status_dir(root)
+            self.assertEqual(os.listdir(root), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

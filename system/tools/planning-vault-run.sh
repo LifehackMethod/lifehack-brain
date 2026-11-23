@@ -67,7 +67,7 @@ python3 "$CODE_ROOT/system/tools/planning-vault-pull.py" "$@"; RC=$?
 # ── STATUS TILE EMIT — planning-vault is a daily cron-scheduled job, not a Pulse job; stale_after_s=86400
 #    (24h) for a health sweeper to watch this tile for staleness instead of tracking a heartbeat. ──
 _NOW="$(date -u +"%Y-%m-%dT%H:%M:%S+00:00")"
-_STATUS_DIR="$DRIVE/state/status"
+_STATUS_DIR="$DRIVE/status"
 _TILE="$_STATUS_DIR/planning-vault.json"
 _STATUS_STR="$( [ "$RC" -eq 0 ] && echo "OK" || echo "ERROR" )"
 _SUMMARY="$( [ "$RC" -eq 0 ] && echo "planning-vault pull ok" || echo "planning-vault pull failed (rc=$RC)" )"

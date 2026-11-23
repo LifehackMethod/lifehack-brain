@@ -22,7 +22,7 @@
 # USAGE (from a runner's EXIT trap, so failures tile too):
 #   source "$CODE_ROOT/system/tools/status-tile.lib.sh"
 #   write_status_tile "<job>" "$RC" <stale_after_s> "<ok summary>" "<err summary>" ["<standdown reason>"]
-# The tile lands at <brain>/state/status/<job>.json — the eponymous name system-health.py's
+# The tile lands at <brain>/status/<job>.json — the eponymous name system-health.py's
 # tile_for() resolves with ZERO alias entries.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -39,9 +39,11 @@ write_status_tile() {  # job rc stale_after_s ok_summary err_summary [standdown_
     echo "[$_job] WARN: no notes root — skipping status tile." >&2
     return 0
   fi
-  TILE_JOB="$_job" TILE_RC="$_rc" TILE_STALE="$_stale" TILE_OK="$_ok" TILE_ERR="$_err" TILE_SD="$_sd" TILE_ROOT="$_root" \
+  TILE_JOB="$_job" TILE_RC="$_rc" TILE_STALE="$_stale" TILE_OK="$_ok" TILE_ERR="$_err" TILE_SD="$_sd" TILE_ROOT="$_root" TILE_CODE_ROOT="$CODE_ROOT" \
   python3 - <<'PYEOF' || echo "[$_job] WARN: status tile write failed (non-fatal)." >&2
-import json, os, time
+import json, os, sys, time
+sys.path.insert(0, os.path.join(os.environ["TILE_CODE_ROOT"], "shared"))
+from brain_root import status_dir as _status_dir   # <brain>/status/ — the one name (brain_root.STATUS_DIR_NAME)
 job, root = os.environ["TILE_JOB"], os.environ["TILE_ROOT"]
 rc = int(os.environ["TILE_RC"]); stale = int(os.environ["TILE_STALE"])
 lt = time.localtime(); off = time.strftime("%z", lt); off = off[:3] + ":" + off[3:] if off else "+00:00"
@@ -54,7 +56,7 @@ elif rc == 75:
     d.update(status="OK", configured=False, summary="stood down: " + os.environ["TILE_SD"])
 else:
     d.update(status="ERROR", summary="%s (rc=%d)" % (os.environ["TILE_ERR"], rc))
-status_dir = os.path.join(root, "state", "status")
+status_dir = _status_dir(root)
 os.makedirs(status_dir, exist_ok=True)
 tile = os.path.join(status_dir, job + ".json")
 tmp = tile + ".tmp"

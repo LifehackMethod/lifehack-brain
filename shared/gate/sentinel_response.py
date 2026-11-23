@@ -50,7 +50,7 @@ DATA = _ROOT or os.path.expanduser("~/.cache/lifehack-sentinel")
 
 # All three are env-overridable so a test can point them at a temp directory. Production uses these.
 LOG = os.environ.get("SENTINEL_LOG", f"{DATA}/system/logs/sentinel-events.jsonl")
-STATUS = os.environ.get("SENTINEL_STATUS", f"{DATA}/state/status/sentinel.json")
+STATUS = os.environ.get("SENTINEL_STATUS", f"{DATA}/status/sentinel.json")
 # Machine-local by design: a pause is about THIS machine's run, and syncing it to another machine
 # would pause a session nobody there has looked at. Same config home as the notes-root pointer.
 PAUSE_FILE = os.environ.get("SENTINEL_PAUSE_FILE",

@@ -2,7 +2,7 @@
 # origin: 92a9739:mover/mover_usage.py
 """mover_usage.py - total the script's logged usage per day, compare to Google's ceilings (limits.py), write a status tile.
 Tracker only: it alerts at >=50% of any Google ceiling; it never throttles anything.
-  python3 mover_usage.py --tile /path/to/mover-usage.json [<mover_dir>/result.json]   (--tile defaults to <NOTES>/state/status/gc-mover.json)
+  python3 mover_usage.py --tile /path/to/mover-usage.json [<mover_dir>/result.json]   (--tile defaults to <NOTES>/status/gc-mover.json)
 Also WARNs if the timer has been silent for over 1h (permission expiry).
 """
 import argparse, collections, datetime, json, os, sys
@@ -21,8 +21,8 @@ def mover_dir():
 
 
 def tile_path():
-    """<notes>/state/status/gc-mover.json, the notes folder from the one settings loader."""
-    return os.path.join(gc_settings.notes_root(), "state", "status", "gc-mover.json")
+    """<notes>/status/gc-mover.json, the notes folder from the one settings loader."""
+    return os.path.join(gc_settings.notes_root(), "status", "gc-mover.json")
 
 
 STALE_AFTER_S = 3600   # the timer runs every 15 min; an hour of silence means it stopped
