@@ -123,6 +123,50 @@ def _registered_hook_basenames(code_root):
     return None
 
 
+def _registered_hook_dirs(code_root):
+    """Where registered hooks ACTUALLY live, read from the wiring — not assumed.
+
+    ⚠ FIXED 2026-11-08. `inv_hooks_present` used to resolve every registered basename against
+    `system/hooks/` alone. That is a guess, and it was wrong: two hooks are registered from other
+    directories in this repo (`hooks/guard_harness_write.sh` at the repo root, and
+    `system/tools/mirror_line.sh`), so a live, correctly-registered control reported as
+    "missing" — a RED integrity tile naming two guards as absent while both were present and
+    firing. A false alarm on the integrity invariant is worse than no invariant: it teaches the
+    reader to discount the one check whose whole job is to be believed.
+
+    Returns the set of repo-relative directories that registered hook commands are rooted in,
+    always including `system/hooks` (the convention floor) so the behaviour is a superset of the
+    old one and can never resolve FEWER files than before."""
+    import re
+    dirs = {"system/hooks"}
+    for rel in ("system/hooks/registrations.json", ".claude/settings.json"):
+        path = os.path.join(code_root, rel)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                blob = f.read()
+        except Exception:
+            continue
+        # Registered commands look like: bash "${CLAUDE_PROJECT_DIR}/some/dir/hook.sh"
+        for m in re.finditer(r"\$\{CLAUDE_PROJECT_DIR\}/([A-Za-z0-9_./-]+\.(?:sh|py))", blob):
+            d = os.path.dirname(m.group(1))
+            if d:
+                dirs.add(d)
+    return dirs
+
+
+def _resolve_hook_path(code_root, base, dirs):
+    """First existing <code_root>/<dir>/<base> wins; falls back to the conventional
+    system/hooks/<base> so a genuinely missing file is still reported as missing (never silently
+    skipped)."""
+    for d in sorted(dirs):
+        cand = os.path.join(code_root, d, base)
+        if os.path.isfile(cand):
+            return cand
+    return os.path.join(code_root, "system/hooks", base)
+
+
 def _coverage_basenames(code_root):
     """Union of the filename-convention floor and whatever is actually registered (see module
     header for the full reasoning). Used by BOTH Invariant 1 (present + live) and Invariant 2
@@ -170,7 +214,8 @@ def _git(code_root, *args):
 # itself couldn't tell" (e.g. no git, git command failed/timed out, or the file isn't git-tracked).
 def inv_hooks_present(code_root):
     try:
-        paths = {base: os.path.join(code_root, "system/hooks", base)
+        _dirs = _registered_hook_dirs(code_root)
+        paths = {base: _resolve_hook_path(code_root, base, _dirs)
                  for base in _coverage_basenames(code_root)}
 
         missing, empty, not_executable, undetermined = [], [], [], []
@@ -178,7 +223,10 @@ def inv_hooks_present(code_root):
         # Git-tracked mode, when determinable — the axis a fresh clone actually inherits.
         git_modes = None  # None = could not determine at all; {} = determined, nothing tracked
         if os.path.isdir(os.path.join(code_root, ".git")):
-            r = _git(code_root, "ls-files", "-s", "--", "system/hooks/")
+            # Scope the mode lookup to EVERY directory a hook is registered from, not just
+            # system/hooks/ — otherwise a hook living elsewhere falls into "could not determine"
+            # (fixed 2026-11-08, same defect as the path resolution above).
+            r = _git(code_root, "ls-files", "-s", "--", *[d + "/" for d in sorted(_dirs)])
             if r.returncode == 0:
                 git_modes = {}
                 for line in r.stdout.splitlines():

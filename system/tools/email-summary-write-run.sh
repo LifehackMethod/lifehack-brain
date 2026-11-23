@@ -31,7 +31,16 @@ set -eo pipefail
 SUBSYSTEM_NAME="email-summary-write"
 STALE_AFTER_HOURS="4"                              # own absence horizon — just over one 3h cadence, so a SINGLE
                                                    #   missed run surfaces on the next tick (not after 4 misses)
-WATCHDOG_SECS="900"                                # a full --write-v2 touches Gmail per label; budget generously
+WATCHDOG_SECS="2700"                               # a full --write-v2 touches Gmail per label; budget generously.
+                                                   # ⚠ RAISED 900 -> 2700 on 2026-11-08. MEASURED, not guessed: on an
+                                                   #   install whose mailbox had grown to ~1730 threads, one run took
+                                                   #   1306s wall (17:00:01 start -> clean "v2 write DONE" at 17:21:47),
+                                                   #   i.e. 406s PAST the old 900s watchdog. At ~1150-1250 threads it
+                                                   #   finished inside 900s, so this is growth, not a hang. 2700s is
+                                                   #   ~2x the measured run and still only 25% of the 10800s cadence.
+                                                   #   ⛔ Pulse's own budget must EXCEED this or it kills the job first:
+                                                   #   PULSE_DEFAULT_JOB_BUDGET_S is 600s, so this job needs an explicit
+                                                   #   PULSE_BUDGET_EMAIL_SUMMARY_WRITE above 2700 in the cron env.
 CODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"  # residency: code from clone
 
 # The ONE headless-gws credential preflight (require_gws_credentials) — shared with the ten other
@@ -139,11 +148,20 @@ fi
 #    ONLY when the janitor itself broke (→ the trap buzzes + Pulse breaker counts). NOTE: stdout is REDIRECTED
 #    (not piped) so `wait` returns the python exit code, never a pipe's tail. ──
 WORKLOG="$OUT_DIR/last-write.log"
-do_work() {
-  python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --write-v2 --verbose > "$WORKLOG" 2>&1
-}
-
-do_work & WORK_PID=$!
+#    ⚠ FIXED 2026-11-08 — THE WATCHDOG USED TO KILL THE WRONG PROCESS. The work was wrapped in a
+#    `do_work()` function and backgrounded as `do_work &`, so $! was the PID of the SUBSHELL, not of
+#    the python3 it launched. `kill -9 "$WORK_PID"` therefore killed the wrapper and ORPHANED the real
+#    worker, which carried on and finished successfully minutes later — while this runner had already
+#    recorded rc=137, skipped the `--stamp-write-ok` below, and buzzed a critical page. Measured on one
+#    install: 131 such phantom failures between 2026-10-22 and 2026-11-08, every one of them over work
+#    that had in fact completed, with `last_write_run` frozen at 2026-10-25 so the downstream freshness
+#    dead-man reported "writer SILENT" on a writer that was writing every time. Backgrounding python3
+#    DIRECTLY makes $! the worker's own PID, so the watchdog kills what it means to kill.
+#    (It never escalated to Pulse's breaker either: the next 5-min tick hits the single-instance lock
+#    below, returns rc=0, and resets the fail streak before it can reach 3. That reset is a SEPARATE
+#    defect in pulse.sh and is deliberately NOT touched here.)
+python3 "$CODE_ROOT/shared/tools/email_summary_sync.py" --write-v2 --verbose > "$WORKLOG" 2>&1 &
+WORK_PID=$!
 ( sleep "$WATCHDOG_SECS"; kill -9 "$WORK_PID" 2>/dev/null ) & WD_PID=$!
 if wait "$WORK_PID" 2>/dev/null; then RC=0; else RC=$?; fi
 kill "$WD_PID" 2>/dev/null || true
