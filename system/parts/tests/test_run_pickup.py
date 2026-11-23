@@ -148,7 +148,11 @@ def test_a_fresh_run_gets_the_offer(tmp_path):
     out = session(r.wd).stdout
     assert "Unfinished run here: ptest, step 1/3 (talk)" in out
     assert "Continue, start over, or leave it?" in out
-    assert "resume|abandon|snooze --choice continue|start-over|leave-it" in out
+    assert "stage_runner.py EXACTLY once" in out
+    assert "resume --choice continue" in out and "abandon --choice start-over" in out \
+        and "snooze --choice leave-it" in out
+    assert "ask again, run nothing" in out  # anything off-menu: touch nothing
+    assert "put the new code word in the step's output file" in out
 
 
 def test_a_mid_run_gets_the_offer(tmp_path):

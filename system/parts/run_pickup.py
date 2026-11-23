@@ -130,11 +130,12 @@ def _offer(wd, cwd, lines, st, card):
     infolder = ""
     if wd and cwd and os.path.realpath(wd) != os.path.realpath(cwd):
         infolder = ", in %s" % _clean(os.path.basename(wd))
-    offer = ('Unfinished run here: %s, step %d/%d (%s), saved %s ago%s (another window may '
-             'still be on it). First, ask the person in one line: "You were on step %d of %d '
-             'of %s. Continue, start over, or leave it?" Then run stage_runner.py '
-             'resume|abandon|snooze --choice continue|start-over|leave-it.'
-             % (skill, n, total, mode, age, infolder, n, total, skill))
+    offer = ('Unfinished run here: %s, step %d/%d (%s). Ask: "Continue, start over, or leave '
+             'it?" Then run stage_runner.py EXACTLY once: resume --choice continue (put the new '
+             'code word in the step\'s output file) | abandon --choice start-over (only if '
+             'plainly start over) | snooze --choice leave-it. Anything else (e.g. "skip the '
+             'rest"): ask again, run nothing. Saved %s ago%s. Another window may be on it.'
+             % (skill, n, total, mode, age, infolder))
     if len(offer) > MAX_OFFER:
         offer = offer[:MAX_OFFER]
     _say(offer)
