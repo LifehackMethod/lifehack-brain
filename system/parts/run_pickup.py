@@ -107,6 +107,8 @@ def _run_state(workdir):
     try:
         lines, st, card = _look(wd, run_dir)
     except Damaged as e:
+        if "card" in str(e):  # a card change is not record damage: name the card
+            return (None, None, None, None, None, "the run's card changed mid-run")
         return (None, None, None, None, None, "%s/record.jsonl is damaged"
                 % _clean(os.path.basename(run_dir)))
     except (OSError, ValueError) as e:
