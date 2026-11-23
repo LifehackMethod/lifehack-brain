@@ -182,6 +182,11 @@ UNREGISTERED_OK = {
     # These two ARE hooks, and are unregistered ON PURPOSE — a different case from the entries
     # above, which are not hooks at all. Both are recorded here rather than registered so the
     # lint's warning stays true for every OTHER hook.
+    # Run pickup + working /next and /back (2026-11-23): staged, registered LAST per plans/run-pickup.plan.md
+    # (coordinator 0c7929, 2026-11-23); REMOVE these three at the registration step (plan 5.2).
+    "run_step_hook.sh": "staged; registered last per the run-pickup plan; remove at registration (5.2)",
+    "guard_run_commands.sh": "staged; registered last per the run-pickup plan; remove at registration (5.2)",
+    "run_pickup_hook.sh": "staged; registered last per the run-pickup plan; remove at registration (5.2)",
     "guard_mcp_connector_shape.sh": "staged but not yet registered; owned by another lane and "
                                     "already a known open item — recorded here so it is a stated "
                                     "gap rather than a silent one.",
