@@ -220,6 +220,111 @@ def cmd_where(a):
     return 0
 
 
+def selftest():
+    """The reader proves itself on both sides, in a temp folder with the real stage_runner:
+    known-good (a mid-run is offered, tagged, <= 400 chars) and known-bad (a damaged record
+    is a 'can't pick up'; a finished run is silent; a hostile name is filtered)."""
+    import shutil
+    import subprocess
+    import tempfile
+    ok = True
+
+    def report(label, passed, detail=""):
+        nonlocal ok
+        ok = ok and passed
+        print(f" [{'PASS' if passed else 'FAIL'}] {label}{(' -- ' + detail) if detail else ''}")
+
+    print("run_pickup --selftest (the read-only pickup reader, both sides)")
+    runner = os.path.join(HERE, "stage_runner.py")
+
+    def srun(args, wd):
+        return subprocess.run([sys.executable, runner] + args + ["--workdir", wd],
+            capture_output=True, text=True)
+
+    def sess(wd):
+        return subprocess.run([sys.executable, os.path.abspath(__file__), "session"],
+            input=json.dumps({"cwd": wd, "source": "startup"}),
+            capture_output=True, text=True, cwd=wd)
+
+    with tempfile.TemporaryDirectory() as td:
+        # card: two alone stages so the run can be driven with no person turns
+        pdir = os.path.join(td, "prompts")
+        os.makedirs(pdir)
+        card = os.path.join(td, "card.json")
+        stages = []
+        for i, (sid, head) in enumerate((("gather", "## Gather"), ("finish", "## Finish"))):
+            open(os.path.join(pdir, "%02d-%s.md" % (i + 1, sid)), "w", encoding="utf-8").write(
+                "Step {{ID}} of {{TOTAL}}. Code word: {{CODE}}. Write to {{OUT}}.\n")
+            stages.append({"id": sid, "mode": "alone", "prompt": "prompts/%02d-%s.md" % (i + 1, sid),
+                "out": "out/%02d-%s.md" % (i + 1, sid),
+                "checks": {"headings": [head], "min_words": 5, "code_word": True}})
+        json.dump({"skill": "selftest", "stop_limit": 3, "stages": stages}, open(card, "w", encoding="utf-8"))
+
+        # -- known-good: a mid-run gets the offer, tagged, <= 400 characters ------
+        wd = os.path.join(td, "wd")
+        os.makedirs(wd)
+        p = srun(["start", "--card", card], wd)
+        code = re.search(r"\): (RUN-[0-9A-Z]{6})", p.stdout)
+        report("selftest: the runner starts the throwaway run", p.returncode == 0 and bool(code))
+        q = sess(wd)
+        lines = [l for l in q.stdout.splitlines() if l.strip()]
+        offer = lines[0].split(TAG, 1)[1].strip() if lines and TAG in lines[0] else ""
+        report("known-good: a mid-run gets ONE tagged offer line",
+            q.returncode == 0 and len(lines) == 1 and lines[0].startswith(TAG)
+            and "Unfinished run here:" in offer, (lines[0][:90] if lines else "no line"))
+        report("known-good: the offer is within 400 characters", 0 < len(offer) <= 400,
+            "len %d" % len(offer))
+
+        # -- known-bad: a hostile skill name is filtered --------------------------
+        hcard = os.path.join(td, "hostile.json")
+        h = json.load(open(card, encoding="utf-8"))
+        h["skill"] = "Evil<script>alert(1)</script>&drop\ttab"
+        json.dump(h, open(hcard, "w", encoding="utf-8"))
+        hwd = os.path.join(td, "hwd")
+        os.makedirs(hwd)
+        srun(["start", "--card", hcard], hwd)
+        q = sess(hwd)
+        hostile = [l for l in q.stdout.splitlines() if l.strip()]
+        report("known-bad: a hostile name is filtered to the safe set",
+            len(hostile) == 1 and "Evilscriptalert1/scriptdroptab" in hostile[0]
+            and not re.search(r"[<>&\t]", hostile[0]),
+            hostile[0][-70:] if hostile else "no line")
+
+        # -- known-bad: a damaged record is a "can't pick up" ---------------------
+        recp = os.path.join(wd, "runs", os.listdir(os.path.join(wd, "runs"))[0], "record.jsonl")
+        objs = [json.loads(l) for l in open(recp, encoding="utf-8")]
+        objs[0]["data"]["skill"] = (objs[0]["data"].get("skill") or "") + "x"
+        open(recp, "w", encoding="utf-8").write(
+            "".join(json.dumps(o, sort_keys=True) + "\n" for o in objs))
+        q = sess(wd)
+        dmg = [l for l in q.stdout.splitlines() if l.strip()]
+        report("known-bad: a damaged record is one 'can't pick up' line, exit 0",
+            q.returncode == 0 and len(dmg) == 1 and "can't pick up" in dmg[0]
+            and dmg[0].startswith(TAG), dmg[0][-80:] if dmg else "no line")
+
+        # -- known-bad: a finished run is silent ----------------------------------
+        fwd = os.path.join(td, "fwd")
+        os.makedirs(fwd)
+        p = srun(["start", "--card", card], fwd)
+        code1 = re.search(r"\): (RUN-[0-9A-Z]{6})", p.stdout).group(1)
+        rid = os.listdir(os.path.join(fwd, "runs"))[0]
+        rd = os.path.join(fwd, "runs", rid)
+        open(os.path.join(rd, "out", "01-gather.md"), "w", encoding="utf-8").write(
+            "## Gather\n\nThe gathered words for this selftest step are here.\n\nCode word: %s\n" % code1)
+        p = srun(["advance"], fwd)
+        code2 = re.search(r"(RUN-[0-9A-Z]{6})", p.stdout).group(1)
+        open(os.path.join(rd, "out", "02-finish.md"), "w", encoding="utf-8").write(
+            "## Finish\n\nThe finishing words for this selftest step are here.\n\nCode word: %s\n" % code2)
+        p = srun(["advance"], fwd)
+        report("selftest: the throwaway run completes", p.returncode == 0
+            and "complete" in p.stdout.lower(), p.stdout.strip()[:60])
+        q = sess(fwd)
+        report("known-bad: a finished run is SILENT", q.returncode == 0 and not q.stdout.strip(),
+            repr(q.stdout[:60]))
+
+    print("SELFTEST:", "PASS" if ok else "FAIL")
+    return 0 if ok else 1
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(prog="run_pickup.py",
@@ -235,7 +340,11 @@ def main():
     sub("session", "stdin: the SessionStart payload; prints the offer/reminder or nothing")
     sub("mode", "print talk|alone|none for the current step (for the guard)")
     sub("where", "one human line: where the run is")
+    ap.add_argument("--selftest", action="store_true",
+        help="run the two-sided self-test (known-good and known-bad)")
     a = ap.parse_args()
+    if a.selftest:
+        return selftest()
     if a.cmd == "session":
         return cmd_session(a)
     if a.cmd == "mode":

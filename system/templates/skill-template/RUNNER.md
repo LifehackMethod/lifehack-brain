@@ -18,7 +18,8 @@ Read with `card.template.json` (beside this file) and the skill-building SOP.
 
 1. **The card.** Copy `card.template.json` into the skill folder as `card.json`. One entry
    per stage: `id`, `mode` (`talk` = converses with the person, moves on with /next;
-   `alone` = runs unattended, advances on a verified pass), `prompt` (a prompt file beside
+   `alone` = runs unattended, advances on a verified pass), optional `optional` (boolean
+   only — see "Optional steps" below), `prompt` (a prompt file beside
    the card, using `{{CODE}} {{OUT}} {{PREV}} {{ID}} {{MODE}} {{N}} {{TOTAL}}`), `out`
    (where the stage writes), optional `inputs` (default: the previous stage's `out`),
    and `checks`.
@@ -81,6 +82,14 @@ edited mid-run reads as DAMAGED ("card changed mid-run").
 - Only `person-turn` writes `person` lines. Renaming a `.abandoned-` marker back revives
   nothing: `advance`, `back` and `person-turn` refuse once the record says `abandoned` (exit 4),
   and `verify` reports any line after `abandoned` as damaged.
+- **Optional steps (the owner's yes, 2026-11-23): "if number four is pretty easy to fix let's just
+  do that".** A talk step marked `"optional": true` may be skipped BY THE PERSON: when `advance`
+  runs on a `person{cmd:next}` turn (same `--turn`, the normal turn gate) and the step's checks
+  fail or its output is missing, the runner records a `pass` with `{"skipped": "by the person",
+  "turn": <the turn's prompt id>}` and hands over as normal — no new command. Without a person
+  turn it is refused exactly as today: the AI can never skip. A non-optional step is unchanged.
+  The replay rule accepts the skipped pass because it names the person turn; `verify` stays OK.
+  Card validation accepts the boolean only — anything else is refused at `start` (exit 2).
 - Friction, not perfect enforcement: forging the record is a named bypass, and it shows as damage,
   a `person` line missing from `mover.log`, or a `reissue`/`abandoned`/`snoozed` line whose person
   prompt is missing from `person.log`.

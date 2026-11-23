@@ -334,6 +334,8 @@ def load_card(path):
         ids.add(s["id"])
         if s.get("mode", "talk") not in ("talk", "alone"):
             raise ValueError("stage %r: mode must be 'talk' or 'alone'" % s["id"])
+        if "optional" in s and not isinstance(s["optional"], bool):
+            raise ValueError("stage %r: 'optional' must be true or false (a boolean)" % s["id"])
         for rel in [s.get("out")] + list(s.get("extra", [])):
             if not rel:
                 raise ValueError("stage %r has no 'out'" % s["id"])
@@ -646,13 +648,22 @@ def do_advance(run_dir, card, via, turn=None):
         else:
             td = {"turn": turn} if pl and not pl["consumed"] and pl["cmd"] == "next" else {}
         problems = run_checks(card, stage, run_dir, st["code"], st["superseded"])
-        if problems:
+        # An OPTIONAL talk step may be skipped BY THE PERSON: on a person{cmd:next} turn
+        # (same --turn, the normal turn gate) whose checks fail or whose output is missing,
+        # record a pass naming the person turn and hand over as normal. Without a person
+        # turn it is refused exactly as today -- the AI can never skip. Non-optional: unchanged.
+        skipped = bool(problems) and bool(td) and stage.get("optional") \
+            and stage.get("mode", "talk") == "talk"
+        if problems and not skipped:
             append(run_dir, "fail", st["cur"], dict({"via": via, "problems": problems}, **td))
             append(run_dir, "handover", st["cur"], dict({"via": via, "result": "fail"}, **td))
             return CHECKFAIL, ("stage_runner: step %s is not finished. Missing:\n%s"
                                % (st["cur"], "\n".join("- " + p["detail"] for p in problems)))
-        append(run_dir, "pass", st["cur"], dict({"via": via}, **td))
-        append(run_dir, "handover", st["cur"], dict({"via": via, "result": "pass"}, **td))
+        pdata = dict({"via": via}, **td)
+        if skipped:
+            pdata["skipped"] = "by the person"
+        append(run_dir, "pass", st["cur"], pdata)
+        append(run_dir, "handover", st["cur"], dict(pdata, result="pass"))
         to_i = i + 1
         to = card["stages"][to_i]["id"] if to_i < len(card["stages"]) else "COMPLETE"
         code = new_code() if to != "COMPLETE" else None

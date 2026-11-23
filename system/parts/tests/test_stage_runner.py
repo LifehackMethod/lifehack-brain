@@ -1148,3 +1148,97 @@ def test_legacy_script_checks_still_pass():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ======================================================================================
+# Run-pickup phase 4d: OPTIONAL steps (the owner's yes, 2026-11-23). A talk step marked
+# "optional": true may be skipped BY THE PERSON: on a person{cmd:next} turn whose checks
+# fail (or whose output is missing), advance records a pass {"skipped": "by the person",
+# "turn": <turn>} and hands over as normal. No person turn: refused exactly as today --
+# the AI can never skip. A non-optional step is unchanged. Tests first, each failing first.
+# ======================================================================================
+
+def make_optional(card_path, i=0):
+    """Mark stage i of an existing card optional=True (rewrites the card file)."""
+    c = json.load(open(card_path, encoding="utf-8"))
+    c["stages"][i]["optional"] = True
+    json.dump(c, open(card_path, "w", encoding="utf-8"))
+    return card_path
+
+def last_pass(r):
+    return [l for l in r.lines() if l["event"] == "pass"][-1]
+
+def test_optional_talk_step_skipped_by_the_person(tmp_path):
+    """(a) optional + person /next + no output -> skipped pass, moves one step."""
+    r = R(tmp_path, start=False)
+    make_optional(r.card)
+    r.start()
+    p = r.move("a1")
+    assert p.returncode == OK, text(p)
+    lp = last_pass(r)
+    assert lp["stage"] == "gather" and lp["data"].get("skipped") == "by the person"
+    assert lp["data"].get("turn") == "a1"
+    assert r.step()["index"] == 2
+
+def test_optional_step_without_a_person_turn_is_refused(tmp_path):
+    """(b) optional + NO person turn -> refused (exit 3), nothing written."""
+    r = R(tmp_path, start=False)
+    make_optional(r.card)
+    r.start()
+    p = r.adv()
+    assert p.returncode == CHECKFAIL and "no person turn" in text(p).lower(), text(p)
+    assert "pass" not in r.events() and r.step()["index"] == 1
+
+def test_non_optional_step_still_refused_with_no_output(tmp_path):
+    """(c) non-optional + person /next + no output -> refused as today (exit 3)."""
+    r = R(tmp_path)
+    p = r.move("a1")
+    assert p.returncode == CHECKFAIL, text(p)
+    assert "pass" not in r.events() and r.step()["index"] == 1
+
+def test_optional_step_that_passes_is_a_normal_pass(tmp_path):
+    """(d) optional step whose output passes its checks -> normal pass, no 'skipped'."""
+    r = R(tmp_path, start=False)
+    make_optional(r.card)
+    r.start()
+    r.write(0)
+    p = r.move("a1")
+    assert p.returncode == OK, text(p)
+    lp = last_pass(r)
+    assert "skipped" not in lp["data"]
+
+def test_verify_ok_on_a_run_with_a_skipped_pass(tmp_path):
+    """(e) verify OK on a run whose first step was skipped by the person. The skip hands
+    over as normal, so the next step pauses on its missing input (by design); the person
+    fills it, and the AI runs resume --choice continue to reissue the step's code word."""
+    r = R(tmp_path, start=False)
+    make_optional(r.card)
+    r.start()
+    assert r.move("a1").returncode == OK
+    assert last_pass(r)["data"].get("skipped") == "by the person"
+    r.write(0)  # the person fills the skipped step's output: the input pause lifts
+    # the mover logs the person prompt (person.log) that authorised the resume
+    open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8").write(
+        "p9\t%.3f\n" % time.time())
+    q = r.cmd("resume", "--choice", "continue")
+    assert q.returncode == OK, text(q)
+    r.code = re.search(r"(RUN-[0-9A-Z]{6})", q.stdout).group(1)
+    r.write(1)
+    assert r.move("a2").returncode == OK
+    r.write(2)
+    assert r.move("a3").returncode == OK
+    open(os.path.join(r.run_dir, "mover.log"), "a", encoding="utf-8").write(
+        "".join(t + "\n" for t in ("a1", "a2", "a3")))
+    v = r.cmd("verify")
+    assert v.returncode == OK and v.stdout.startswith("OK "), text(v)
+
+def test_card_rejects_a_non_boolean_optional(tmp_path):
+    """Card validation accepts the boolean only: optional: 'yes' -> refused at start (exit 2)."""
+    r = R(tmp_path, start=False)
+    c = json.load(open(r.card, encoding="utf-8"))
+    c["stages"][0]["optional"] = "yes"
+    json.dump(c, open(r.card, "w", encoding="utf-8"))
+    p = run(["start", "--card", r.card, "--workdir", r.wd])
+    assert p.returncode == USAGE, text(p)
+    assert "optional" in text(p), text(p)
+    assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json"))
