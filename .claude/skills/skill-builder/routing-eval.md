@@ -34,18 +34,24 @@ Note: S2 gives a concrete purpose and should fire; N7 gives none and must not. I
 ## Results
 | id | run 1 | run 2 | run 3 | k/3 | commit SHA | date |
 |---|---|---|---|---|---|---|
-| S1 | | | | | | |
-| S2 | | | | | | |
-| S3 | | | | | | |
-| S4 | | | | | | |
-| S5 | | | | | | |
-| S6 | | | | | | |
-| S7 | | | | | | |
-| S8 | | | | | | |
-| N1 | | | | | | |
-| N2 | | | | | | |
-| N3 | | | | | | |
-| N4 | | | | | | |
-| N5 | | | | | | |
-| N6 | | | | | | |
-| N7 | | | | | | |
+| S1 | 1/1 (typed command loads the skill directly) | | | | | |
+| S2 | 1/3 (WEAK: "build" trips the build-mode hook first; the coming /build front door hands it over) | | | | | |
+| S3 | 3/3 | | | | | |
+| S4 | 3/3 | | | | | |
+| S5 | 3/3 | | | | | |
+| S6 | 3/3 | | | | | |
+| S7 | 3/3 | | | | | |
+| S8 | 3/3 | | | | | |
+| N1 | 0/1 (went to build) | | | | | |
+| N2 | 0/3 | | | | | |
+| N3 | 0/3 (went to planning-weekly) | | | | | |
+| N4 | 0/3 (autoplan or none) | | | | | |
+| N5 | 0/3 (went to build) | | | | | |
+| N6 | 0/3 | | | | | |
+| N7 | 0/3 | | | | | |
+
+
+Run 2026-11-24, headless cold sessions on the medium Claude model, plugin from the V2 working tree with the final
+description. First round stopped each session after one turn; the plugin's build-mode hook makes a session read the
+skills rules first, so the should-fire cases that looked missed were re-run with four turns (fair both ways: the
+hardest must-not-fire cases were re-run with four turns too). Commit SHA: see the BUILD-NOTES G3 line.

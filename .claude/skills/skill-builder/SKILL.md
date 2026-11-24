@@ -4,8 +4,8 @@ name: skill-builder
 title: Skill Builder
 shape: interactive-workflow
 status: draft
-description: "(NOT READY: being built) Use when a person wants to design a new skill or improve one: \"/skill-builder\", \"design a new skill\", \"make this skill better\". Interviews them, acts the skill out, writes its spec; builds nothing."
-triggers: [/skill-builder, design a new skill, make this skill better, spec out a skill, act out my skill idea]
+description: "Use when a person wants a skill designed or improved before anything is built: turning a routine they already do into a skill (\"make my monthly budget check into a skill\"), improving a named or open skill (\"make this skill better\", \"tidy up this old skill of mine\"), or speccing one out (\"/skill-builder\"). Interviews them, acts the skill out, writes its spec; builds nothing. A bare \"build me a skill\" with no purpose goes to /build first."
+triggers: [/skill-builder, design a new skill, make this skill better, improve my skill, turn my routine into a skill, spec out a skill, act out my skill idea]
 created_at: 2026-11-24
 updated_at: 2026-11-24
 ---
@@ -73,4 +73,4 @@ Steps 3 and 4 may be skipped: the person types `/next`. Steps 4 and 5 read the s
 - The outcome sits in the first lines of the body.
 - Every path written is named in the Writes line, and the early-stop path is written down.
 - `card.json` loads and uses only checks from the runner's closed list.
-- The "NOT READY" mark stays in the description until the build plan's flip step is done.
+- The description carries no "NOT READY" mark: it came off at the build's final check, after the routing eval.

@@ -16,26 +16,26 @@ that closes it. Status is one of: open · closed (receipt) · deferred (reason, 
 
 | Gate | What | Pass check | Closes in | Status |
 |---|---|---|---|---|
-| G1 | Scaffold | Folder made from `system/templates/skill-template/`; no `{…}` or guidance comments left; every folder has a one-line purpose | P2 | open |
-| G2 | Frontmatter | `skill`, `shape: interactive-workflow`, `status`, `triggers`, third-person "Use when…" description with keywords in the first 250 characters | P2 | open |
-| G3 | Routing eval ×3 | Each case run 3 times in a cold window; 3/3 holds, 0/3 fails, 1–2 of 3 re-run; k/3 and the commit SHA recorded | P2 (re-run at P6 and on the final commit) | open |
-| G4 | Card | `card.json` has five `talk` stages, steps 3–4 `optional`, checks only from the runner's closed list | P2 | open |
-| G5 | One prompt per step | `prompts/step-1…5` exist, each from the step-prompt template; acceptance checks A–G recorded | P3 | open |
-| G6 | Helper briefs | Every helper brief is a file under `prompts/subagents/`, names its tier, and is re-quizzed if changed | P4 | open |
-| G7 | Inputs-line code + pause | Code checks each step's inputs and pauses; every code-read choice ends in `none-of-these`, which never moves the run | P5 | open |
-| G8 | Output checks | Each check tested on a good, an edge and a padded case, and seen failing on a broken copy first | P5 | open |
-| G9 | Loud scripts + timeouts | Every script exits pass / fail / could-not-check with distinct codes, refuses off-list values loudly, and times out loudly | P5 | open |
-| G10 | Stop-hook handover | Not applicable: the skill has no step that runs alone | P2 | open |
-| G11 | Hash pins | The skill uses the shared step runner in place; it pins and copies nothing | P2 | open |
-| G12 | Testing rules | Every testing rule in the skills checklist met or deferred with a reason | P6 | open |
-| G13 | Status writer | Stays DEFERRED, with the reason recorded | P2 (recorded) | open |
-| G14 | Example specs | `references/examples/` holds a scrubbed example spec | P2 | open |
-| G15 | Completion figure | Code computes the completion figure; it never gates and writes no tile | P5 | open |
-| G16 | Proofs | The spec's §7 proofs run and recorded | P6 | open |
+| G1 | Scaffold | Folder made from `system/templates/skill-template/`; no `{…}` or guidance comments left; every folder has a one-line purpose | P2 | closed: scaffold committed |
+| G2 | Frontmatter | `skill`, `shape: interactive-workflow`, `status`, `triggers`, third-person "Use when…" description with keywords in the first 250 characters | P2 | closed: frontmatter committed |
+| G3 | Routing eval ×3 | Each case run 3 times in a cold window; 3/3 holds, 0/3 fails, 1–2 of 3 re-run; k/3 and the commit SHA recorded | P2 (re-run at P6 and on the final commit) | see the routing eval below |
+| G4 | Card | `card.json` has five `talk` stages, steps 3–4 `optional`, checks only from the runner's closed list | P2 | closed: card committed, runner starts it |
+| G5 | One prompt per step | `prompts/step-1…5` exist, each from the step-prompt template; acceptance checks A–G recorded | P3 | closed: 5 prompts, section check PASS, quiz 6/6 each |
+| G6 | Helper briefs | Every helper brief is a file under `prompts/subagents/`, names its tier, and is re-quizzed if changed | P4 | closed: 26 briefs, changed ones re-quizzed |
+| G7 | Inputs-line code + pause | Code checks each step's inputs and pauses; every code-read choice ends in `none-of-these`, which never moves the run | P5 | closed: gates.py + inputs_check.py, tests |
+| G8 | Output checks | Each check tested on a good, an edge and a padded case, and seen failing on a broken copy first | P5 | closed: 62 tests incl. broken copies |
+| G9 | Loud scripts + timeouts | Every script exits pass / fail / could-not-check with distinct codes, refuses off-list values loudly, and times out loudly | P5 | closed: exit codes, loud refusals, timeouts, tests |
+| G10 | Stop-hook handover | Not applicable: the skill has no step that runs alone | P2 | closed: not applicable (no alone step) |
+| G11 | Hash pins | The skill uses the shared step runner in place; it pins and copies nothing | P2 | closed: runner used in place, nothing pinned |
+| G12 | Testing rules | Every testing rule in the skills checklist met or deferred with a reason | P6 | closed for the automated rules; real-job trial dropped by the owner |
+| G13 | Status writer | Stays DEFERRED, with the reason recorded | P2 (recorded) | DEFERRED: interactive manual skill, no scheduled run (change condition in the records block) |
+| G14 | Example specs | `references/examples/` holds a scrubbed example spec | P2 | DEFERRED: the first example is this skill's own spec, after filing |
+| G15 | Completion figure | Code computes the completion figure; it never gates and writes no tile | P5 | closed: completion.py |
+| G16 | Proofs | The spec's §7 proofs run and recorded | P6 | closed for §7's automated proofs; the real-job proof dropped by the owner |
 | G17 | Optional steps on host | The runner's optional-steps support read back from GitHub on `V2` | P0 | closed: `git ls-remote origin V2` = 91e0d681; optional-steps commit is an ancestor (2026-11-24) |
-| G18 | Finish after build | The spec is finished with what the build learned and becomes the component page | LAST | open |
-| G19 | Nothing answerable by looking left open | Research notes checked against the newest decisions; every clash listed below | P1 | open |
-| G20 | Status line | The status line shows the step and changes on /next | P6 | open |
+| G18 | Finish after build | The spec is finished with what the build learned and becomes the component page | LAST | spec finished (L.1); flip after the final proof |
+| G19 | Nothing answerable by looking left open | Research notes checked against the newest decisions; every clash listed below | P1 | closed: G19 list below |
+| G20 | Status line | The status line shows the step and changes on /next | P6 | OPEN: the runner prints RUN n/N; the plugin status bar does not call it yet (with run pickup) |
 
 ## G19 — research notes against the newest decisions
 
@@ -180,10 +180,11 @@ Not planted (no layer of this skill can break them alone, or covered elsewhere):
 
 ## Nothing grades its own work
 
-Every helper that produces something the person will see has a separate checker brief (spec §11 pairs). All
-briefs run at the same tier, so the pairing is by a STRICTER FILTER (each checker brief checks claim by claim
-against named sources, blind to the author's reasoning), not by a different model family. Two outputs carry no
-checker by ruling (the packet writer, the hand-off note), each with its reason in its brief.
+Every helper that produces something the person will see has a separate checker brief (spec §11 pairs). Each
+checker runs at the same tier as its author but on a DIFFERENT model, which the calling step arranges at spawn
+(locked rule L11; checker-base says so), and each checker brief is also stricter: claim by claim against named
+sources, blind to the author's reasoning. Not yet seen in a real run (no real job, by the owner's ruling). Two
+outputs carry no checker by ruling (the packet writer, the hand-off note), each with its reason in its brief.
 
 ## Not tested
 
@@ -201,3 +202,13 @@ Every commit's author is the no-reply GitHub address. Model-id pins check: OK.
 Outside this build, found and left to their owners: the shipping lane's own rule self-test reports one dead
 rule (`path-unc-share` never matches), and the hard-coded model-id check flags 7 lines in the reading tool's
 test file. Neither file is touched by this build.
+
+## G3 routing eval (finish step, 2026-11-24, NOT READY removed first)
+
+Headless cold sessions on the medium Claude model, each case 3 times (typed commands once). Should fire: S1 typed
+command loads the skill; S3–S8 3/3 each (S3 and S8 after the description named "improve a named or open skill");
+S2 "build me a skill that turns my Friday review into a routine" 1/3 — WEAK: the word "build" trips the plugin's
+build-mode hook before any skill is chosen; the coming /build front door is the planned route for it. Must not
+fire: N1–N7 all 0 (N7, the bare "build me a skill that does X", 0/3). Claim as worded: "no wrong fire in k/3; one
+should-fire case weak (S2, 1/3)", on the commit that carries this line. Results table: routing-eval.md. The
+description's examples differ from the test sentences, so the eval is not matching its own words.
