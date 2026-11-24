@@ -199,7 +199,7 @@ def derive(lines):
     s = {"cur": None, "code": None, "complete": False, "pending": None,
          "run": None, "card": None, "skill": None, "fails": 0, "card_sha": None,
          "persons": {}, "superseded": {}, "snoozed": False, "abandoned": False,
-         "passed": False, "backed": None}
+         "passed": False, "backed": None, "skipped": []}
     for l in lines:
         e, d = l["event"], l["data"]
         if s["abandoned"]:
@@ -215,6 +215,8 @@ def derive(lines):
             if l["stage"] != s["cur"]:
                 raise Damaged("a pass for a step that is not the open step")
             s["passed"] = True
+            if d.get("skipped"):
+                s["skipped"].append(l["stage"])
             _consume(s, d)
         elif e == "back":
             s["backed"] = (l["stage"], d.get("to"))
@@ -336,6 +338,9 @@ def load_card(path):
             raise ValueError("stage %r: mode must be 'talk' or 'alone'" % s["id"])
         if "optional" in s and not isinstance(s["optional"], bool):
             raise ValueError("stage %r: 'optional' must be true or false (a boolean)" % s["id"])
+        if s.get("optional") and s.get("mode", "talk") == "alone":
+            raise ValueError("stage %r: an ALONE step cannot be 'optional' (only a talk step "
+                             "may be skipped by the person)" % s["id"])
         for rel in [s.get("out")] + list(s.get("extra", [])):
             if not rel:
                 raise ValueError("stage %r has no 'out'" % s["id"])
@@ -580,6 +585,29 @@ def _newest_person(run_dir):
         return None
 
 
+def _menu_gate(run_dir, lines):
+    """The AI's own menu command (resume / abandon / snooze) writes only when the newest
+    person prompt in person.log is NEWER than the record's last line and has not already
+    been used by another menu command -- each person prompt id may serve exactly ONE menu
+    command. Returns (rc, text) to refuse, or None to allow."""
+    newest = _newest_person(run_dir)
+    used = set()
+    for l in lines:
+        rec = l["data"].get("person") if isinstance(l["data"], dict) else None
+        if isinstance(rec, dict) and isinstance(rec.get("id"), str):
+            used.add(rec["id"])
+    if not newest:
+        return CHECKFAIL, ("stage_runner: no person prompt is logged for this run -- ask the "
+                           "person first; nothing was written (exit 3).")
+    if newest["id"] in used:
+        return CHECKFAIL, ("stage_runner: that person prompt was already used by another menu "
+                           "command -- ask the person first; nothing was written (exit 3).")
+    if newest["t"] + 1.0 < lines[-1]["t"]:
+        return CHECKFAIL, ("stage_runner: the newest person prompt is older than the run's "
+                           "last move -- ask the person first; nothing was written (exit 3).")
+    return None
+
+
 MOVER_BODY = ("The mover ran before you saw this, if a [RUN STEP] line is above. "
               "If there is none, the mover didn't run: tell the person.\n")
 _OLD_BODIES = {
@@ -594,19 +622,22 @@ def ensure_commands(wd):
     """Write /next and /back as project commands (an unregistered slash command never
     reaches the hooks -- the rig's P3 lesson). Skill hook rows are registered through
     the plugin's register at build time (4P.5); this only covers the two commands.
-    A file whose body is the OLD runner text is rewritten to the new body; any other
-    (custom) body is left alone."""
+    A file whose body is the OLD runner text -- or the previous no-flag body -- is
+    rewritten to the new body; any other (custom) body is left alone. The front matter
+    carries disable-model-invocation: true: the person types these, the AI never runs
+    them as tools."""
     cd = os.path.join(wd, ".claude", "commands")
     os.makedirs(cd, exist_ok=True)
     for name, desc in (("next", "move to the next stage of the run"),
                        ("back", "go back and re-open the previous stage")):
         fp = os.path.join(cd, name + ".md")
-        new = "---\ndescription: %s\n---\n%s" % (desc, MOVER_BODY)
+        new = "---\ndescription: %s\ndisable-model-invocation: true\n---\n%s" % (desc, MOVER_BODY)
         if not os.path.exists(fp):
             open(fp, "w", encoding="utf-8").write(new)
             continue
-        old = "---\ndescription: %s\n---\n%s" % (desc, _OLD_BODIES[name])
-        if open(fp, encoding="utf-8").read() == old:
+        olds = ["---\ndescription: %s\n---\n%s" % (desc, MOVER_BODY),
+                "---\ndescription: %s\n---\n%s" % (desc, _OLD_BODIES[name])]
+        if open(fp, encoding="utf-8").read() in olds:
             open(fp, "w", encoding="utf-8").write(new)
 
 
@@ -677,7 +708,11 @@ def do_advance(run_dir, card, via, turn=None):
         if to == "COMPLETE":
             append(run_dir, "complete", None, {})
             return OK, "stage_runner: the run is complete."
-        head = "stage_runner: the %s step is done. Your next step:" % st["cur"]
+        if skipped:
+            head = ("stage_runner: step %s was SKIPPED by your /next (not finished: %s). "
+                    "Your next step:" % (st["cur"], ", ".join(p["code"] for p in problems)))
+        else:
+            head = "stage_runner: the %s step is done. Your next step:" % st["cur"]
         if bad:
             return OK, "%s\n%s\nA step input is missing or empty: %s. Do not start this step; tell the person." % (
                 head, "\n".join(ilines), ", ".join(bad))
@@ -729,15 +764,21 @@ def do_person_turn(run_dir, turn, cmd):
 
 
 def do_resume(run_dir, card):
-    """Reissue the CURRENT step with a fresh code word. Never writes pass/done/complete."""
+    """Reissue the CURRENT step with a fresh code word. Never writes pass/done/complete.
+    The AI's own move: needs a logged person prompt newer than the run's last line, unused
+    by any earlier menu command (_menu_gate) -- else refused, ask the person first."""
     with locked(run_dir):
-        st = derive(load_record(run_dir))
+        lines = load_record(run_dir)
+        st = derive(lines)
         if st["pending"]:
             return DANGLING, "stage_runner: a handover was left half-done: run recover first."
         if st["complete"] or st["cur"] == "COMPLETE":
             return NOTHING, "stage_runner: the run is finished; nothing to resume."
         if st["abandoned"]:
             return NOTHING, "stage_runner: the run was abandoned; nothing to resume."
+        refused = _menu_gate(run_dir, lines)
+        if refused:
+            return refused
         i = stage_index(card, st["cur"])
         if i < 0:
             return DAMAGED, "stage_runner: the open step %r is not in the card." % st["cur"]
@@ -754,9 +795,13 @@ def do_resume(run_dir, card):
 
 def do_snooze(run_dir):
     with locked(run_dir):
-        st = derive(load_record(run_dir))
+        lines = load_record(run_dir)
+        st = derive(lines)
         if st["complete"] or st["cur"] == "COMPLETE" or st["abandoned"]:
             return NOTHING, "stage_runner: the run is finished or abandoned; nothing to quiet."
+        refused = _menu_gate(run_dir, lines)
+        if refused:
+            return refused
         append(run_dir, "snoozed", st["cur"], {"choice": "leave-it",
                                                "person": _newest_person(run_dir)})
         return OK, "stage_runner: left alone. The pickup question stays quiet for this run until it is brought up."
@@ -866,13 +911,19 @@ def cmd_start(a):
             print("stage_runner: the run in %s is damaged (%s). Nothing was changed; have the "
                   "person choose start over (abandon) first." % (found[0], e))
             return DAMAGED
-        if not (old["complete"] or old["cur"] == "COMPLETE"):
+        if old["abandoned"]:
+            # an abandoned run revived by copying its .abandoned- marker back: set it
+            # aside again like a finished run, then begin a NEW run (never revive it).
+            mp = os.path.join(found[0], MARKER)
+            _set_aside(mp, "abandoned-" + (old["run"] or os.path.basename(found[1])))
+        elif not (old["complete"] or old["cur"] == "COMPLETE"):
             print("stage_runner: a run is already active in %s. Nothing was changed. "
                   "Use a different --workdir to start fresh." % wd)
             return NOTHING
-        # a finished run: set its marker aside (kept, not deleted) and begin a NEW run
-        mp = os.path.join(found[0], MARKER)
-        _set_aside(mp, "done-" + (old["run"] or os.path.basename(found[1])))
+        else:
+            # a finished run: set its marker aside (kept, not deleted) and begin a NEW run
+            mp = os.path.join(found[0], MARKER)
+            _set_aside(mp, "done-" + (old["run"] or os.path.basename(found[1])))
     rid = a.run_id or time.strftime("%Y%m%dT%H%M%S") + "-" + secrets.token_hex(2)
     run_dir = os.path.join(wd, "runs", rid)
     if os.path.exists(run_dir):
@@ -909,6 +960,7 @@ def cmd_status(a):
          "index": len(card["stages"]) if done else i + 1, "total": len(card["stages"]),
          "mode": mode, "complete": st["complete"], "pending": bool(st["pending"]),
          "fails": st["fails"], "snoozed": st["snoozed"], "abandoned": st["abandoned"],
+        "skipped": st["skipped"],
          "summary": "RUN done" if done else "RUN %d/%d %s (%s)" % (i + 1, len(card["stages"]), st["cur"], mode),
          "missing": [p["detail"] for p in problems], "lines": len(lines)}
     if a.json:
@@ -1030,15 +1082,31 @@ def cmd_abandon(a):
             run_dir = j.get("run_dir") if isinstance(j.get("run_dir"), str) else None
     except (OSError, ValueError):
         pass
+    # the run folder must sit inside the marker's folder, resolved exactly as find_run
+    # resolves it (realpath) -- a copied folder whose marker still names the original run
+    # renames its marker only and NEVER appends to the original record.
     note = ""
-    tag = "abandoned-"
+    outside = False
     if run_dir:
+        if not os.path.isabs(run_dir):
+            run_dir = os.path.join(wd, run_dir)
+        rr, rw = os.path.realpath(run_dir), os.path.realpath(wd)
+        if rr != rw and not (rr + os.sep).startswith(rw + os.sep):
+            outside = True
+            note = (" (the run folder sits outside the marker's folder, so no abandoned "
+                    "line was written)")
+    tag = "abandoned-"
+    if run_dir and not outside:
         try:
             lines = load_record(run_dir)
             st = derive(lines)
             rid = rid or lines[0]["run"]
             if st["complete"] or st["cur"] == "COMPLETE":
                 tag = "done-"        # a finished run set aside was never abandoned mid-way
+            refused = _menu_gate(run_dir, lines)
+            if refused:
+                print(refused[1])
+                return CHECKFAIL
             append(run_dir, "abandoned", st["cur"], {"choice": "start-over",
                                                      "person": _newest_person(run_dir)})
         except (Damaged, OSError, IndexError, KeyError):
@@ -1062,16 +1130,25 @@ def cmd_verify(a):
     """The no-AI finish check command: verify the chain, the replay rule and the mover log;
     report, never write. A `person` line whose turn is not in <run folder>/mover.log is
     reported (tamper-evidence, not prevention) and exits 3."""
+    if getattr(a, "run", None):
+        # --run <folder>: read that run folder directly -- also a run whose marker was
+        # set aside (abandoned), which find_run can no longer see.
+        run_dir = os.path.abspath(a.run)
+        if not os.path.isfile(os.path.join(run_dir, "record.jsonl")):
+            print("no record at %s" % run_dir)
+            return NORUN
+    else:
+        try:
+            f = find_run(a.workdir)
+        except Damaged as e:
+            print("DAMAGED: %s" % e)
+            return DAMAGED
+        if not f:
+            print("no active run")
+            return NORUN
+        run_dir = f[1]
     try:
-        f = find_run(a.workdir)
-    except Damaged as e:
-        print("DAMAGED: %s" % e)
-        return DAMAGED
-    if not f:
-        print("no active run")
-        return NORUN
-    try:
-        lines = load_record(f[1])
+        lines = load_record(run_dir)
         st = derive(lines)
         try:
             card = load_card(st["card"])
@@ -1094,13 +1171,13 @@ def cmd_verify(a):
         return DAMAGED
     logged = set()
     try:
-        logged = set(x.strip() for x in open(os.path.join(f[1], "mover.log"), encoding="utf-8"))
+        logged = set(x.strip() for x in open(os.path.join(run_dir, "mover.log"), encoding="utf-8"))
     except OSError:
         pass
     ghosts = [l["data"]["turn"] for l in lines if l["event"] == "person" and l["data"]["turn"] not in logged]
     pids, ptimes = set(), {}
     try:
-        for ln in open(os.path.join(f[1], "person.log"), encoding="utf-8"):
+        for ln in open(os.path.join(run_dir, "person.log"), encoding="utf-8"):
             ln = ln.strip()
             if not ln:
                 continue
@@ -1113,22 +1190,28 @@ def cmd_verify(a):
     except OSError:
         pass
     nprompts = []
-    last_reissue_t = None
+    used_menu_ids = set()   # each person prompt id may serve exactly ONE menu command
+    prev_t = None
     for l in lines:
         e = l["event"]
         if e in ("reissue", "abandoned", "snoozed"):
             rec = l["data"].get("person")
             where = "line %d" % (l["seq"] + 1)
+            pid_ = rec.get("id") if isinstance(rec, dict) else None
             if not rec:
                 nprompts.append("%s at %s: no person prompt recorded" % (e, where))
-            elif rec.get("id") not in pids:
+            elif pid_ not in pids:
                 nprompts.append("%s at %s: its person prompt %r is not in person.log"
-                                % (e, where, rec.get("id")))
-            elif last_reissue_t is not None and ptimes.get(rec.get("id"), 0.0) + 1.0 < last_reissue_t:
-                nprompts.append("%s at %s: its person prompt is older than the last reissue"
-                                % (e, where))
-        if e == "reissue":
-            last_reissue_t = l["t"]
+                                % (e, where, pid_))
+            elif pid_ in used_menu_ids:
+                nprompts.append("%s at %s: its person prompt %r was already used by another "
+                                "menu command" % (e, where, pid_))
+            elif prev_t is not None and ptimes.get(pid_, 0.0) + 1.0 < prev_t:
+                nprompts.append("%s at %s: its person prompt is older than the run's last "
+                                "move" % (e, where))
+            if pid_:
+                used_menu_ids.add(pid_)
+        prev_t = l["t"]
     if ghosts:
         print("UNLOGGED: person line not written by the mover: turn %s (%d line%s)"
               % (", ".join(ghosts), len(ghosts), "" if len(ghosts) == 1 else "s"))
@@ -1461,7 +1544,9 @@ def main():
 
     def add(name, fn, *args):
         s = sp.add_parser(name)
-        s.add_argument("--workdir", default=os.getcwd())
+        # SUPPRESS: a global --workdir given BEFORE the subcommand must survive; a
+        # subcommand-level default would overwrite it.
+        s.add_argument("--workdir", default=argparse.SUPPRESS)
         for ar, kw in args:
             s.add_argument(ar, **kw)
         s.set_defaults(fn=fn)
@@ -1477,7 +1562,8 @@ def main():
     add("abandon", cmd_abandon, ("--choice", dict(default=None)))
     add("snooze", cmd_snooze, ("--choice", dict(default=None)))
     add("recover", cmd_recover)
-    add("verify", cmd_verify)
+    add("verify", cmd_verify, ("--run", dict(default=None, metavar="RUN_FOLDER",
+        help="verify this run folder directly (also a set-aside/abandoned run)")))
     add("statusline", cmd_statusline, ("--inner", dict(default="")))
     a = ap.parse_args()
     if a.selftest:

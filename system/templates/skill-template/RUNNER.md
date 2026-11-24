@@ -29,7 +29,8 @@ Read with `card.template.json` (beside this file) and the skill-building SOP.
    `phase_gate` → phase_gate.py). A card naming a check whose part is missing is refused
    at `start` (fail-closed). "The file exists" is not a check.
 3. **The commands.** (⛔ not files in this repo: `start` writes them at run time into the skill folder.) `start` writes `.claude/commands/next.md` and `back.md` into the
-   workdir (an unregistered slash command never reaches the hooks).
+   workdir (an unregistered slash command never reaches the hooks). Their front matter carries
+   `disable-model-invocation: true` — the person types them; the AI never runs them as tools.
 4. **The hooks.** Registered through the plugin's register (`system/register/register.jsonl`
    → generate), never by hand — that happens when the skill is built (skills SOP / plan
    4P.5). The runner's `statusline` is the status-line wrapper.
@@ -45,17 +46,17 @@ All take `--workdir DIR` (default: the current folder).
 
 | Command | What it does |
 |---|---|
-| `start --card CARD [--run-id ID]` | Begins a run (stores `card_sha`). Marker's run complete: the marker is renamed `.stage-runner.json.done-<run>` and a NEW run starts from step 1 (old code words fail). After `abandon`: starts a new run. Run unfinished: exit 4. |
-| `status [--json]` | Where the run is. `--json` adds `snoozed` and `abandoned`. |
+| `start --card CARD [--run-id ID]` | Begins a run (stores `card_sha`). Marker's run complete: the marker is renamed `.stage-runner.json.done-<run>` and a NEW run starts from step 1 (old code words fail). After `abandon`: starts a new run. An abandoned run revived by copying its `.abandoned-` marker back is set aside again the same way, and a NEW run begins. Run unfinished: exit 4. |
+| `status [--json]` | Where the run is. `--json` adds `snoozed`, `abandoned` and `skipped` (the optional talk steps the person skipped). |
 | `check` | Runs the current step's checks; writes nothing. |
 | `advance [--turn T] [--via V]` | Checks the step, then hands over. |
 | `back [--turn T]` | Re-opens the previous step, exactly one, with a fresh code word. |
 | `person-turn --turn T --cmd next\|back` | Appends the person's typed command as a `person` line. The ONLY writer of `person` lines. A used turn id: exit 4. A finished run: exit 4. |
-| `resume --choice continue` | Reissues the CURRENT step's instructions with a fresh code word ("update the Code word line in <out file>"). Half-done handover: exit 7 (run `recover` first); finished or abandoned: exit 4. Writes no pass/done. The old code word is then refused: "another window took over this run at <time>" (exit 3). Records the newest person prompt from `<run folder>/person.log` in its record line. |
-| `abandon --choice start-over` | Appends `abandoned` (with the newest person prompt) if the record verifies; always renames the marker to `.stage-runner.json.abandoned-<run>` (a COMPLETE run gets `.done-<run>`), even on a damaged record, unreadable card or bad marker. Deletes nothing; never writes pass/done/complete. |
-| `snooze --choice leave-it` | Appends `snoozed` (with the newest person prompt); the reader stays quiet for this run until a later `person` or `reissue` line (a later `resume` lifts it). |
+| `resume --choice continue` | Reissues the CURRENT step's instructions with a fresh code word ("update the Code word line in <out file>"). Half-done handover: exit 7 (run `recover` first); finished or abandoned: exit 4. Writes no pass/done. The old code word is then refused: "another window took over this run at <time>" (exit 3). Records the newest person prompt from `<run folder>/person.log` in its record line. The AI's own menu command is gated (see below): no fresh, unused person prompt → exit 3, "ask the person first". |
+| `abandon --choice start-over` | Appends `abandoned` (with the newest person prompt) if the record verifies; always renames the marker to `.stage-runner.json.abandoned-<run>` (a COMPLETE run gets `.done-<run>`), even on a damaged record, unreadable card or bad marker. Deletes nothing; never writes pass/done/complete. Same menu gate as `resume`. The run folder must sit inside the marker's folder (resolved as `find_run` resolves it): a copied folder whose marker still names the original run renames its marker only and never appends to that record. |
+| `snooze --choice leave-it` | Appends `snoozed` (with the newest person prompt); the reader stays quiet for this run until a later `person` or `reissue` line (a later `resume` lifts it). Same menu gate as `resume`. |
 | `recover` | Completes a handover that died between `intent` and `done`. |
-| `verify` | Chain + replay rule + the mover's logs; writes nothing. Reports a `person` line whose turn is not in `<run folder>/mover.log` ("person line not written by the mover", exit 3); a `reissue`/`abandoned`/`snoozed` line whose recorded person prompt is missing from `<run folder>/person.log` or older than the last reissue (exit 3); a changed or unreadable card (exit 6); any record line after `abandoned` (exit 6). The mover hook writes `mover.log` (one `prompt_id` per line) and `person.log` (`prompt_id` and unix time for EVERY person prompt while a run is open); the runner never does. |
+| `verify` | Chain + replay rule + the mover's logs; writes nothing. Reports a `person` line whose turn is not in `<run folder>/mover.log` ("person line not written by the mover", exit 3); a `reissue`/`abandoned`/`snoozed` line whose recorded person prompt is missing from `<run folder>/person.log`, older than the record line before it, or already used by another menu line (exit 3); a changed or unreadable card (exit 6); any record line after `abandoned` (exit 6). `verify --run <run folder>` reads a set-aside (abandoned) run directly, without a marker. The mover hook writes `mover.log` (one `prompt_id` per line) and `person.log` (`prompt_id` and unix time for EVERY person prompt while a run is open); the runner never does. |
 | `statusline [--inner CMD]` | Reads Claude Code's status JSON; prints `RUN n/N stage (mode)`. |
 | `--selftest` | The no-AI finish check. |
 
@@ -79,6 +80,7 @@ edited mid-run reads as DAMAGED ("card changed mid-run").
   person types /next again. One person turn moves the run at most one step; typing /back
   twice with one turn id goes back one step.
 - An **alone** step advances on a verified pass alone, as before; no person is needed.
+- **The AI's own menu commands are gated (the person decides, even mid-run).** `resume`, `abandon` and `snooze` write only when the newest person prompt in `<run folder>/person.log` is NEWER than the run's last record line and has not already been used by another menu command — each person prompt id may serve exactly ONE menu command. Otherwise the command is refused (exit 3, "ask the person first") and nothing is written.
 - Only `person-turn` writes `person` lines. Renaming a `.abandoned-` marker back revives
   nothing: `advance`, `back` and `person-turn` refuse once the record says `abandoned` (exit 4),
   and `verify` reports any line after `abandoned` as damaged.
@@ -88,8 +90,10 @@ edited mid-run reads as DAMAGED ("card changed mid-run").
   fail or its output is missing, the runner records a `pass` with `{"skipped": "by the person",
   "turn": <the turn's prompt id>}` and hands over as normal — no new command. Without a person
   turn it is refused exactly as today: the AI can never skip. A non-optional step is unchanged.
-  The replay rule accepts the skipped pass because it names the person turn; `verify` stays OK.
-  Card validation accepts the boolean only — anything else is refused at `start` (exit 2).
+  The skip handover says `step <id> was SKIPPED by your /next (not finished: <codes>)`; `status --json` lists the
+  skipped step ids under `"skipped"`. The replay rule accepts the skipped pass because it names the person turn;
+  `verify` stays OK. Card validation accepts the boolean only — anything else is refused at `start` (exit 2), and an
+  ALONE step marked optional is refused at `start` too (exit 2).
 - Friction, not perfect enforcement: forging the record is a named bypass, and it shows as damage,
   a `person` line missing from `mover.log`, or a `reissue`/`abandoned`/`snoozed` line whose person
   prompt is missing from `person.log`.

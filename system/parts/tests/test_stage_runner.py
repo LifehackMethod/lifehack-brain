@@ -239,6 +239,7 @@ def main():
 # drives the real CLI in a temp folder (never a real run). Run:
 #   python3 -m pytest system/parts/tests/test_stage_runner.py -q
 # ======================================================================================
+import glob
 import hashlib
 import time
 
@@ -313,6 +314,15 @@ class R(object):
 
     def person(self, turn, c):
         return self.cmd("person-turn", "--turn", turn, "--cmd", c)
+
+    def answer(self, pid=None):
+        """The person answers (the mover logs the prompt id to person.log); -> the pid."""
+        n = getattr(self, "_ans", 0) + 1
+        self._ans = n
+        pid = pid or ("ans%d" % n)
+        with open(os.path.join(self.run_dir, "person.log"), "a", encoding="utf-8") as f:
+            f.write("%s\t%.3f\n" % (pid, time.time()))
+        return pid
 
     def adv(self, turn=None):
         return self.cmd(*(["advance", "--turn", turn] if turn else ["advance"]))
@@ -527,6 +537,7 @@ def test_resume_reissues_the_current_step_with_a_fresh_code_word(tmp_path):
     r = R(tmp_path)
     r.to_step(1)
     before = r.events()
+    r.answer()
     p = r.cmd("resume", "--choice", "continue")
     assert p.returncode == OK, text(p)
     new = re.search(r"(RUN-[0-9A-Z]{6})", p.stdout).group(1)
@@ -545,6 +556,7 @@ def test_resume_on_a_dangling_handover_is_exit_7(tmp_path):
     r.write(0)
     assert r.move("t1").returncode == OK
     rewrite_record(r.run_dir, lambda o: o["event"] == "done" and o["stage"] == "shape")  # crash before done
+    r.answer()
     p = r.cmd("resume", "--choice", "continue")
     assert p.returncode == DANGLING and "recover first" in text(p), text(p)
     assert "reissue" not in r.events()
@@ -556,15 +568,18 @@ def test_resume_on_a_finished_run_is_exit_4(tmp_path):
     r.write(2)
     assert r.adv().returncode == OK
     n = len(r.lines())
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == NOTHING
     assert len(r.lines()) == n
 
 
 def test_resume_on_an_abandoned_run_is_exit_4(tmp_path):
     r = R(tmp_path)
+    r.answer()
     assert r.cmd("abandon", "--choice", "start-over").returncode == OK
     shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid),
                 os.path.join(r.wd, ".stage-runner.json"))      # a stale marker pointing at it
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == NOTHING
 
 
@@ -572,8 +587,10 @@ def test_resume_choice_is_validated(tmp_path):
     r = R(tmp_path)
     n = len(r.lines())
     for bad in ("go", "start-over", "leave-it", ""):
+        r.answer()
         p = r.cmd("resume", "--choice", bad)
         assert p.returncode == USAGE and "ask the person again" in text(p).lower(), (bad, text(p))
+    r.answer()
     assert r.cmd("resume").returncode == USAGE
     assert len(r.lines()) == n
 
@@ -581,6 +598,7 @@ def test_resume_choice_is_validated(tmp_path):
 def test_old_code_word_is_refused_after_resume_with_the_taken_over_message(tmp_path):
     r = R(tmp_path)
     old = r.code
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == OK
     r.write(0, code=old)
     c = r.cmd("check")
@@ -600,6 +618,7 @@ def test_a_wrong_word_that_was_never_issued_is_not_called_a_takeover(tmp_path):
 
 def test_the_new_code_word_passes_after_resume(tmp_path):
     r = R(tmp_path)
+    r.answer()
     p = r.cmd("resume", "--choice", "continue")
     new = re.search(r"(RUN-[0-9A-Z]{6})", p.stdout).group(1)
     r.write(0, code=new)
@@ -609,6 +628,7 @@ def test_the_new_code_word_passes_after_resume(tmp_path):
 
 def test_resume_then_advance_with_failing_output_is_refused(tmp_path):
     r = R(tmp_path)
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == OK
     r.write(0, body="## Gather\n\ntoo short\n")
     assert r.person("t1", "next").returncode == OK
@@ -621,6 +641,7 @@ def test_abandon_appends_abandoned_and_moves_the_marker_aside(tmp_path):
     r = R(tmp_path)
     r.to_step(1)
     before = r.events()
+    r.answer()
     p = r.cmd("abandon", "--choice", "start-over")
     assert p.returncode == OK, text(p)
     assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json"))
@@ -635,6 +656,7 @@ def test_abandon_appends_abandoned_and_moves_the_marker_aside(tmp_path):
 def test_abandon_choice_is_validated_and_touches_nothing(tmp_path):
     r = R(tmp_path)
     for bad in ("continue", "leave-it", "nope"):
+        r.answer()
         p = r.cmd("abandon", "--choice", bad)
         assert p.returncode == USAGE and "ask the person again" in text(p).lower(), (bad, text(p))
     assert os.path.isfile(os.path.join(r.wd, ".stage-runner.json"))
@@ -644,6 +666,7 @@ def test_abandon_choice_is_validated_and_touches_nothing(tmp_path):
 def test_abandon_works_on_a_damaged_record(tmp_path):
     r = R(tmp_path)
     damage_record(r.wd, r.rid)
+    r.answer()
     p = r.cmd("abandon", "--choice", "start-over")
     assert p.returncode == OK, text(p)
     assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json"))
@@ -653,6 +676,7 @@ def test_abandon_works_on_a_damaged_record(tmp_path):
 def test_abandon_works_on_an_unreadable_card(tmp_path):
     r = R(tmp_path)
     os.remove(r.card)
+    r.answer()
     p = r.cmd("abandon", "--choice", "start-over")
     assert p.returncode == OK, text(p)
     assert os.path.isfile(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid))
@@ -664,6 +688,7 @@ def test_status_json_exposes_abandoned_and_snoozed(tmp_path):
     r = R(tmp_path)
     j = r.step()
     assert j["snoozed"] is False and j["abandoned"] is False
+    r.answer()
     assert r.cmd("abandon", "--choice", "start-over").returncode == OK
     shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid),
                 os.path.join(r.wd, ".stage-runner.json"))
@@ -674,16 +699,19 @@ def test_status_json_exposes_abandoned_and_snoozed(tmp_path):
 # ---------------------------------------------------------------- snooze
 def test_snooze_appends_snoozed_and_a_later_resume_lifts_it(tmp_path):
     r = R(tmp_path)
+    r.answer()
     p = r.cmd("snooze", "--choice", "leave-it")
     assert p.returncode == OK, text(p)
     assert r.lines()[-1]["event"] == "snoozed" and r.lines()[-1]["data"]["choice"] == "leave-it"
     assert r.step()["snoozed"] is True
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == OK
     assert r.step()["snoozed"] is False
 
 
 def test_a_later_person_line_also_lifts_the_snooze(tmp_path):
     r = R(tmp_path)
+    r.answer()
     assert r.cmd("snooze", "--choice", "leave-it").returncode == OK
     assert r.step()["snoozed"] is True
     assert r.person("t1", "next").returncode == OK
@@ -693,6 +721,7 @@ def test_a_later_person_line_also_lifts_the_snooze(tmp_path):
 def test_snooze_choice_is_validated(tmp_path):
     r = R(tmp_path)
     for bad in ("continue", "start-over", "later"):
+        r.answer()
         p = r.cmd("snooze", "--choice", bad)
         assert p.returncode == USAGE and "ask the person again" in text(p).lower(), (bad, text(p))
     assert "snoozed" not in r.events()
@@ -740,6 +769,7 @@ def test_start_after_abandon_begins_a_new_run_from_step_1(tmp_path):
     r = R(tmp_path)
     r.to_step(1)
     old = r.rid
+    r.answer()
     assert r.cmd("abandon", "--choice", "start-over").returncode == OK
     r.start()
     assert r.rid != old and r.step()["index"] == 1
@@ -802,7 +832,9 @@ def test_an_untouched_walk_with_back_and_resume_still_verifies(tmp_path):
     r = R(tmp_path)
     r.to_step(2)
     assert r.person("b1", "back").returncode == OK and r.bk("b1").returncode == OK
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == OK
+    r.answer()
     assert r.cmd("snooze", "--choice", "leave-it").returncode == OK
     p = r.cmd("verify")
     assert p.returncode in (OK, CHECKFAIL), text(p)          # person lines may be unlogged; never DAMAGED
@@ -822,6 +854,7 @@ def test_a_marker_that_is_valid_json_but_not_an_object_is_damaged_not_a_tracebac
 def test_a_bad_marker_can_still_be_abandoned(tmp_path):
     r = R(tmp_path)
     open(os.path.join(r.wd, ".stage-runner.json"), "w", encoding="utf-8").write("[]")
+    r.answer()
     p = r.cmd("abandon", "--choice", "start-over")
     assert p.returncode == OK, text(p)
     assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json"))
@@ -1002,6 +1035,7 @@ def test_abandon_on_a_complete_run_uses_the_done_tag(tmp_path):
     r.to_step(2)
     r.write(2)
     assert r.adv().returncode == OK
+    r.answer()
     assert r.cmd("abandon", "--choice", "start-over").returncode == OK
     assert os.path.isfile(os.path.join(r.wd, ".stage-runner.json.done-" + r.rid))
     assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid))
@@ -1061,12 +1095,15 @@ def test_resume_snooze_abandon_record_the_newest_person_prompt(tmp_path):
     """A3: resume/abandon/snooze record the newest person.log line (id + time)."""
     r = R(tmp_path)
     open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t% d\n" % time.time())
-    for args, event in ((["resume", "--choice", "continue"], "reissue"),
-                        (["snooze", "--choice", "leave-it"], "snoozed")):
+    for args, event, want in ((["resume", "--choice", "continue"], "reissue", "p1"),
+                              (["snooze", "--choice", "leave-it"], "snoozed", "p2")):
+        if want == "p2": # one person prompt serves exactly ONE menu command
+            open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8").write(
+                "p2\t%d\n" % time.time())
         assert r.cmd(*args).returncode == OK, text(r.cmd(*args))
         last = r.lines()[-1]
         assert last["event"] == event, last
-        assert last["data"]["person"]["id"] == "p1", last
+        assert last["data"]["person"]["id"] == want, last
     r2 = R(tmp_path / "ab")
     open(os.path.join(r2.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t%d\n" % time.time())
     r2.write(0)
@@ -1078,10 +1115,11 @@ def test_resume_snooze_abandon_record_the_newest_person_prompt(tmp_path):
 
 
 def test_verify_flags_a_reissue_whose_person_prompt_is_not_logged(tmp_path):
-    """A3 verify: a reissue whose recorded person prompt is not in person.log (or none
-    recorded at all) is reported, exit 3 -- tamper evidence."""
+    """A3 verify: a reissue with no person prompt recorded (or one not in person.log) is
+    reported, exit 3 -- tamper evidence. (The gate itself refuses a live resume without a
+    logged prompt, so a no-prompt reissue can only be forged.)"""
     r = R(tmp_path)
-    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    _forge(r.run_dir, [("reissue", None, {"code_hash": "0" * 16, "choice": "continue"})])
     v = r.cmd("verify")
     assert v.returncode == CHECKFAIL and "person prompt" in text(v), text(v)
 
@@ -1089,9 +1127,13 @@ def test_verify_flags_a_reissue_whose_person_prompt_is_not_logged(tmp_path):
 def test_verify_flags_a_reissue_older_than_the_last_reissue(tmp_path):
     r = R(tmp_path)
     t0 = time.time() - 100
-    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t%d\n" % t0)
-    assert r.cmd("resume", "--choice", "continue").returncode == OK
-    assert r.cmd("resume", "--choice", "continue").returncode == OK  # no person prompt since
+    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write(
+        "p2\t%d\n" % t0) # the OLD prompt first in the log
+    open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8").write(
+        "p1\t%.3f\n" % time.time()) # a FRESH one after it: resume may use p1
+    assert r.cmd("resume", "--choice", "continue").returncode == OK # uses the fresh p1
+    _forge(r.run_dir, [("reissue", None, {"code_hash": "0" * 16, "choice": "continue",
+                                          "person": {"id": "p2", "t": t0}})])
     v = r.cmd("verify")
     assert v.returncode == CHECKFAIL and "older" in text(v), text(v)
 
@@ -1099,8 +1141,10 @@ def test_verify_flags_a_reissue_older_than_the_last_reissue(tmp_path):
 def test_verify_passes_when_the_person_prompt_is_logged_and_fresh(tmp_path):
     r = R(tmp_path)
     open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write("p1\t%d\n" % time.time())
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == OK
     open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8").write("p2\t%d\n" % time.time())
+    r.answer()
     assert r.cmd("resume", "--choice", "continue").returncode == OK
     v = r.cmd("verify")
     assert v.returncode == OK, text(v)
@@ -1111,6 +1155,7 @@ def test_an_abandoned_run_refuses_advance_back_and_person_turn(tmp_path):
     r = R(tmp_path)
     r.to_step(1)
     r.write(0)
+    r.answer()
     assert r.cmd("abandon", "--choice", "start-over").returncode == OK
     shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid),
                 os.path.join(r.wd, ".stage-runner.json"))
@@ -1122,6 +1167,7 @@ def test_an_abandoned_run_refuses_advance_back_and_person_turn(tmp_path):
 
 def test_verify_flags_a_record_line_after_abandoned(tmp_path):
     r = R(tmp_path)
+    r.answer()
     assert r.cmd("abandon", "--choice", "start-over").returncode == OK
     shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid),
                 os.path.join(r.wd, ".stage-runner.json"))
@@ -1220,6 +1266,7 @@ def test_verify_ok_on_a_run_with_a_skipped_pass(tmp_path):
     # the mover logs the person prompt (person.log) that authorised the resume
     open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8").write(
         "p9\t%.3f\n" % time.time())
+    r.answer()
     q = r.cmd("resume", "--choice", "continue")
     assert q.returncode == OK, text(q)
     r.code = re.search(r"(RUN-[0-9A-Z]{6})", q.stdout).group(1)
@@ -1242,3 +1289,168 @@ def test_card_rejects_a_non_boolean_optional(tmp_path):
     assert p.returncode == USAGE, text(p)
     assert "optional" in text(p), text(p)
     assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json"))
+
+# ======================================================================================
+# Phase 4e fix pass (brief 2026-11-23). Each fix planted failing-first.
+# ======================================================================================
+
+def _answer(r, pid=None):
+    """The person answers (the mover logs the prompt id to person.log); -> the pid."""
+    return r.answer(pid)
+
+def test_menu_command_without_a_person_prompt_is_refused(tmp_path):
+    """4e A1: resume/snooze/abandon with NO person prompt logged is refused, exit 3
+    'ask the person first', nothing written."""
+    r = R(tmp_path)
+    r.to_step(1)
+    n = len(r.lines())
+    p = r.cmd("resume", "--choice", "continue")
+    assert p.returncode == CHECKFAIL and "ask the person first" in text(p), text(p)
+    assert len(r.lines()) == n
+    p = r.cmd("snooze", "--choice", "leave-it")
+    assert p.returncode == CHECKFAIL and "ask the person first" in text(p), text(p)
+    assert len(r.lines()) == n
+
+def test_menu_command_with_a_stale_person_prompt_is_refused(tmp_path):
+    """4e A1: the recorded person prompt must be NEWER than the record's last line."""
+    r = R(tmp_path)
+    r.to_step(1)
+    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write(
+        "p0\t%d\n" % (time.time() - 500))
+    n = len(r.lines())
+    p = r.cmd("resume", "--choice", "continue")
+    assert p.returncode == CHECKFAIL and "older" in text(p), text(p)
+    assert len(r.lines()) == n
+
+def test_a_person_prompt_serves_only_one_menu_command(tmp_path):
+    """4e A1: each person prompt id may be used by exactly ONE menu command."""
+    r = R(tmp_path)
+    r.answer("p1")
+    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    n = len(r.lines())
+    p = r.cmd("snooze", "--choice", "leave-it")
+    assert p.returncode == CHECKFAIL and "ask the person first" in text(p), text(p)
+    assert len(r.lines()) == n
+
+def test_verify_flags_a_reused_menu_prompt(tmp_path):
+    """4e A1 verify: a menu line whose person prompt id another menu line already used is
+    reported, exit 3."""
+    r = R(tmp_path)
+    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write(
+        "p1\t%.3f\n" % time.time())
+    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    _forge(r.run_dir, [("snoozed", None,
+        {"choice": "leave-it", "person": {"id": "p1", "t": time.time()}})])
+    v = r.cmd("verify")
+    assert v.returncode == CHECKFAIL and "already used" in text(v), text(v)
+
+def test_verify_flags_a_stale_menu_prompt(tmp_path):
+    """4e A1 verify: a menu line whose person prompt is older than the record's line
+    before it is reported, exit 3."""
+    r = R(tmp_path)
+    t0 = time.time() - 100
+    open(os.path.join(r.run_dir, "person.log"), "w", encoding="utf-8").write(
+        "p2\t%d\n" % t0) # the OLD prompt first in the log
+    open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8").write(
+        "p1\t%.3f\n" % time.time()) # a FRESH one after it: resume may use p1
+    assert r.cmd("resume", "--choice", "continue").returncode == OK
+    _forge(r.run_dir, [("reissue", None,
+        {"code_hash": "0" * 16, "choice": "continue", "person": {"id": "p2", "t": t0}})])
+    v = r.cmd("verify")
+    assert v.returncode == CHECKFAIL and "older" in text(v), text(v)
+
+def test_verify_run_reads_a_set_aside_run(tmp_path):
+    """4e A1: `verify --run <run folder>` reads an abandoned (set-aside) run directly."""
+    r = R(tmp_path)
+    r.to_step(1)
+    r.answer()
+    open(os.path.join(r.run_dir, "mover.log"), "w", encoding="utf-8").write("w0\n")
+    assert r.cmd("abandon", "--choice", "start-over").returncode == OK
+    p = run(["verify", "--run", r.run_dir])
+    assert p.returncode == OK and p.stdout.startswith("OK "), text(p)
+
+def test_abandon_in_a_copied_folder_never_touches_the_original_record(tmp_path):
+    """4e A2: a copied folder whose marker still points at the ORIGINAL run folder:
+    abandon in the copy renames the copy's marker only; the original record is unchanged."""
+    r = R(tmp_path)
+    r.to_step(1)
+    r.answer()
+    before = open(os.path.join(r.run_dir, "record.jsonl"), encoding="utf-8").read()
+    copy = os.path.join(r.td, "copy")
+    shutil.copytree(r.wd, copy) # its marker still names r.run_dir, outside the copy
+    p = run(["abandon", "--choice", "start-over", "--workdir", copy])
+    assert p.returncode == OK, text(p)
+    assert open(os.path.join(r.run_dir, "record.jsonl"), encoding="utf-8").read() == before
+    assert not os.path.exists(os.path.join(copy, ".stage-runner.json"))
+    assert os.path.isfile(os.path.join(copy, ".stage-runner.json.abandoned-" + r.rid))
+
+def test_optional_skip_handover_names_the_skip(tmp_path):
+    """4e A3: a skipped optional step's handover says 'was SKIPPED by your /next (not
+    finished: <codes>)', and status --json lists it under 'skipped'."""
+    r = R(tmp_path, start=False)
+    make_optional(r.card)
+    r.start()
+    p = r.move("a1")
+    assert p.returncode == OK, text(p)
+    assert "SKIPPED by your /next" in p.stdout, text(p)
+    assert "not finished:" in p.stdout, text(p)
+    j = r.step()
+    assert j["skipped"] == ["gather"], j
+
+def test_status_json_skipped_is_empty_without_a_skip(tmp_path):
+    r = R(tmp_path)
+    assert r.step()["skipped"] == []
+
+def test_card_rejects_an_alone_optional_step(tmp_path):
+    """4e A3: a card that marks an ALONE step optional is refused at start (exit 2)."""
+    r = R(tmp_path, start=False)
+    c = json.load(open(r.card, encoding="utf-8"))
+    c["stages"][2]["optional"] = True
+    json.dump(c, open(r.card, "w", encoding="utf-8"))
+    p = run(["start", "--card", r.card, "--workdir", r.wd])
+    assert p.returncode == USAGE and "optional" in text(p), text(p)
+    assert not os.path.exists(os.path.join(r.wd, ".stage-runner.json"))
+
+def test_global_workdir_before_the_subcommand_is_honoured(tmp_path):
+    """4e A4: `stage_runner.py --workdir W status` from another folder sees W's run."""
+    r = R(tmp_path)
+    r.to_step(1)
+    p = subprocess.run([sys.executable, os.path.abspath(RUNNER), "--workdir", r.wd,
+                        "status", "--json"], capture_output=True, text=True, cwd="/")
+    assert p.returncode == OK, p.stdout + p.stderr
+    assert json.loads(p.stdout)["index"] == 2
+
+def test_ensure_commands_marks_the_commands_not_model_invocable(tmp_path):
+    """4e fix 7: /next and /back carry disable-model-invocation: true; a file still in the
+    previous (no-flag) body is rewritten the same way the old-body rewrite works; a custom
+    body is left alone."""
+    td = str(tmp_path)
+    card = card3(td)
+    wd = os.path.join(td, "wd")
+    cd = os.path.join(wd, ".claude", "commands")
+    os.makedirs(cd)
+    prev = "---\ndescription: move to the next stage of the run\n---\n" + NEW_BODY + "\n"
+    open(os.path.join(cd, "next.md"), "w", encoding="utf-8").write(prev)
+    open(os.path.join(cd, "back.md"), "w", encoding="utf-8").write(
+        "---\ndescription: mine\n---\nMy own body.\n")
+    assert run(["start", "--card", card, "--workdir", wd]).returncode == OK
+    nxt = open(os.path.join(cd, "next.md"), encoding="utf-8").read()
+    assert "disable-model-invocation: true" in nxt, nxt
+    assert NEW_BODY in nxt, nxt
+    assert open(os.path.join(cd, "back.md"), encoding="utf-8").read() == \
+        "---\ndescription: mine\n---\nMy own body.\n"
+
+def test_start_sets_a_revived_abandoned_run_aside(tmp_path):
+    """4e fix 8: a run abandoned and revived (its .abandoned- marker copied back) is set
+    aside by start like a finished run -- today start refuses and the folder stays stuck."""
+    r = R(tmp_path)
+    r.to_step(1)
+    r.answer()
+    assert r.cmd("abandon", "--choice", "start-over").returncode == OK
+    shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid),
+                os.path.join(r.wd, ".stage-runner.json"))
+    n_before = len(glob.glob(os.path.join(r.wd, ".stage-runner.json.abandoned-*")))
+    r.start()
+    assert r.step()["index"] == 1 and r.step()["complete"] is False # a NEW run began
+    n_after = len(glob.glob(os.path.join(r.wd, ".stage-runner.json.abandoned-*")))
+    assert n_after == n_before + 1, (n_before, n_after) # the revived run was set aside

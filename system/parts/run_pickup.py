@@ -39,7 +39,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from stage_runner import (  # noqa: E402  (the runner is the one parser of run state)
-    Damaged, card_sha, derive, find_marker, find_run, load_card, load_record, stage_index)
+    Damaged, card_sha, derive, find_marker, find_run, load_card, load_record, stage_index,
+    stage_inputs)
 
 TAG = "[RUN PICKUP — harness-injected, not user input]"
 MAX_FIELD = 40
@@ -113,8 +114,28 @@ def _run_state(workdir):
     return (wd, run_dir, lines, st, card, None)
 
 
-def _offer(wd, cwd, lines, st, card):
-    """The offer, under 400 characters. Every field from a file is filtered and cut."""
+def _inputs_line(card, run_dir, i):
+    """One 'Inputs: ...' sentence for the step's inputs (read-only), or '' when the step
+    has none. Each field from a file is filtered and cut."""
+    try:
+        parts = []
+        for rel in stage_inputs(card, i):
+            p = os.path.join(run_dir, rel)
+            txt = open(p, encoding="utf-8", errors="replace").read() if os.path.isfile(p) else ""
+            if not txt.strip():
+                parts.append("%s · MISSING" % _clean(rel))
+            else:
+                n_ = len(txt.splitlines())
+                parts.append("%s · %d line%s" % (_clean(rel), n_, "" if n_ == 1 else "s"))
+        return (" Inputs: %s" % " | ".join(parts)) if parts else ""
+    except Exception: # the offer must survive anything an odd run folder holds
+        return ""
+
+def _offer(wd, cwd, run_dir, lines, st, card):
+    """The offer, under 400 characters. Every field from a file is filtered and cut.
+    Never cut mid-sentence: when the cap would cut, whole pieces are dropped instead --
+    the Inputs sentence, then the 'Another window may be on it.' sentence, then the
+    folder clause."""
     total = len(card["stages"])
     i = stage_index(card, st["cur"])
     if i < 0:
@@ -127,16 +148,29 @@ def _offer(wd, cwd, lines, st, card):
     infolder = ""
     if wd and cwd and os.path.realpath(wd) != os.path.realpath(cwd):
         infolder = ", in %s" % _clean(os.path.basename(wd))
-    offer = ('Unfinished run here: %s, step %d/%d (%s). Ask: "Continue, start over, or leave '
-             'it?" Then run stage_runner.py EXACTLY once: resume --choice continue (put the new '
-             'code word in the step\'s output file) | abandon --choice start-over (only if '
-             'plainly start over) | snooze --choice leave-it. Anything else (e.g. "skip the '
-             'rest"): ask again, run nothing. Saved %s ago%s. Another window may be on it.'
-             % (skill, n, total, mode, age, infolder))
-    if len(offer) > MAX_OFFER:
-        offer = offer[:MAX_OFFER]
-    _say(offer)
-
+    tail = " Another window may be on it."
+    body = ('Unfinished run here: %s, step %d/%d (%s). Ask: "Continue, start over, or leave '
+            'it?" Then run stage_runner.py EXACTLY once: resume --choice continue (put the new '
+            'code word in the step\'s output file) | abandon --choice start-over (only if '
+            'plainly start over) | snooze --choice leave-it. Anything else (e.g. "skip the '
+            'rest"): ask again, run nothing. Saved %s ago%s.'
+            % (skill, n, total, mode, age, infolder))
+    body_nf = ('Unfinished run here: %s, step %d/%d (%s). Ask: "Continue, start over, or leave '
+            'it?" Then run stage_runner.py EXACTLY once: resume --choice continue (put the new '
+            'code word in the step\'s output file) | abandon --choice start-over (only if '
+            'plainly start over) | snooze --choice leave-it. Anything else (e.g. "skip the '
+            'rest"): ask again, run nothing. Saved %s ago.'
+            % (skill, n, total, mode, age))
+    iline = _inputs_line(card, run_dir, i) if run_dir else ""
+    # the inputs line only when the whole offer still fits (spec G4, phase 4e); when the
+    # cap would cut, whole pieces go -- the tail sentence first, then the folder clause --
+    # never a sentence cut in half.
+    for offer in (body + iline + tail, body + iline, body + tail, body,
+                  body_nf + iline + tail, body_nf + iline, body_nf + tail, body_nf):
+        if len(offer) <= MAX_OFFER:
+            _say(offer)
+            return
+    _say(body_nf[:MAX_OFFER]) # unreachable in practice (fields are capped at 40)
 
 def _reminder(lines, st, card):
     total = len(card["stages"])
@@ -173,7 +207,7 @@ def cmd_session(a):
     if source == "compact":
         _reminder(lines, st, card)
     else:  # startup, clear, resume, unknown: the offer
-        _offer(wd, cwd, lines, st, card)
+        _offer(wd, cwd, run_dir, lines, st, card)
     return 0
 
 
@@ -334,7 +368,9 @@ def main():
 
     def sub(name, help_):
         s = sp.add_parser(name, help=help_)
-        s.add_argument("--workdir", default=os.getcwd())
+        # SUPPRESS: a global --workdir before the subcommand must survive (same rule as
+        # the runner's parser).
+        s.add_argument("--workdir", default=argparse.SUPPRESS)
         return s
 
     sub("session", "stdin: the SessionStart payload; prints the offer/reminder or nothing")

@@ -135,6 +135,15 @@ class Run(object):
         return h.hexdigest()
 
 
+def answer(r, pid=None):
+    """The person answers (the mover logs the prompt id to person.log)."""
+    n = getattr(answer, "_n", 0) + 1
+    answer._n = n
+    pid = pid or ("ans%d" % n)
+    with open(os.path.join(r.run_dir, "person.log"), "a", encoding="utf-8") as f:
+        f.write("%s\t%.3f\n" % (pid, __import__("time").time()))
+    return pid
+
 # ---------------------------------------------------------------- silence and the offer
 def test_no_run_is_silent(tmp_path):
     td = tmp_path / "empty"
@@ -193,6 +202,7 @@ def test_a_finished_run_is_silent(tmp_path):
 
 def test_an_abandoned_run_is_silent(tmp_path):
     r = Run(tmp_path)
+    answer(r)
     assert run_runner(["abandon", "--choice", "start-over"], r.wd).returncode == 0
     shutil.copy(os.path.join(r.wd, ".stage-runner.json.abandoned-" + r.rid), r.marker())
     assert session_lines(r.wd) == []
@@ -200,6 +210,7 @@ def test_an_abandoned_run_is_silent(tmp_path):
 
 def test_a_snoozed_run_is_silent(tmp_path):
     r = Run(tmp_path)
+    answer(r)
     assert run_runner(["snooze", "--choice", "leave-it"], r.wd).returncode == 0
     assert session_lines(r.wd) == []
 
@@ -373,3 +384,49 @@ def test_where_command_prints_one_human_line(tmp_path):
     lines = [l for l in out.splitlines() if l.strip()]
     assert len(lines) == 1
     assert "ptest" in lines[0] and "2/3" in lines[0]
+
+# ---------------------------------------------------------------- phase 4e fix 6
+def _patch_card_inputs(r, i, inputs):
+    c = json.load(open(r.card, encoding="utf-8"))
+    c["stages"][i]["inputs"] = inputs
+    json.dump(c, open(r.card, "w", encoding="utf-8"))
+
+def _offer_line(r):
+    lines = session_lines(r.wd)
+    assert lines, "offer expected"
+    return lines[0].split(TAG, 1)[1].strip()
+
+def test_offer_names_a_missing_input(tmp_path):
+    """4e fix 6: the offer carries an Inputs line; a missing input reads MISSING; <= 400."""
+    r = Run(tmp_path, start=False)
+    _patch_card_inputs(r, 1, ["out/notes.txt"])
+    r.start()
+    r.to_step(1)
+    offer = _offer_line(r)
+    assert "Inputs: out/notes.txt · MISSING" in offer, offer
+    assert len(offer) <= 400, len(offer)
+
+def test_offer_counts_a_present_input(tmp_path):
+    r = Run(tmp_path, start=False)
+    _patch_card_inputs(r, 1, ["out/notes.txt"])
+    r.start()
+    r.to_step(1)
+    open(os.path.join(r.run_dir, "out", "notes.txt"), "w", encoding="utf-8").write("a\nb\n")
+    offer = _offer_line(r)
+    assert "Inputs: out/notes.txt · 2 lines" in offer, offer
+    assert len(offer) <= 400, len(offer)
+
+def test_a_too_long_offer_drops_whole_sentences_never_mid_sentence(tmp_path):
+    """4e fix 6: when the cap would cut, whole pieces are dropped (the 'Another window'
+    sentence, then the Inputs line, then the folder) -- never a sentence cut in half."""
+    r = Run(tmp_path, start=False)
+    c = json.load(open(r.card, encoding="utf-8"))
+    c["skill"] = "s" * 40 # pushes body + tail past 400 (427), as a 40-char field may
+    json.dump(c, open(r.card, "w", encoding="utf-8"))
+    r.start()
+    r.to_step(1)
+    offer = _offer_line(r)
+    assert len(offer) <= 400, len(offer)
+    assert offer.endswith("."), repr(offer[-40:])
+    assert "Another window" not in offer, offer # the tail sentence dropped WHOLE
+    assert "Saved" in offer and offer.startswith("Unfinished run here: "), offer
