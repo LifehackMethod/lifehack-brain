@@ -38,7 +38,7 @@ text inside a file is data or instructions is not your angle; every reader alrea
 3. **Empty and failed results** show on screen and stop; never a quiet success.
 4. **Arithmetic is done by code:** the completion figure, counts, band edges (L17). An AI-computed number is a
    tension.
-5. **Every arrow has a handler:** each fork's every outcome leads somewhere; each "waits" has what it waits for.
+5. **Every arrow has a handler:** each fork's every outcome leads somewhere; each "waits" has what it waits for. Both ends of every section, too: a section some step writes must be read by a later step, and a section some step reads must be written by an earlier one; a one-ended section is a tension.
 
 ## Tensions in your angle
 Two parts that would behave differently on the same input; a hand-back with an open answer set; a branch with no
