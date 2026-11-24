@@ -3,6 +3,12 @@
 Build record for this skill: the gate table, the checks and their results, and every deliberate
 departure from the templates.
 
+Not skill folders, so there is nothing to find:
+
+> ⛔ `/next` is not here: a command the shared step runner writes when a run starts.
+
+> ⛔ `/back` is not here: a command the shared step runner writes when a run starts.
+
 ## Gate table
 
 Every item from the spec's FOR THE PLANNER AND THE BUILD list, with its pass check and the build phase
@@ -141,3 +147,21 @@ handoff-note, packet-writer, step-prompt-drafter and tool-builder-handoff all 6/
 scored 5/6: the blind reader showed it never said whether the pre-send path check was code or whether it
 blocked; the brief now names `scripts/citation_check.py` and says a missing path blocks the send, and one old
 answer key that predated the rewrite was corrected. Total across every quiz scored in this build: 114/114.
+
+## Live runner check (2026-11-24, fresh V2 window, scratch folder outside the plugin)
+
+- `start` on this card: exit 0; the step-1 prompt printed; `/next` and `/back` written as commands; status `RUN 1/5`.
+- A session trying to move a talk step itself: BLOCKED by the guard ("only the person moves a talk step").
+- `stage_runner.py --selftest`: PASS, including an out-of-order move refused (exit 3).
+- Plain words ("don't move on yet", "next"): nothing moved.
+- The person typed `/next`: moved to step 2. `/back`: back to step 1 with a fresh code word. No "Unknown command".
+- FOUND: the hook's injected step text is CUT OFF. After `/next` the step-2 prompt arrived partial (the full text
+  was in the run's `stage/02.prompt.md`); after `/back` the cut-off dropped the NEW CODE WORD, so the model could
+  not write it without reading the file. Sent to the runner's owner (run pickup). Until fixed, each step prompt
+  tells the model where the full prompt and the code word live (to do at the finish if the runner is unchanged).
+- Not checked here: the status line showing `RUN n/N` (the plugin's status line does not call the runner yet;
+  sent to run pickup earlier).
+- RUNNER-GAP WORKAROUND (coordinator's call, 2026-11-24): each step prompt now opens with the step's code word and
+  the path of the full prompt in the run folder, so a cut-off injection still carries both. Harmless after the
+  runner's own fix (code word first, plus a header), which went to run pickup.
+- Rule slip, 2026-11-24: the step prompts were edited while the live check's test run was still open (the rule says finish or abandon a run first). Throwaway test run only; it was left as is and the new line was checked in a fresh run.

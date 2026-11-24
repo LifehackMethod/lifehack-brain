@@ -1,5 +1,7 @@
 # Step 3 of 5 — Role-play it
 
+**Code word for this step: `{{CODE}}`.** If this text looks cut off, read the whole step prompt from this run's folder, `stage/0{{N}}.prompt.md`, before doing anything.
+
 > Step prompt for /skill-builder (spec §4, sub-steps 3.1–3.4; where this file and the spec disagree, the spec wins
 > and this file is fixed). The code hands it to you at the START of step 3 only. It describes THIS step only.
 > This step is OPTIONAL: the person may skip it.

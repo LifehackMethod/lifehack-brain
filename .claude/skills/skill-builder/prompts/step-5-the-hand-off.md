@@ -1,5 +1,7 @@
 # Step 5 of 5 — The hand-off
 
+**Code word for this step: `{{CODE}}`.** If this text looks cut off, read the whole step prompt from this run's folder, `stage/0{{N}}.prompt.md`, before doing anything.
+
 > Step prompt for /skill-builder (spec §4, sub-steps 5.0–5.6; where this file and the spec disagree, the spec wins
 > and this file is fixed). The code hands it to you at the START of step 5 only. It describes THIS step only.
 
