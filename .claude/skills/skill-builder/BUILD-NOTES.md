@@ -95,3 +95,49 @@ The full comparison is kept with the build's records; the finish (L.2) re-checks
 - **opening-screen.md:** screen text copied unchanged. One bookkeeping line removed: the title line's approval attribution (a person's name, a date and a quotation); the title now reads "The skill builder's opening screen (approved, fixed text)".
 - **Example spec (G14):** not copied; see the return note. `references/examples/` holds only its README.
 - Frontmatter also carries `name:` beside `skill:` (the template has only `skill:`): the commit check for new skills requires `name` + `description`, and Claude Code reads `name`.
+
+## Deviations from the build plan (approved)
+
+- G3 routing eval: not run at P2. It runs at the real-job step (after the NOT READY mark is removed) and on
+  the final commit, on Claude. Reason: a P2 run would test a description that still says NOT READY and is
+  re-run anyway. Approved by the project coordinator, 2026-11-24.
+- G14 example spec: deferred to the finish step. The first example is this skill's own finished spec,
+  scrubbed by the shipping lane; the older-format planning-weekly spec is not used. Meanwhile the skill
+  spec form carries a full worked example. Approved by the project coordinator, 2026-11-24.
+- The real-job trial (a fresh window, the owner in the chair saying "it's right") and the fix round after it
+  are DROPPED, by the owner's word, 2026-11-24: "we're gonna push it first and we'll fix it later ... We're
+  gonna call it done if it passes all tests and then we'll fix it as we use it later on." Done means every
+  automated test passes: routing eval on the final commit, the live runner check, every planted bad input
+  caught, the no-personal-info checks. The routing eval and the NOT READY removal move to the final
+  check. The filed page states the claim scoped: "not tried on a real job; fixed in use".
+
+## Re-quiz (comprehension check: could a blind reader understand the prompt?)
+
+Rule: re-quiz only a prompt whose meaning changed (the owner, 2026-11-24: re-quizzing every prompt "is a waste
+of money"). A full run was started by mistake and stopped after 12 of 29; the 10 scored before the stop all got
+6/6 (checker-draft-spec, checker-harness-findings, checker-heal, checker-skill-reading, checker-spec-update,
+checker-step-prompts, compiler, harness-search, research-mark, research-pass-item). Still to quiz, once each,
+because their meaning changed: the five step prompts (after their last edit), tool-builder-handoff
+(rewritten), packet-writer and handoff-note (new), step-prompt-drafter (fixed after the last quiz).
+Unchanged in meaning (a boilerplate line added, private text stripped): not re-quizzed.
+
+## The step prompts' own calls, approved
+
+Where the spec was silent, the prompt writer made 15 calls. The owner approved them on 2026-11-24 ("if they
+don't change the design intention of the human then it's fine"): 14 kept as written, and one corrected (step 1
+names the shared-tools list, which the writer had wrongly thought missing). They are written back into the
+spec at the finish step.
+
+## Code (P5)
+
+Five skill-local scripts in `scripts/`, each with good / edge / padded tests and a broken-copy test proving
+the check can fail: `gates.py` (typed fixed choices; none-of-these never moves the run), `completion.py`
+(the completion figure; band edges in its docstring; never gates), `inputs_check.py` (a sub-step's inputs and
+its waiting line), `citation_check.py` (paths cited inside the packet exist), `prompt_sections.py` (a step
+prompt has the template's sections in order, no leftover blanks, no ruling numbers). 62 tests pass. No shared
+tool covered these (checked against the toolbox list), so no register rows.
+Quiz results after the last edits (blind reader, cheap model; 6 questions each): the five step prompts,
+handoff-note, packet-writer, step-prompt-drafter and tool-builder-handoff all 6/6. tool-builder-handoff first
+scored 5/6: the blind reader showed it never said whether the pre-send path check was code or whether it
+blocked; the brief now names `scripts/citation_check.py` and says a missing path blocks the send, and one old
+answer key that predated the rewrite was corrected. Total across every quiz scored in this build: 114/114.

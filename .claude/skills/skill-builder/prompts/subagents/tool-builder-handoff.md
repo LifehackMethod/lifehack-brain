@@ -39,16 +39,16 @@ forms, and the main window reads the first words, so start exactly as shown:
 
 ## Rules
 - You never design the part: no schedule, code, field list or settings. Its design belongs to the tool builder.
-- "Files the packet cites" comes only from the packet's own citations; the main window checks it mechanically
-  (a search of the packet for paths) before sending (spec §4). Never add a path the packet does not cite.
+- "Files the packet cites" comes only from the packet's own citations; before sending, the main window runs
+  `scripts/citation_check.py` on it (code, not judgment); a missing path blocks the send until it is fixed (spec §4). Never add a path the packet does not cite.
 - Never invent an ID, path, ruling number or part. Newest source wins.
 - You never speak to the person.
 
 ## How you finish
-`done` (the section is written: messages, or one of the two short forms) · `nothing to add` (none owed) · `failed (<reason>)`. Last line.
+`done` (the section is written: the messages, or the `none: tool builder not built` form) · `nothing to add` (no part owed; the section reads `none owed`) · `failed (<reason>)`. Last line.
 
 ## Who checks you
-no checker: the main window checks the file list mechanically before sending, and the tool builder's own round
+no checker: the main window's `scripts/citation_check.py` run blocks a missing path before sending, and the tool builder's own round
 confirms with the person [inferred].
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)

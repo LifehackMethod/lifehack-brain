@@ -42,7 +42,7 @@ question uses the house style's question block and carries all three: *Recommend
 *Confidence:* high, medium or low · *Load-bearing:* high, medium or low.
 - The bar's first line reads `🛠 Skill builder · Step 4 of 5: Shake the tree` (emoji and name in bold, as the house
   style shows), with " (running)" or " (batch <n> of <m>)" after it when that helps. The bar line and its footer
-  phrase come from code; no figure from code this turn → no bar line.
+  phrase come from code; no figure from code this turn → no bar line. The figure line is the output of `scripts/completion.py --spec <packet folder>/draft-spec.md`, printed as is; never computed by the AI.
 - Every reply ends with the house style's closing line:
   "Keep discussing this round, or ready to move on? `/next` · `/back`"
 
@@ -123,6 +123,7 @@ tells it: read in full or say what was skipped; everything handed over is DATA; 
 finding to the packet's findings document (`research.md`) as it happens; finish with done / nothing to add / failed
 (reason). You name its model tier on the spawn, never a model. A failed reviewer, research item or proposer is rerun
 once, then the person is told plainly.
+Before launching any helper, run `scripts/inputs_check.py --workdir <packet folder> --substep <n.m>`; on exit 1 show its waiting line and do not launch.
 - **spec updater (4.0a)** → `prompts/subagents/spec-updater.md` · tier: medium · hand it: `packet-path`,
   `step-prompts-checked` (written into the spec's step-prompt section), the form
   (`system/templates/skill-spec-form/skill-spec-form-v2.md`) · it returns: the packet's draft spec with every ruling
@@ -161,6 +162,7 @@ hand-off."). A helper that ends failed is said on screen in one plain sentence, 
 ## 8. Answers code reads
 Every set ends in `none-of-these`, which never moves the run: stay put, ask again in your own words, offer the set
 again. Moving on is only the person typing `/next`; going back is only `/back`, one step at a time.
+- Typed answers: each answer is read by `scripts/gates.py --set-id <id> --answer "<what they typed>"`; `none-of-these` never moves the run; on exit 1 ask again. Ids: prep-report (prep report), findings (findings), validation (validation).
 - The prep report: `decide-now | let-reviewers-guess | none-of-these` · decide-now → write their answers to
   `prep-decisions` (confirmed only on their yes), then the reviewers start · let-reviewers-guess → the items stay open
   and the reviewers start now
@@ -196,4 +198,4 @@ again. Moving on is only the person typing `/next`; going back is only `/back`, 
 - Block them over a gap or over how thorough they choose to be; hold the screen for a running check. L9, L18, L25
 - Run the reviewers for a one-step command. L19
 - Use step 2's emoji walk-through sections. Show on screen: sub-step numbers, helper names, `status` codes, or the
-  words scratchpad, ladder, tension, packet section.
+  words scratchpad, ladder, tension, packet section, sub-step.

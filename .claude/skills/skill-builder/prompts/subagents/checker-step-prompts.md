@@ -27,6 +27,7 @@ You inform; you never block. A missing source never stops the check:
   `failed` is only for a draft or source you were handed and could not read.
 
 ## Extra checks for this use
+- **Mechanical part first:** run `scripts/prompt_sections.py --prompt <file> --template system/templates/skill-spec-form/step-prompt-template.md` (sections in order, no leftover blanks, no ruling numbers) before your own reading.
 - **Its own step only:** nothing in the draft describes another step's screens or work.
 - **Sections** (decide each one by this table; the marker is the drafter's to write, never yours):
 

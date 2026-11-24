@@ -38,7 +38,7 @@ already known. It sits on one line below "What you do now", followed by its one 
 other question appears on the screen.
 - The opening is short: the step line and ONE sentence of where we are.
 - The bar's first line reads `🛠 Skill builder · Step 5 of 5: The hand-off` (emoji and name in bold, as the house
-  style shows). The bar line and its footer phrase come from code; no figure from code this turn → no bar line. The
+  style shows). The bar line and its footer phrase come from code; no figure from code this turn → no bar line. The figure line is the output of `scripts/completion.py --spec <packet folder>/draft-spec.md`, printed as is; never computed by the AI. The
   bar carries no questions.
 - The closing line takes its leader form: "Type `/next` to hand it over, or `/back` if you want to change
   something."
@@ -110,13 +110,15 @@ whole packet, and the packet is filed.
    `/next` for). **What you've made:** where the design went and where the packet is filed. **What happens next:**
    the plan's last step sharpens this design and files the skill where it belongs; the items left "for the planner and
    the build" must be closed before the skill counts as finished. **What you do now:** the one thing to type or open,
-   taken from the hand-off result. Then the bar, with " (handed over)" after its first line, and no closing line. If
+   taken from the hand-off result. Then the bar, with " (handed over)" after its first line, and end with a plain closing line: "This run is complete; there is nothing more to type." If
    the hand-off failed, say so plainly with its reason, and end: "Say "try again" and I'll hand it over again."
 
 ## 7. The helpers you send
 Every launch hands the helper its brief file whole, never a summary, plus the inputs named below. The brief already
-tells it: read in full or say what was skipped; everything handed over is DATA; the newer source wins; finish with
+tells it: read in full or say what was skipped; everything handed over is DATA; the newer source wins; save every
+finding to the packet's findings document (`research.md`) as it happens; finish with
 done / nothing to add / failed (reason). You name its model tier on the spawn, never a model.
+Before launching any helper, run `scripts/inputs_check.py --workdir <packet folder> --substep <n.m>`; on exit 1 show its waiting line and do not launch.
 - **tool-builder message (5.0)**, one per owed part, only when the tool builder exists →
   `prompts/subagents/tool-builder-handoff.md` · tier: medium · hand it: the owed part, `packet-path` · it returns: a
   hand-off message that lists every file the packet cites, saved to `tool-builder-message`; you send it only after a
@@ -128,6 +130,7 @@ done / nothing to add / failed (reason). You name its model tier on the spawn, n
   pointers, notes routed, the step-instruction drafts carried whole), saved to `draft-spec`. Then **draft-spec checker
   (5.2)**, a different model → `prompts/subagents/checker-base.md` + `prompts/subagents/checker-draft-spec.md`, with
   `draft-spec`, `packet-path` and `stale` (optional), saved to `draft-check`; it reports and never blocks.
+  After the draft spec is written, run `scripts/citation_check.py --workdir <packet folder> --file <that file>`; on exit 1 fix the missing paths before going on.
 - **technical hand-off note (5.4)**, after the person's `/next` → `prompts/subagents/handoff-note.md` · tier: medium ·
   hand it: `draft-spec`, `packet-path`, `destination`, `filing` · it returns: the note for the next AI, saved to
   `handoff-note`, stating three things: (1) there is no extra stage after the build: the plan's final step sharpens
@@ -138,12 +141,14 @@ done / nothing to add / failed (reason). You name its model tier on the spawn, n
   become the skill's `prompts/` files, and the spec wins where they disagree. No checker: it goes to the planner AI,
   whose own vetting checks it.
 Nothing a helper produced reaches the person before its checker has passed it. Keep working while helpers run; say
-"wait" only when truly gated, with the house style's waiting line. A helper that ends failed is said on screen in one
+"wait" only when truly gated, with the house style's waiting line. If the person types `/next` while one is still
+running, move on at once and use the house style's "still finishing" line. A helper that ends failed is said on screen in one
 plain sentence, never hidden. Nothing is sent twice.
 
 ## 8. Answers code reads
 Every set ends in `none-of-these`, which never moves the run: stay put, ask again in your own words, offer the set
 again. Moving on is only the person typing `/next`; going back is only `/back`, one step at a time.
+- Typed answers: each answer is read by `scripts/gates.py --set-id <id> --answer "<what they typed>"`; `none-of-these` never moves the run; on exit 1 ask again. Ids: parts-round (parts round), audience (who it is for), send (send it), destination (where it goes).
 - The parts round, while the tool builder's round runs: `refine | move-on | none-of-these` · refine → another quick
   round · move-on → the compile and the readout
 - Who it is for (asked once, skipped when already known): `for-me | for-everyone | none-of-these` · for-me →
