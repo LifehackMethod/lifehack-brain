@@ -141,6 +141,11 @@
      },
      {
       "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_run_commands.sh\"",
+      "statusMessage": "Keeping the step order yours"
+     },
+     {
+      "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/guard_sheet_formula_writes.sh\"",
       "statusMessage": "Checking this write would not land on a formula..."
      },
@@ -344,6 +349,11 @@
      },
      {
       "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/run_pickup_hook.sh\"",
+      "statusMessage": "Checking for a skill run to pick up"
+     },
+     {
+      "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/session_context_loader.sh\"",
       "statusMessage": "Loading your standing notes..."
      },
@@ -446,6 +456,11 @@
       "type": "command",
       "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/rating_capture.sh\"",
       "statusMessage": "Noting a rating, if you gave one..."
+     },
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/system/hooks/run_step_hook.sh\"",
+      "statusMessage": "Moving your skill on when you type /next or /back"
      },
      {
       "type": "command",

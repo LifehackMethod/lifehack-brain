@@ -1,0 +1,34 @@
+{
+  "skill": "run-pickup-practice",
+  "stop_limit": 3,
+  "stages": [
+    {
+      "id": "gather",
+      "mode": "talk",
+      "prompt": "prompts/01-gather.md",
+      "out": "out/01-gather.md",
+      "checks": { "headings": ["## Gathered"], "min_words": 15, "code_word": true }
+    },
+    {
+      "id": "frame",
+      "mode": "talk",
+      "prompt": "prompts/02-frame.md",
+      "out": "out/02-frame.md",
+      "checks": { "headings": ["## Frame"], "min_words": 15, "code_word": true }
+    },
+    {
+      "id": "tally",
+      "mode": "alone",
+      "prompt": "prompts/03-tally.md",
+      "out": "out/03-tally.md",
+      "checks": { "headings": ["## Tally"], "min_words": 15, "code_word": true }
+    },
+    {
+      "id": "report",
+      "mode": "talk",
+      "prompt": "prompts/04-report.md",
+      "out": "out/04-report.md",
+      "checks": { "headings": ["## Report"], "min_words": 15, "code_word": true }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+ "session_id": "0c673c54-5d2c-4331-9f6f-f65ea9a0e833",
+ "transcript_path": "/tmp/transcript.jsonl",
+ "cwd": "/tmp/runwd",
+ "prompt_id": "a3779d03-09a2-4807-85f8-674b4b905715",
+ "permission_mode": "default",
+ "hook_event_name": "UserPromptSubmit",
+ "prompt": "/next"
+}
