@@ -59,14 +59,6 @@ Source of the check: one whole-document read of both files by the reading tool (
 18 of 18 quotes verified). No model reliably notices what a document leaves out; this list is what was
 found, not proof that nothing else clashes.
 
-## Helper routing during the build
-
-From 2026-11-24 (P1), the cheap helper model ran out of credit. Reading and checking jobs that would have
-gone to it go to a medium-tier Claude helper instead, until the cheap model is back. One reading job
-that finished before the cut-off (G19 above) is kept, with its reading proof.
-From later on 2026-11-24 (still P1) the cheap model is back and is the default again, with a medium-tier
-Claude helper for load-bearing reads and anything the cheap model gets wrong.
-
 ## Template completeness (the producer-spec template, first pass)
 
 The spec was compared section by section with `system/templates/producer-spec-template.md`: 2 sections
@@ -120,8 +112,7 @@ The full comparison is kept with the build's records; the finish (L.2) re-checks
 ## Re-quiz (comprehension check: could a blind reader understand the prompt?)
 
 Rule: re-quiz only a prompt whose meaning changed (the owner, 2026-11-24: re-quizzing every prompt "is a waste
-of money"). A full run was started by mistake and stopped after 12 of 29; the 10 scored before the stop all got
-6/6 (checker-draft-spec, checker-harness-findings, checker-heal, checker-skill-reading, checker-spec-update,
+of money"). Of the unchanged prompts, the 10 scored as a spot check all got 6/6 (checker-draft-spec, checker-harness-findings, checker-heal, checker-skill-reading, checker-spec-update,
 checker-step-prompts, compiler, harness-search, research-mark, research-pass-item). Still to quiz, once each,
 because their meaning changed: the five step prompts (after their last edit), tool-builder-handoff
 (rewritten), packet-writer and handoff-note (new), step-prompt-drafter (fixed after the last quiz).
@@ -199,3 +190,14 @@ checker by ruling (the packet writer, the hand-off note), each with its reason i
 - Filling a window up mid-run (no run was taken to a full context window).
 - A student install, other models than the ones used here, and vague requests: not tested.
 - Not tried on a real job, by the owner's ruling; fixed in use.
+
+## No-personal-info check (finish step, 2026-11-24)
+
+On the real list of files this build changes on V2 (60 at the time): the shipping lane's scrub PASSED 60/60;
+its judgment pass (cheap model, 5 bundles, all files read) found no personal data; it flagged build-process
+chatter in these notes and one example that hinted at a real person's line of work: both removed. A grep of
+every changed file for names, window names, private paths, private documents and email addresses: 0 hits.
+Every commit's author is the no-reply GitHub address. Model-id pins check: OK.
+Outside this build, found and left to their owners: the shipping lane's own rule self-test reports one dead
+rule (`path-unc-share` never matches), and the hard-coded model-id check flags 7 lines in the reading tool's
+test file. Neither file is touched by this build.

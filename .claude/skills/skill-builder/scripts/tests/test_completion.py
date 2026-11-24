@@ -18,7 +18,7 @@ SPEC = """# draft spec — receipt sorter
 - **One-liner:** <one line what it does>
 
 ## 1. WHAT THIS SKILL IS FOR
-- The person it serves: actors and freelancers [inferred]
+- The person it serves: people who run a weekly review [inferred]
 - This skill runs only after /x has finished (D2)
 - The screen shows one line per receipt (D3) [stale]
 - The prompt file lives at prompts/step-1.md [builder's choice]
