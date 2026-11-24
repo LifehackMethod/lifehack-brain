@@ -40,7 +40,7 @@ DIR=`CDPATH= cd -- "$(dirname -- "$0")" && pwd`
 PAYLOAD_FILE=`mktemp "${TMPDIR:-/tmp}/mover-payload.XXXXXX"`
 printf '%s' "$payload" > "$PAYLOAD_FILE"
 RESULT=`python3 - "$DIR" "$PAYLOAD_FILE" <<'PY'
-import json, os, subprocess, sys, time
+import json, os, re, subprocess, sys, time
 TAG = "[RUN STEP — harness-injected, not user input]"
 hooks = sys.argv[1]
 sys.path.insert(0, os.path.join(hooks, "lib"))
@@ -81,20 +81,35 @@ cmd = "back" if prompt.strip() == "/back" else "next"
 runner = os.path.abspath(os.path.join(hooks, "..", "parts", "stage_runner.py"))
 def run(args):
     return subprocess.run([sys.executable, runner] + args, capture_output=True, text=True)
-def cap(t):
-    """The runner's output, capped; the truncation note names the stage prompt file."""
+def header():
+    """Where the CURRENT step's full prompt lives (the runner masks the code word in that file, so the
+    word itself is taken from the runner's full output in emit(), before any cap)."""
+    path = "the stage prompt file for this step"
+    s_ = run(["status", "--json", "--workdir", wd])
+    try:
+        idx = int(json.loads(s_.stdout).get("index"))
+        cand = os.path.join(run_dir, "stage", "%02d.prompt.md" % idx)
+        if os.path.exists(cand):
+            path = cand
+    except (ValueError, TypeError, OSError):
+        pass
+    return path
+def cap(t, path, budget=4000):
+    """The runner's output, capped to the budget; the truncation note names the CURRENT stage prompt file."""
     t = (t or "").strip()
-    if len(t) > 4000:
-        note = "the stage prompt file for this step"
-        sd = os.path.join(run_dir, "stage")
-        try:
-            cands = sorted(f_ for f_ in os.listdir(sd) if f_.endswith(".prompt.md"))
-            if cands:
-                note = os.path.join(sd, cands[-1])
-        except OSError:
-            pass
-        t = t[:4000] + "\nfull instructions in " + note
-    return t
+    m = re.search(r"RUN-[0-9A-Z]{6}", t)
+    if len(t) > budget:
+        t = t[:max(budget, 500)] + "\nfull instructions in " + path
+    return t, (m.group(0) if m else None)
+def emit(body):
+    """First line: the full prompt's path and the CURRENT code word, taken from the whole runner output
+    BEFORE the cap, so a cut-off body can never lose it. Then the (capped) body."""
+    path = header()
+    seen = re.search(r"RUN-[0-9A-Z]{6}", body or "")
+    first = "full prompt: %s; code word: %s" % (path, seen.group(0) if seen else "none issued")
+    text, _ = cap(body, path, 4000 - len(first) - len(path) - 30)
+    print(first)
+    print(text)
 try:  # tamper-evidence: log the turn BEFORE person-turn, so a mover that dies mid-call
     with open(os.path.join(run_dir, "mover.log"), "a", encoding="utf-8") as f:
         f.write(pid + "\n")                       # still leaves its line (verify reads this)
@@ -102,14 +117,12 @@ except OSError:
     pass
 p = run(["person-" + "turn", "--turn", pid, "--cmd", cmd, "--workdir", wd])
 if p.returncode != 0:
-    print(TAG + " " + cap(p.stdout + p.stderr))
+    print(TAG)
+    emit(p.stdout + p.stderr)
     sys.exit(0)
 q = run(["advance" if cmd == "next" else "back", "--turn", pid, "--workdir", wd])
-if q.returncode != 0:
-    print(TAG + " " + cap(q.stdout + q.stderr))
-else:
-    print(TAG)
-    print(cap(q.stdout + q.stderr))
+print(TAG)
+emit(q.stdout + q.stderr)
 PY`
 rc=$?
 rm -f "$PAYLOAD_FILE" 2>/dev/null

@@ -63,6 +63,14 @@ All take `--workdir DIR` (default: the current folder).
 `--choice` is validated against the closed menu (`continue` / `start-over` / `leave-it`, each command
 takes its own word); anything else is exit 2, "ask the person again".
 
+## What the mover injects
+
+On the person's /next or /back, the mover hook's injected text always starts with ONE line,
+`full prompt: <run folder>/stage/NN.prompt.md; code word: RUN-XXXXXX`, taken from the runner's whole output
+before any cap. The body below it is capped (about 4,000 characters); a cut-off body ends with
+"full instructions in <that file>". The stage file masks the code word by design, so the first line is where
+the current word lives after a cut-off (fixed 2026-11-24: a long prompt plus a /back used to lose it).
+
 ## Record events
 
 `start` (with `card_sha`) · `person {turn, cmd}` · `pass` · `fail` · `handover` · `back` · `intent` ·

@@ -252,5 +252,46 @@ HOUT=`printf '%s' "$(cat "$SANDBOX/p_noj.json")" | sh "$NOJ/hooks/run_step_hook.
 case "$HOUT" in *"$TAG"*) ok ;; *) bad "no-journal still moves" "$HOUT" ;; esac
 grep -q '"event": "pass"' "$WD_NOJ/runs/$rid_p/record.jsonl" && ok || bad "no-journal moved the run" "no pass"
 
+echo "code word survives a cut-off (long prompt + /back), first line carries path and word"
+# Plant: stage 1's code word sits AFTER 4000 chars of filler, so a capped body can never show it.
+fresh_wd
+WD_CW="$WD"
+python3 - "$SANDBOX" <<'PY'
+import io, json, os, sys
+td = sys.argv[1]; d = os.path.join(td, "cwcard"); os.makedirs(os.path.join(d, "prompts"), exist_ok=True)
+filler = "Filler line for the code-word cut-off test. " * 150
+for i, sid in enumerate(("gather", "analyze"), 1):
+    io.open(os.path.join(d, "prompts", "%02d-%s.md" % (i, sid)), "w", encoding="utf-8").write(
+        "Stage {{ID}}. Write to {{OUT}}.\n\n" + filler + "\nYour code word: {{CODE}}\n")
+stages = [{"id": s, "mode": "talk", "prompt": "prompts/%02d-%s.md" % (i, s), "out": "out/%02d-%s.md" % (i, s),
+           "checks": {"headings": ["## %s" % s.title()], "min_words": 10, "code_word": True}}
+          for i, s in enumerate(("gather", "analyze"), 1)]
+json.dump({"skill": "cwspec", "stop_limit": 3, "stages": stages}, io.open(os.path.join(d, "card.json"), "w", encoding="utf-8"))
+PY
+cw_start=`python3 "$RUNNER" start --card "$SANDBOX/cwcard/card.json" --workdir "$WD_CW" 2>&1`
+cw1=`printf '%s' "$cw_start" | grep -o 'RUN-[0-9A-Z]\{6\}' | head -1`
+cw_rid=`ls "$WD_CW/runs" | head -1`
+printf '## Gather\n\nThe step work is written here in full, complete and checked.\n\nCode word: %s\n' "$cw1" > "$WD_CW/runs/$cw_rid/out/01-gather.md"
+runhook "`mkpayload "$FIX/run_ups_next_live.json" "$WD_CW" "mv-cw-next"`"
+runhook "`mkpayload "$FIX/run_ups_back_live.json" "$WD_CW" "mv-cw-back"`"
+cw_first=`printf '%s\n' "$HOUT" | sed -n 2p`
+cw_new=`printf '%s' "$cw_first" | grep -o 'RUN-[0-9A-Z]\{6\}' | head -1`
+case "$cw_first" in "full prompt: "*"/stage/01.prompt.md; code word: RUN-"*) ok ;; *) bad "first line has path + word after /back" "$cw_first" ;; esac
+[ -n "$cw_new" ] && [ "$cw_new" != "$cw1" ] && ok || bad "a FRESH word survives the cut" "new=$cw_new old=$cw1"
+printf '## Gather\n\nThe step work is written here in full, complete and checked.\n\nCode word: %s\n' "$cw_new" > "$WD_CW/runs/$cw_rid/out/01-gather.md"
+python3 "$RUNNER" check --workdir "$WD_CW" >/dev/null 2>&1 && ok || bad "the surfaced word is the one the runner accepts" "check refused $cw_new"
+# FAILING FIRST: the pre-fix mover (capped body only) loses the word on the same plant.
+if [ -f "$HOOKS/run_step_hook.sh.bak-20261124-cap" ]; then
+  fresh_wd; WD_OLD="$WD"
+  o_start=`python3 "$RUNNER" start --card "$SANDBOX/cwcard/card.json" --workdir "$WD_OLD" 2>&1`
+  o1=`printf '%s' "$o_start" | grep -o 'RUN-[0-9A-Z]\{6\}' | head -1`; o_rid=`ls "$WD_OLD/runs" | head -1`
+  printf '## Gather\n\nThe step work is written here in full, complete and checked.\n\nCode word: %s\n' "$o1" > "$WD_OLD/runs/$o_rid/out/01-gather.md"
+  mkpayload "$FIX/run_ups_next_live.json" "$WD_OLD" "mv-old-next" | sh "$HOOKS/run_step_hook.sh.bak-20261124-cap" >/dev/null 2>&1
+  OOUT=`mkpayload "$FIX/run_ups_back_live.json" "$WD_OLD" "mv-old-back" | sh "$HOOKS/run_step_hook.sh.bak-20261124-cap" 2>&1`
+  printf '%s' "$OOUT" | grep -q 'RUN-[0-9A-Z]\{6\}' && bad "failing-first: old mover should LOSE the word" "it kept it" || ok
+else
+  echo "  NOTE: failing-first part skipped (no pre-fix copy beside the hook; it was seen failing on 2026-11-24)"
+fi
+
 echo "mover suite: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
