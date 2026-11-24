@@ -212,3 +212,14 @@ build-mode hook before any skill is chosen; the coming /build front door is the 
 fire: N1–N7 all 0 (N7, the bare "build me a skill that does X", 0/3). Claim as worded: "no wrong fire in k/3; one
 should-fire case weak (S2, 1/3)", on the commit that carries this line. Results table: routing-eval.md. The
 description's examples differ from the test sentences, so the eval is not matching its own words.
+
+## Final proof on the finished tree (L.4, 2026-11-24)
+
+A fresh session that built none of this re-ran every check by code (receipt: one line per check with its exit
+code, kept with the build's records): skill unit tests; the section check on all five step prompts; the card
+loads; runner and pickup self-tests; the mover (36), pickup-hook (13) and guard (39) suites; the runner's tests;
+the citation lint; register drift; model-id pins; the answer reader refusing an off-list answer and accepting a
+member; a grep for private text in every shipped file. 19 of 19 pass (the private-text grep first tripped on a
+local, gitignored Python cache folder that never ships; re-run without it: clean). Every file under
+`prompts/subagents/`, `scripts/` and `references/` is named by a step prompt, the card, SKILL.md or a brief.
+No component page exists yet in the plugin's canon (filing is the canon window's, after the push).
