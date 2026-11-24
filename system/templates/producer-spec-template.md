@@ -11,6 +11,8 @@ use: "Copy to author a PRODUCER SPEC for an interactive human-in-the-loop skill.
 
 # `<SKILL-NAME>` — PRODUCER SPEC (build blueprint)
 
+Which sections apply depends on the kind of skill: §9 only for skills with tiered inputs, §10 only for multi-turn or long runs, Layer 3 only for multi-turn skills, and the ambient column of §5 only if something happens before anyone is in the room; a section that doesn't apply gets one line, "doesn't apply, because…", never a filled-in section.
+
 > **Where this sits in the stack.** `system/templates/skill-template/` scaffolds the skill's FILES
 > (`SKILL.md` + examples). This template scaffolds the **contract those files must satisfy** — written
 > first, and kept as the normative source of record afterwards. Precedents:

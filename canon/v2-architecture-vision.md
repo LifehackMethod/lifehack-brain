@@ -833,7 +833,7 @@ is kept alive and surfaced to Enver (No outranking, in Read This First). Never a
 - **Rulings files:** one canon-files run's scratch pad; what they hold is persisted into the plan, brief, Vision,
   COMPASS, SOPs or the debt ledger, then the file is archived (`docs/v2/archive/`). Residency, by who owns the document: shipped canon — canonical principles, SOPs, map / manual /
   elements — stays in the harness repo (`LifehackMethod/lifehack-brain`, V2), already in git; the operator's
-  own documents — COMPASS and this Vision — live in the private ClaudeOps repo; Drive may
+  own document — COMPASS — lives in the private ClaudeOps repo, and this Vision lives in V2 canon; Drive may
   keep a backup copy; a student needs no repo of their own, and one with a GitHub account may open PRs and
   issues. The person's data
   folders: the brain folder is local first, and Drive backs it up; a fourth, unsynced local folder holds live

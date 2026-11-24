@@ -10,6 +10,8 @@ history: "canon/sop-template.history.md"
 
 # The Lifehack harness SOP template — how we write canon
 
+Required sections apply to every SOP; the sections marked [optional] apply only when the SOP has that kind of content (Musts only in a high-altitude document, Open Tensions only for a real conflict of meaning), and one that doesn't apply gets one line, "doesn't apply, because…", never a filled-in section.
+
 ## Why this shape
 
 - **The reader.** Every SOP is read by a future AI session with zero context, often opened mid-task. So the sections
@@ -33,7 +35,7 @@ history: "canon/sop-template.history.md"
 - Copy everything below the line into the new SOP and fill it in.
 - Keep every heading name exactly as written, in this order. (Section IDs are deferred; stable headings let a script
   add them later in one pass, and let canon-files compare SOPs section by section.)
-- A section marked *[optional]* that has nothing to say is **left out entirely** — not left empty.
+- A section marked *[optional]* that has nothing to say gets one line, "doesn't apply, because…" — never left empty and never filled in.
 - Lean: a procedure is "action and only action." Every why, change condition and pointer is one line.
 - No banners, no ⭐ or ⛔ markers, no struck-through text, no copied rulings, no inline counts (point to them).
 - Numbered lists for steps; short bullets elsewhere.

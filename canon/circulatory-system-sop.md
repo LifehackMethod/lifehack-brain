@@ -27,6 +27,123 @@ history: "canon/circulatory-system-sop.history.md"
   - A finding might deserve a higher shelf → "Move a finding up".
   - Turning a goal into built work → "Plan and build".
 
+# Doing the circulatory system right means…
+Every line traces to `canon/circulatory-system-sop.md`.
+
+> **Words used here**
+> - **carry skills** — `/read`, `/save`, `/checkin`, `/project-manager`, `/orient`, `/autoplan`, `/build`: the skills that carry a project's knowledge from one session to the next.
+> - **brief** — a project's one living document, overwritten in place. **Frame** — its desired outcome and definition of done, owned by the person. **Status block** — its two-level reading of where the work stands (10,000 ft and 5,000 ft; no ground rung).
+> - **scratchpad (pad)** — the brief's `## 7. SCRATCHPAD` section, where notes are captured. **Story log** — the brief's append-only `## 4. STORY LOG` section: each decision with its outcome.
+> - **journal** — the append-only log of what happened and why; the backstop that makes overwriting the brief safe.
+> - **arm** — set the flag that tells hooks which project or plan a window is on.
+> - **session handoff** — the short message `/save` emits at close for the next window. (A **role handoff**, passing a live role between open windows, belongs to `canon/coordinating-windows-sop.md`.)
+> - **pickup** — a window opening cold on existing work. **Sub-plan** — a build window's plan under the project's plan.
+> - **blind reader** — a read-only helper that has not seen the session and tries the fixed brief.
+> - **step ledger** — the record of which mandatory steps a run reached (reached, not done well).
+> - Nothing in this SOP is a must: by Enver's ruling of 2026-11-15 the steps are how-to, and what holds a step is code.
+
+## 1. Every session…
+
+**Start or pick up**
+- New work: run `/project-manager`; it confirms the frame with the person before the brief counts as authoritative, registers the project and arms the flags. → SOP Procedure, Start 1; Desired Outcome
+- Cold pickup: run the two arm lines the last session handoff names, and read what it names; read the brief's status block and the plan's current phase, then stop and report. → SOP Procedure, Start 1
+- Arm the project flag (`system/hooks/pm_flag.sh`) and the plan flag (`system/hooks/plan_flag.sh`); check that `pm_flag.sh status` prints the brief's path. → SOP Procedure, Start 2
+- Once armed, the project and plan stay locked for the life of the window (not built yet); the lock and how it changes are `canon/coordinating-windows-sop.md`'s. → SOP Desired Outcome
+
+**During the session**
+- Notes worth keeping go into the scratchpad of the armed brief, appended from the main window, append-only. → SOP Procedure, Keep 1; Principles
+- When the end-of-turn gate bounces a turn at a checkpoint, append what is missing from this window; check the lines sit under `## 7. SCRATCHPAD` and nothing was overwritten. → SOP Procedure, Keep 2
+- A discovery that changes the plan goes into the plan file, not only into chat. → SOP Procedure, Plan and build 3
+
+**Close (run `/save` bare)**
+- `/checkin` runs first. → SOP Procedure, Close 1
+- `/checkin` compacts the pad (through `pad_archive.py`, which archives it beside the brief and proves it landed before clearing) before it compares — a comparison against a brief without the session's notes reports no tensions. → SOP Procedure, Close 2; Desired Outcome
+- Answer `/checkin`'s one batched round; it drafts every change, including any to the status block, and writes only on a yes. Drift in the frame is flagged, not redrafted. → SOP Procedure, Close 3
+- The blind reader runs on the fixed brief once the edits land. → SOP Procedure, Close 4
+- `/save` extracts, tiers, pre-fills and writes the survivors; journal first, then the brief; debt swept into the debt ledger; the brief synced. Check that `system/tools/journal.py` appended the row. → SOP Procedure, Close 5; Desired Outcome
+- The coverage note is the step ledger's print, not a composed list — a print of what was reached, not proof of quality. → SOP Procedure, Close 5
+- Sweep out what this session demonstrably closed: delete it from the debt ledger's open list, and move resolved open loops to their resolved section, not ticked in place (a ticked item left in an active list gets re-read as open and redone). → SOP Procedure, Close 6
+- Emit the session handoff: at most 200 words, counted by the one-line command beside the form; a short timeline (what just finished, what is happening now, the very next step), the live thinking, what waits on the person; the plan line only when there is a plan (not built yet); anything longer goes in a file with a one-line pointer. → SOP Procedure, Close 7
+- The session handoff names the brief and the plan by path, so the pickup opens them in its first action. → SOP Principles (injected pointer; state as files)
+- Write every carried line for a stateless reader: could a session that has not seen this conversation act on it alone? Carry reasons, not bare facts. → SOP Principles
+
+## 2. In these situations…
+
+**Starting and picking up**
+- If a project is born mid-session through `/save` → its frame is written as best guesses marked `INFERRED`, the frame marked unconfirmed, and the slots put to the person in one round, not written as settled fact. → SOP Procedure, Start 1
+- If the pickup needs more than the brief → run `/read`: the brief loads first, ruled-out lines and the story log lead, then on-branch canon and search results with trust labels; a second `/read` loads only what is new; the close line names the paths loaded. → SOP Procedure, Start 3
+- If the person has lost the thread → run `/orient`; it changes nothing, and says so when a part has nothing behind it. → SOP Procedure, Start 4; Desired Outcome
+- If an arm is refused → report it and stop; what happens next is `canon/coordinating-windows-sop.md`'s. → SOP When Something Goes Wrong
+- If the project flag is missing mid-session → `/save` recovers it with `pm_flag_recover.py` (`system/tools/save/pm_flag_recover.py`). → SOP When Something Goes Wrong; References
+
+**Keeping things mid-session**
+- If no project is armed and something is worth keeping → ask the person where it goes. → SOP Procedure, Keep 1
+- If you want to keep one artifact mid-session → run a mid-session `/save`; it does not run `/checkin`. Non-canon items are written at once with a receipt; a canon candidate stops for the person's yes. → SOP Procedure, Keep 3
+- If tempted to delegate the scratchpad write to a sub-agent → append from the main window instead; a delegated writer truncated a brief to zero bytes. → SOP Don't Retry; Principles
+
+**Closing**
+- If no project is armed at close → `/checkin` is refused; `/save` notes that in one line and goes on. → SOP Procedure, Close 1; When Something Goes Wrong
+- If this is a pickup window, or nothing landed → the blind reader does not run and stamps `NOT_OWED`. → SOP Procedure, Close 4
+- If the blind reader could not open the brief → report the handoff proof as "not run", not as passed, and tell the person. → SOP Procedure, Close 4; When Something Goes Wrong
+- If the blind reader says "no" → it is a reason to look, not a verdict (its "no" has been seen on good input). → SOP Principles
+- If the session was long or compacted → `/save` asks the person whether any dead ends from earlier still need capturing (the question is `/save`'s own text; no hook prints it). → SOP Procedure, Close 5
+- If the pad will not clear → `pad_archive.py` refused because its proof did not match; leave the pad and report. → SOP When Something Goes Wrong
+- If a tool returns `CANNOT-READ` → report the step unevaluated; it is not a clean result. → SOP When Something Goes Wrong
+
+**The brief, the frame and the status block**
+- If the frame or status block would change → a session changes them on the person's own words; the person rewrites them freely. Before a frame change the session meets the street sign (not built yet): "This is the person's goal. Did they ask for this change in their own words? If yes, go ahead." — no block and no popup. → SOP Desired Outcome; Principles
+- If a write would shrink a brief or a plan sharply → the truncation guards stop it (`system/hooks/guard_brief_truncation.sh`, `system/hooks/guard_plans_truncation_floor.sh`); treat the refusal as a near-wipe, not a nuisance, and find what produced the short write before retrying. → SOP When Something Goes Wrong
+- If a story-log entry is overtaken → tag it `superseded-by`; it is not removed. → SOP Desired Outcome
+- If a dead end is found → it stays one line in the brief, with a pointer to the story; a compaction keeps it. → SOP Principles
+- If you need to undo → a brief section is recovered from the journal and the pad archive beside the brief; a plan is un-retired by renaming; a canon line is changed only by the person, with the old wording archived word for word. → SOP When Something Goes Wrong
+
+**Ending, pausing or splitting a project**
+- If a project ends, pauses or splits → run a session close first; then set its registry status through `shared/registry.py` — `active`, `paused`, `complete`, or `split` naming the new slugs (the SOP lists registry first but calls the close "first"; this order is a reading, the SOP does not settle this). → SOP Procedure, End 1, 3
+- If the person says the project is done → clear the project flag; a locked window refuses the clear, and closing the window is the ordinary answer. → SOP Procedure, End 2
+
+**Moving a finding up**
+- If a finding might deserve a higher shelf → it climbs by shelf: scratchpad, then journal and story log, then a record, then — only if it passes both tests — a canon proposal on the proposals shelf. Which record type and canon level → `canon/data-layout.md` and `canon/knowledge-altitude.md`. → SOP Procedure, Move 1
+- If it is a lesson about how the system itself performed → `/save`'s self-learning step appends it to the learnings file. → SOP Procedure, Move 1
+- If it is a canon candidate for a student's notes canon → run `system/tools/canon_conflict_scan.py` (tags NEW, DUPLICATE or CONFLICT) and show the framed panel; on a CONFLICT, nothing is written until the person has seen both texts and said yes; write it only on the person's explicit yes (or through `/ingest`'s placement preview). `system/hooks/guard_canon_write.sh` refuses fast-stale or oversized notes canon and asks before a whole-file replace. → SOP Procedure, Move 2, 3; Desired Outcome
+- If the change is to the harness's own `canon/` folders → route it through a full canon-files run instead of `/save` (the SOP gives no order between these; the SOP does not settle this). → SOP Procedure, Move 6; Desired Outcome
+- If grading a finding → use THE FRAME's tiers in `canon/canonical-principles-sop.md`; one build's receipts stay OBSERVED (two receipts from one build are not reproduction). → SOP Procedure, Move 4; Principles
+- If marking anything vetted → only a person vets; nothing the machine writes is marked vetted. → SOP Procedure, Move 1
+- If it is the day's diary → the diary carries the day, as `canon/desk-building-sop.md` §6 says; weekly and longer roll-ups are drafted from it and stay unverified drafts until a person's check-in stamps them. → SOP Procedure, Move 5; Principles
+
+**Planning and building**
+- If planning → amend the project's one plan file (plan mode is not used to hold it; the exception is a build window's sub-plan); with several candidate plan files, stop and show them. → SOP Procedure, Plan and build 1; Principles
+- If `/autoplan` produced it → check its output against the record; its banner says: "UNDER CONSTRUCTION (Enver, 2026-10-31): autoplan is under construction and not working well; don't rely on it." → SOP Read This First; Procedure, Plan and build 1
+- If a plan is finished with → retire it by renaming; deleting one is refused (not built yet). → SOP Procedure, Plan and build 1
+- If building → run `/build` through its runner, which is run once live before its fate is decided; exit 0 done, 1 failed, 70 waiting for the person's answer, 4 unreadable record. → SOP Procedure, Plan and build 2
+- If `/build` exits 70 or 4 → ask the person, or stop; do not answer for them and do not repair the record by hand. → SOP When Something Goes Wrong
+- If a task is finished → retire it with `system/tools/plan_retire.py`, which re-runs each Verify. → SOP Procedure, Plan and build 4
+- If `/autoplan` or `/build` runs → each checks the plan, then the execution, against the failure-mode census (`canon/canonical-principles-sop.md` §16) (not built yet). → SOP Read This First
+
+**Something went wrong**
+- If a new session redid finished work → check the board and status block with `system/tools/checkin/board_check.py`, the plan's ticks with `plan_retire.py`, and whether the last close swept finished items out of the debt ledger and open loops. → SOP When Something Goes Wrong
+- If two written sources disagree → prefer the live source over a dated claim; between sources of equal authority, prefer the more recent, except as canon §7.4 lists (a person's ruling, an undated source, a restatement). → SOP Principles
+- Stop and ask the person when: the frame, the desired outcome or the scope would change; a canon write is proposed; the project or plan would switch; several plan files could be the live one; the slug is unknown; a guard blocks a step. → SOP When Something Goes Wrong
+
+## 3. Good practice
+
+- Writing a finding down is storage, not delivery: name the surface the next session reads first. → SOP Principles
+- Hand the next session current state as files (brief, plan), not history; full context still applies to merged work (a candidate principle in the SOP, not yet a tested one). → SOP Principles
+- The writer cannot judge their own handoff; use a different reader, or the source. → SOP Principles
+- Each check-in leaves the record sharper than it found it; a plan that only collects ticks grows more confident and less accurate. → SOP Principles
+- One surface answers "where are we", another "what do I do next", and code checks both. → SOP Principles
+- A step's own stamp proves it was reached, not done well; a marker advances on positive proof of the work, not on a success exit code alone. → SOP Principles
+- Derive a shared value, or build the diff that compares the copies; "remember to update the copy" is not a mechanism. → SOP Principles; Don't Retry
+- A number travels with the command that produced it and its counting method. → SOP Principles
+- Record the test you used, not only the verdict. → SOP Principles
+- Plan ahead in full, then test and validate at every gate. → SOP Principles
+- Read the record before writing a plan or spec; a claim in a plan is not evidence. → SOP Principles
+- Fix every site, not the first one. → SOP Principles
+- A plan quotes the person's ruling in their words; the scope does not narrow without their yes; a quote copied from another window keeps its fidelity caveat. → SOP Principles
+- Things that failed and are listed under Don't Retry: locating a brief section by an unanchored text search and rewriting from there; writing to a plan file through a command whose own text could run; a long prose spec or a looser word cap for the handoff; putting `/checkin` back into the pickup handoff; running the blind reader before the edits land; finding repos by discovery commands; an `authority: user` line as the canon gate; detecting bad status blocks by a list of known-bad shapes. → SOP Don't Retry
+- How to check the loop: a fresh window given only the last handoff names the next action and the ruled-out paths without asking; `/checkin`'s receipt shows its closed verdicts from tool exit codes; the tests pass — `system/hooks/tests/test_pm_lock_override.sh`, `test_plan_lock_override.sh`, `test_checkin_save_seam.sh`, `test_guard_checkin_needs_project.sh`, `system/tools/test_journal.py`, `system/tools/save/test_pad_archive.py`, `test_save_step_ledger.py`, `system/tools/checkin/test_board_check.py`, `test_gauge_check.py`, `shared/test_registry.py` (folder names as the SOP writes them). → SOP Desired Outcome
+
+— end of checklist —
+
 ## Desired Outcome
 
 A session that opens cold can read one short session handoff (the message `/save` emits at close; passing a live role between windows is a role handoff, `canon/coordinating-windows-sop.md`'s), arm its project, read the brief and, when there is one, the plan, and know where the work stands, what is next, and what not to retry — without the person re-explaining, and without redoing finished work. As built, the loop runs like this:

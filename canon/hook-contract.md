@@ -153,7 +153,7 @@ session cannot quietly re-wire its own guards. Editing it is a deliberate act by
   of a clone into a home directory and read-only was the only protection available. Here git tracks
   the executable bit and nothing else, so a `444` file is just a file you cannot edit without a
   `chmod` first — friction with no guarantee behind it. The deny-list is one layer of friction.
-  ⛔ **CORRECTED 2026-09-16 (R2 Part B):** this `Edit(system/hooks/**)` deny entry is now
+  ⛔ **CORRECTED 2026-09-16:** this `Edit(system/hooks/**)` deny entry is now
   REGISTER-GOVERNED, not a fixed constant — `system/register/register.jsonl`'s
   `guard_hook_sop_read.sh` row carries it in `protects_permissions`, and
   `generate.py`'s `install_into_repo()` REMOVES it from `.claude/settings.json` for the
@@ -247,4 +247,4 @@ to cover before the hook counts as a control.
   > `system/tools/gws-audit.sh` documents this was a deliberate conversion away from a symlink). A
   > `git pull` does not update it. The real checklist step is: confirm the new/changed registration
   > reached the other machine by the register-and-generate route (its row in
-  > `system/register/register.jsonl`, run through `system/register/generate.py`), not "confirm its symlink."  ⛔ not shipped to the public subset — private-clone only.
+  > `system/register/register.jsonl`, run through `system/register/generate.py`), not "confirm its symlink."  ⛔ not shipped to the public subset; applies to a personal copy only.

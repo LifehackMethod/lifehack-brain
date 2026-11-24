@@ -24,6 +24,133 @@ history: "canon/coordinating-windows-sop.history.md"
   - A report has come up from a window or a helper → "Take in a report".
   - Several windows touch the same files → "Work beside other live windows".
 
+# Doing coordinating windows right means…
+Every line traces to `canon/coordinating-windows-sop.md`.
+
+> **Words used here**
+> - **window** — one Claude Code session. It forgets everything when it closes and sees nothing another window does.
+> - **coordinator** — the one window the person talks to; it routes work and answers build windows' questions.
+> - **build window** — a disposable window doing one piece of work from its own plan.
+> - **helper** — a sub-agent a window spawns.
+> - **arm** — fix a window's project or plan so the status bar shows it. The first arm locks it for the window's life.
+> - **live address** — a window's current address. A window reopened from an old conversation keeps its old name but gets a new address.
+> - **role handoff** — passing a live role (coordinator or build window) from a closing window to a fresh one. Not the **session handoff**, the short message `/save` writes when a session ends (owned by `canon/circulatory-system-sop.md`); a role handoff adds to it.
+> - **window map** — the list of windows: name (live address), role, project, relationship, state; true only at the moment of a role handoff.
+> - **rolling list** — the coordinator's one list of everything waiting on the person.
+> - **story log** — as defined in `canon/circulatory-system-sop.md`.
+> - **read-back** — checking a claim by opening its source instead of trusting the message.
+> - **breadcrumb** — a build window's short dated progress note in `<plan name>.progress.md`, beside its plan.
+> - **human hands** — something the person does physically on the computer: a click, a password, a setting only they can change.
+> - **approval** — the person's explicit yes. "Let's discuss", a question or an off-hand remark is not one.
+
+## 1. Every time…
+
+- Know which window is the coordinator before doing anything else; if you cannot tell, ask the person first. → SOP Before You Start; When Something Goes Wrong
+- The person talks to one window, the coordinator. Build windows take their questions to the coordinator, not the person. Exception kept: the person may still choose to work directly in a build window. → SOP Principles
+- Windows can talk freely to each other, routed by live address. A window reopened from an old conversation keeps its old name but gets a new address, so a name alone can route to the wrong window. → SOP Principles
+- Windows can talk freely to each other, but a build window takes its questions to the coordinator; the person may still choose to work directly in a build window. → SOP Principles; Bring something to the person 5
+- When naming a window to the person, use the window's work, not its number; where a word could name two things (which repo, which name for a skill), say which. → SOP Principles; Open 2
+- One window, one project and one plan, for its whole life. Different work means a different window, not a re-armed one. Only a new window, or the person's own words in their own prompt, changes a window's project or plan. → SOP Principles; Desired Outcome
+- Each open window's status bar names its project and plan file name. → SOP Desired Outcome, How to check; Open 3
+- Act only on an approval that is the person's explicit yes and traces back to their own words. "Let's discuss", a question or an off-hand remark means change nothing — no files, no messages, no actions — until the person says go. → SOP Principles; Carry 3
+- Another window's account of its own work, or a handoff's factual claim, is not evidence: open its source before acting on it. A landing is read back from where it was saved — the git host if the work is in git, otherwise the saved file — never from the window that saved it. → SOP Principles; Take in a report 2
+- Attribute a ruling to the person only with its source. → SOP Principles; Don't Retry
+- Scope is cut only on the person's yes, and done is measured against the person's ruling, not the plan. → SOP Principles; Carry 4
+- The coordinator keeps one rolling list of everything waiting on the person, and hands it over with the role. → SOP Principles; Desired Outcome, How to check
+- The coordinator does not do a build window's work (no running a build window's measurement, no spawning a helper the person has not approved for it). → SOP Principles
+- The coordinator keeps its own context: it reads little itself and hands heavy reading to helpers. Which wins: a role's own documents (below) are still read whole and directly, not through a helper. → SOP Principles
+- The coordinator does not reopen a settled decision over an operational hiccup or the person's passing mood; a mood is not a ruling. It leads from facts it went and checked. → SOP Principles
+- Each role reads its own documents whole, directly, not through a helper: a new coordinator reads the brief and the plan; a build window reads its plan whole and need not read the brief (a build window that reads the brief drifts to the coordinator's level). → SOP Principles; Hand 7
+- The person sets each window's model; ask them, or use the one they have set. Leave the model a window's helpers run on to `canon/helpers-and-model-routing-sop.md`. → SOP Principles; Choose a window's model 1, 2
+- Stop and ask the person when: an approval cannot be traced to their words; the work would change the ruled scope; a guard blocks a step; a window not on the map turns up; you would move or delete something you did not make; you cannot tell which window is the coordinator. From a build window, this goes through the coordinator. → SOP When Something Goes Wrong; Bring 5
+
+## 2. In these situations…
+
+**Opening a build window**
+- If deciding whether to open one → the default is one unit and a split has to earn itself; expect a new window when the work would overflow one window's context, needs its own plan, or needs a check by a window that did not build it. → SOP Open 1
+- If opening one → name it by its work. → SOP Open 2
+- If arming it → in the new window, use `/project-manager`, or the two arm lines `pm_flag.sh arm` and `plan_flag.sh set` (both in `system/hooks/`); check the status bar shows the project and the plan file name. → SOP Open 3
+- If you are the coordinator → you write the build window's plan: a sub-plan under the project's one plan, opening with the three altitudes of its own work (its own goal, not the top plan's copied down), agreeing with the plan above it. → SOP Principles; Open 4
+- If you are the coordinator → a plan needs phases, tasks and a verify step per task; a plan without them is stopped before approval, and a write that would shrink a plan file to near nothing is stopped. → SOP Desired Outcome (Conformance friction)
+- If giving it its starting brief → include its own plan, the list of what is already settled, which files it writes, and that it asks the coordinator, not the person. → SOP Open 5
+- If telling it when to message the coordinator → landed, a decision above its plan, broke or refused, a shared folder changed. An acknowledgment needs no reply. → SOP Principles; Open 6
+- If a build window has notes → they go to the coordinator for the project's main scratchpad; build windows do not each run a save. → SOP Principles; Open 6
+- If setting up breadcrumbs → the build window writes them in `<plan name>.progress.md` beside its plan: newest on top, dated, a few plain sentences on where the plan stands, added when a step finishes or something surprises it — not on a timer. → SOP Open 6
+- If it is started → it stands up its task queue at once, then works the plan through helpers. → SOP Open 7
+- If it is running → the coordinator adds it to the window map and reads its breadcrumbs; if they show the build drifting, the coordinator steps in before the person has to. → SOP Open 8
+
+**Choosing a model**
+- If a model is changed → it reaches only windows launched after the change. → SOP Choose 2 (see `canon/context-injection-sop.md`)
+
+**Handing a role to a fresh window** (in this order)
+- Step 1 → bring the story log up to date: each build window sends the coordinator one line per real move since the last role handoff, and the coordinator writes them in (a build window does not read the brief). → SOP Hand 1
+- Step 2 → test the brief and plan on a fresh blind helper: give it the two files and a short note, without hinting at what changed, ask what it is assuming and what confused it; fix what it shows, then hand off. → SOP Principles; Hand 2
+- Step 3 → list every window talked to this session — name (its live address), role, project, relationship, state — mark open windows you have not contacted as unknown, and check the list against the live session list. The map goes in the role handoff message, never the brief. → SOP Principles; Hand 3
+- Step 4, coordinator → run the session close, `/save` (see `canon/circulatory-system-sop.md`); it writes the session handoff and handles the scratchpad. Step 4, build window → do not run `/save`; make sure your one line per real move reached the coordinator and your `.progress.md` breadcrumbs are current. → SOP Hand 4
+- Step 5 → write the role handoff message with all of: the top-level goal and frame; the plan; what just finished; what is happening now; the very next step; the ground details files cannot hold; where the failures are recorded; the window map; the rolling list of what waits on the person; and a line telling the reader to check the work itself (git, if the work is in git), the window list and the records before relying on any of it. → SOP Hand 5
+- If the role handoff message is long → it is separate from the session handoff, which keeps its own word cap (`.claude/skills/save/phases/standard-steps.md:376`); load-bearing detail that does not fit goes in a file the message points to (`.claude/skills/save/phases/standard-steps.md:408`). → SOP Hand 5
+- Step 6 → the fresh window is the newest idle blank window; if there is none, ask the person to open one, and wait. A window should not open a new window itself — the person closes windows they do not recognize (2026-11-15). → SOP Hand 6
+- Step 7 → reach the new window directly; have it arm the same project and plan and read its documents whole by role (coordinator: brief and plan; build window: plan only); check its status bar shows the same project and plan as the old window's. → SOP Hand 7
+- Step 8 → the new window checks the note's claims against the record, asks its questions in one batch, each with its best guess, and takes answers from the old window until they agree; it keeps sending the old window updates as it goes. The old window stays open and talks with the new one until takeover. → SOP Principles; Hand 8
+- Step 9 → introduce the new coordinator to every window that reports to it; do not contact windows marked unknown. Otherwise build windows keep sending notes to a window that is about to close. → SOP Hand 9
+- Step 10 → before closing the old window, check what it leaves behind — worktrees, commits not yet on the remote, background monitors — and make each one landed, handed to the new window by name, or stopped. Fails silently: an old worktree can hold the only copy of a commit, and a monitor can run long after its work ended. → SOP Hand 10
+- Step 11 → close the old window only after the new one confirms it has taken over. Once closed, what was only in its context cannot be recovered; a role handoff can be reversed only while the old window is open. → SOP Hand 11; When Something Goes Wrong, To undo
+
+**Carrying an approval between windows**
+- If relaying an approval → quote the person's words and say where they are recorded. → SOP Carry 1
+- If receiving one → open that record before acting. A relayed "approved, it's in the plan" has been found not in the plan. → SOP Principles; Carry 2
+- If the approval is for loosening a guard or editing a `CLAUDE.md` → follow `canon/build-conformance-sop.md` §7. → SOP Carry 2
+- If the work would cut or change the ruled scope → take it back to the person through the coordinator. → SOP Carry 4
+
+**Bringing something to the person**
+- Step 1 → check whether the plan, canon or the already-settled list answers it; if so, act on that and tell the person after, if at all. → SOP Bring 1
+- Step 2 → say first, in one line, whether the person is needed. → SOP Principles; Bring 2
+- Step 3 → where the answer is known, bring a finished solution: recommendation first, then one or two plain sentences on why (the exact steps and what they should see after each). Where the person is still unsure, bring an honest open question with your best guess instead. The person should be able to answer yes, no or a change without working anything out. → SOP Principles; Bring 3
+- If the answer is human hands → weigh their minute against your hours of workaround; give one or two steps at a time, each with what they should see afterwards, and wait. Human hands should not stand in for anything a window can do itself; but when a guard blocks you, human hands may be the right route, and a workaround is not. → SOP Bring 4
+- If you are a build window → prepare it the same way and send it to the coordinator, which decides whether the person is really needed and puts it on the rolling list; keep working on everything else meanwhile. → SOP Bring 5
+- If the person replies → answer exactly that and stop; a reply is not an invitation to raise new items that do not pass step 2. → SOP Bring 6
+
+**Taking in a report**
+- If a report comes up → read it against the goal at the coordinator's level; a report should say what its result means for the level above. → SOP Principles; Take 1
+- If you will act on a claim in it → read it back from its source: the file, the test output, the git host (if the work is in git). → SOP Take 2
+- If the work has to be right → have a window that did not build it check it; the same window re-reading its own work is the weakest check. → SOP Take 3
+- If it is a helper's report → how to spawn it so the report comes back, and how to accept it, is `canon/helpers-and-model-routing-sop.md`; a stalled background helper is `canon/build-conformance-sop.md` §7. → SOP Take 4
+
+**Working beside other live windows**
+- If windows will work in parallel → first agree which window writes which file (one named writer per path), and record it in each window's starting brief. Append-only writing does not stop two writers forking a file. → SOP Principles; Work 1
+- If it is the shared checkout, deletions, relays or orders that name one project → follow `canon/build-conformance-sop.md` §7. → SOP Work 2
+- If adding to a shared counter or list → read it just before adding (two windows once gave the same entry number on the same day). → SOP Principles; Work 3
+- If the work is in git → commit only the files you made, naming them: `git commit --only <files>`. A plain commit can silently carry another window's uncommitted work. If not in git → save only the files you made. → SOP Principles; Work 4
+
+**When something goes wrong**
+- If an arm is refused → the window is already armed to other work; the refusal is the lock working. Open a new window, or have the person say in their own prompt that the project changes. → SOP When Something Goes Wrong; Principles
+- If the status bar shows a stale arm of the right plan (a resumed window) → refresh with `plan_flag.sh set <absolute path of the same plan>`; the same plan re-arms normally. → SOP When Something Goes Wrong
+- If the status bar shows the wrong plan → treat it like a refused arm: open a new window, or have the person say in their own prompt that the plan changes; `/checkin` says not to work around the refusal. → SOP When Something Goes Wrong
+- If a launcher or its settings changed → close and relaunch every open window; a window reads its launcher's settings once, at start. → SOP When Something Goes Wrong
+- If the coordinator finds itself doing build work → stop, re-read the brief and its goal, and hand the work back to a build window. → SOP When Something Goes Wrong
+- If a window acted on something that was not an approval → stop it, list for the person exactly what changed, and undo only what they ask. → SOP When Something Goes Wrong
+- If notes were sent to a coordinator that has closed → the receiving window is gone; resend them to the new coordinator and add the missing introduction (Hand, step 9). → SOP When Something Goes Wrong
+- If a write into another project's brief or plan is stopped → only if the write is intended, acknowledge with `guard_cross_project_write.sh ack "<absolute path>"` and tell the coordinator; otherwise the window was about to write into the wrong project — stop. Acknowledging does not change the window's project. → SOP When Something Goes Wrong; Desired Outcome
+- If a role handoff note's claims do not match the record → the record wins; ask the old window what is actually in flight. → SOP When Something Goes Wrong
+- If a plan file was flattened → restore it from the brain folder's backup (Drive version history); if the plan is kept in git, from git. → SOP When Something Goes Wrong
+
+**Never retry**
+- A window re-arming itself onto another project on its own judgment (`system/hooks/pm_flag.sh:32-37`). → SOP Don't Retry
+- Recording the active plan by the newest file in the plans folder (`system/hooks/plan_flag.sh:76-77`). → SOP Don't Retry
+- Acting on a hand-off's factual claims without opening the source (`canon/canonical-principles-sop.md:1043-1046`). → SOP Don't Retry
+- Crediting the person with a ruling that has no source (`canon/build-conformance-sop.md:201`). → SOP Don't Retry
+
+## 3. Good practice
+
+- The coordinator usually runs on the largest model — the person's choice, not a requirement. → SOP Principles; Choose 1
+- The coordinator should re-read the goal before acting on a report; canon lists this as an untested candidate fix, not a proven one (`canon/canonical-principles-sop.md:1366`). → SOP Take 1
+- Read `canon/build-conformance-sop.md` §7, "Working with helpers and across windows", before starting. → SOP Before You Start
+- Know where the work's brief and plan live before starting. → SOP Before You Start
+- The project-manager anchor ("The lead delegates and merges; it does not build with its own hands") fits leading roles; it does not fit a window doing back-and-forth design with the person, which shapes the work itself. → SOP Desired Outcome
+- Know the guards are not all hard: the flag-store guard (`guard_pm_flag_store.sh`) matches command text, so it can be worded around. → SOP Desired Outcome
+
+— end of checklist —
+
 ## Desired Outcome
 
 The person talks to one window. Every other window knows what it is for, shows it, and asks the coordinator rather than the person. Every approval a window acts on traces back to the person's own words. A fresh window takes over a role knowing what just finished, what is happening now and the very next step, and checks the record before acting on any of it. No window's work is overwritten or lost when another window lands or closes.

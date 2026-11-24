@@ -42,6 +42,135 @@ evidence_words: "MEASURED = a scored run or a direct test, with a record. SEEN =
 8. **Friction is aimed at a blind model or an accident, not a determined user.** A clear stop helps a model that doesn't know what it's touching; someone determined gets through anyway. Weigh a new layer against that. (owner's ruling)
 9. **Six layers, strongest first,** under canonical principles' frame of layered friction (`canon/canonical-principles-sop.md:58-66`): (1) the host's own settings; (2) checks attached to moments that already happen, such as a commit, a push, a merge or a release; (3) signs and speed bumps at the moment of action, where the friction ladder of §5.11 sits; (4) detection, the system reporting drift about itself; (5) scrubbing of private and identifying material before anything reaches the public plugin; (6) a person sees the irreversible. The highest layer that can do the job is preferred, and a passing layer is not proof of safety, so a result says which layers covered the act and which did not. A layer is added after an incident shows a gap, except that a new irreversible action gets its layers up front (`canon/canonical-principles-sop.md:66`). A student install meets layers 3 and 4 and the moments that run in the harness itself; the owner's lane adds layer 1, the push-path part of layer 2 (pre-commit, CI), layer 5 and layer 6. "Wall" here means what canonical principles means by it, a check that fires before the model is consulted (`canon/canonical-principles-sop.md:62`); no single layer is the whole defence. (owner's ruling, 2026-09-17, carried beyond git; SEEN: each layer exists in some form)
 
+# Building in this harness right means…
+Every line traces to `canon/build-conformance-sop.md`.
+
+> **Words used here**
+> - **principle / rule** — everything below is a principle, with its reason. A "must" counts as a rule only on a line marked "approved by Enver, <date>". This SOP has no such line; nothing in it is a rule yet.
+> - **layer** — one kind of friction: (1) the host's own settings; (2) checks on moments that already happen (commit, push, merge, release); (3) signs and speed bumps at the moment of action; (4) detection (the system reporting its own drift); (5) scrubbing private material before it reaches the public plugin; (6) a person sees the irreversible. Strongest first.
+> - **sign** — a refusal on a first attempt that gives one specific instruction. **speed bump** — a first attempt refused with a message; a later try gets through or gets an ask.
+> - **ask** — the action stops once and a yes lets it through. **wall / hard block** — refused every time, before the model is consulted.
+> - **bypass** — running with permission prompts switched off. The owner assumes everyone runs this way.
+> - **fine china** — hard-to-recover things. Protection **A** = ask before an edit; **B** = no delete; **C** = a speed bump with a sign before a mass delete (a whole folder or hundreds of files).
+> - **owner / operator** — the person who maintains the plugin. **the person** — whoever is using it (a student too).
+> - **rig** — the test setup, with real AI sessions sealed in a sandbox. **fence** — a test-only guard keeping those sessions off real accounts. **final exam** — one set of rig sessions on one locked version, scored by independent graders.
+> - **MEASURED / SEEN / REASONED** — known from a scored run or direct test / seen in real use and written down at the time / argued but not tested.
+
+## 1. Every time…
+
+- Name which layer the edit is in: the platform, personal code, configuration or knowledge. → SOP §1
+- Judge the build by its end state: built, in the right place, and listed where the person will find it again. A skill in `~/.claude/skills/` counts as listed. Mistakes along the way are a cost, not the verdict. → SOP §0.3
+- Put each number next to what was tested and what was not, in the same sentence. "Fine china passed" is not a result. → SOP §0.4
+- The SOP marks its items by how they are known: MEASURED, SEEN or REASONED. That is the convention of that document, not a stated instruction; use the same words when you report. → SOP frontmatter (evidence_words)
+- When a build goes wrong, first ask which layer caused it, then look for the place where nothing fired. Only after that, consider rewording anything. → SOP §0.2, §0.6
+- When you rely on something being known, ask when it reaches the session and what delivers it. A rule that only sits in a document may never reach one. → SOP §0.7
+- When a failure is scored, name the layer that refused: the test fence, a named guard, the vendor's own check, or the model. Never record a guard's refusal as a model failure. → SOP §6.7
+- Land one change at a time onto the shared branch, from one window, with the hooks on, and never with `--no-verify`. Two commits at once share one index. → SOP §5.10
+- Before you move or delete anything you did not make, ask every window and the person. → SOP §7.2
+- If a stop does not fit what you are doing, say so and report it. Do not work around it, and do not have another helper do the work. A safety stop goes to the person. → SOP §4.31, §7.4
+- An approval is not an approval until it is written down where you can read it. Check the written source; for a guard change or a bulk real-world action, ask the person directly. Windows have also sensibly asked for the person's own yes before editing a `CLAUDE.md`, rather than taking a relay (SEEN). → SOP §4.21, §7.5
+
+## 2. In these situations…
+
+**Where things go**
+- If it is a personal skill → it goes in `~/.claude/skills/<name>/`, with its scripts inside that folder. Nothing asks first, and the final message says where it went. → SOP §1.1
+- If a skill is being written into a project's `.claude/skills` → the placement guard steers it back to `~/.claude/skills/<name>/`. Exception, which wins: the person said the skill is for that project. → SOP §1.1
+- If a new skill file is nowhere listed → the end-of-turn check refuses to end the turn with it. A skill in Claude's own folder needs no listing. → SOP §1.1
+- If the person wants to keep a one-off script → it goes in the personal code folder and onto the person's own list. → SOP §1.2
+- If a one-off script is left outside its folder, or a long inline command ran and nothing was saved → the end-of-turn check notices a `.py`/`.sh` left outside its folder; a long inline command with nothing saved gets a once-per-session offer to keep it, with a stop if the person said "keep it" and nothing was saved. → SOP §1.2
+- If code serves one desk → it goes in the personal code folder under `desks/<desk>/tools/`. The desk's notes stay in the brain folder. → SOP §1.3
+- If a desk tool lands in the wrong folder → the placement guard's desk clause and a sign added for loose tools notice. The case landed 2 of 3 runs at each of the last two commits; the added sign fired in none of the three re-runs, so it shows no measured benefit. A miss leaves a working, listed tool in the wrong folder, and the session says where it is. → SOP §1.3
+- If it is a shared tool → it goes once in the plugin's shared layer, with a row in the shared register. A desk uses it and never copies it. The pre-commit gate refuses a tool with no row, and the register-drift check refuses a row whose hash no longer matches its file. → SOP §1.4
+- If you are listing scheduled jobs, the person's tools or the person's desks → use `jobs.md` and `register.jsonl` in the personal code folder, and `desks/desk-registry.yaml` in the brain folder. Never list them inside the plugin: the next plugin update wipes them, and the plugin is effectively public. The plugin ships no example list. → SOP §1.5
+- If a skill is shared with a team → its files live in a team Google Drive folder, linked into the skills folder. If it is shared across machines or a business → it goes through Drive, not the plugin. The Drive link is encouraged, not insisted on. → SOP §1.6, §1.7
+- If the person never finished setup → none of the placement stops fire, because the personal code folder does not exist. **This fails silently:** sessions built working tools outside every folder and nothing told them. → SOP §1.8
+- If you are changing a shipped thing → there is a warning beside the soft block that a change may break it, and the person acknowledges that. The templates stay inside the plugin so a broken copy can be compared or reset. → SOP §1.9
+- If you are writing into shared plugin code → it meets a hard block with a sign. The one exception is the operator's own hands at the terminal, structurally distinguishable from model input, and logged. → SOP §2
+
+**Fine china and push**
+- If a protected thing is edited → protection A asks once and a yes lets it through. If it is deleted → B is a no-delete. For canon, and for fine china outside git, B is a hard block with no override. → SOP §2
+- If it is a mass delete (a whole folder or hundreds of files) → C: a speed bump with a sign, on any folder. It is never a hard block or a pop-up. Which things get A and B is the person's choice; C covers every folder. → SOP §2, §5.11
+- If you are counting on the person seeing an ask → do not. In bypass, a plain-shell ask ran with no prompt in the cases tested. **It passes silently.** A second try at hook level also falls to an ask, so a sign steers but does not hold. → SOP §2, §0.6
+- If canon or a plugin SOP is overwritten wholesale, by any tool → that is a wall; the SOP reserves walls for that case. The SOP also keeps hard blocks on writing into shared plugin code (with the one operator exception above) and on deleting canon and fine china outside git (B above). It states all three together. → SOP §2
+- If the path is a temp or scratch folder, `node_modules`, `__pycache__`, `.venv`, `dist`, `build`, a cache, a data file touched in the last ten minutes, or the person's ordinary notes → no stop fires, on purpose. A mass delete among the notes still meets C. → SOP §2
+- If a `CLAUDE.md` is edited → it asks with a diff. An edit to the plugin's own copy says it will be replaced on the next update and points to the person's own file. A file passing 200 lines gets a warning only. → SOP §2
+- If nobody is at the screen → A and B are denied with a sign and parked for the morning. For C, the sign is logged and the mass delete waits for the morning instead of being blocked. → SOP §8.13
+- If content comes from outside the machine (web, connectors, PDFs, office files, spreadsheets) or from Downloads or Desktop → it is cleaned before the model reads it. If the cleaner fails, the content is withheld and never passed raw. The person's other files read normally. → SOP §3
+- If you push → the push is judged by its kind. A plain push to a non-public remote is silent. The first push of a session to a public remote meets a one-time stop with a manifest, and the re-run passes. A force push is always blocked. A push the leakage scan flags is only warned and logged, not blocked. → SOP §10
+- If you are changing the push scanner → it runs from the installed copy, not from the commit being pushed. Land the rule first, update the installed copy, then land what depends on it. Bundling a rule change with the thing it permits did not work: the scanner could not approve its own exemption. → SOP §4.20, §8.6
+
+**Adding, changing or removing a layer**
+- If you want to add a layer → add it only because an incident or a measured miss demanded it. Exception, which wins: a new irreversible action gets its layers up front. → SOP §5.1, §0.9
+- If you are choosing a layer → this checklist reads two scales as different, not conflicting; the SOP does not say so, and the owner is asked to confirm (the SOP does not settle this). Among the six layers, the highest one that can do the job is preferred. Within friction at the moment of action, go lightest first: sign, speed bump, reason gate, door, pop-up, hard block. Add the next one only where the lighter one failed. → SOP §0.9, §5.11
+- If a new layer lands → it lands behind a switch that is off. It goes on when a direct test or a live case shows it changes an outcome, or when it closes a measured hole. → SOP §5.2
+- If you add a switch → it is a real line in the config file, with a test that it is a real line. **A fix inside a comment fails silently.** → SOP §5.6
+- If you would add a third guard of the same kind → prefer a different kind of layer. Three text-matching guards in a row count as one layer. → SOP §5.3, §0.5
+- If the guard is for something irreversible → pair the text guard with a layer that removes the ability: credentials out of reach, a system-level lock, or network limits. A text guard stops only what it recognises. → SOP §4.1
+- If you are tempted to add a line to `CLAUDE.md` or other prose as a stop → prose layers are pointed at, not relied on: `CLAUDE.md` may point to where things live; it stops nothing. A line added there as a stop was reverted the same day in favour of a code check. That is the owner's ruling for `CLAUDE.md`; as a general rule it is only a candidate. → SOP §5.8, §8.1, §12.1
+- If you are writing a sign → give one specific instruction. A message that says to retry slowed a push and did not steer it. A wrong sign gets obeyed too, so check the route it names in every shell shape, and check which stop fires first. Tuning wording to pass one test teaches to the test. → SOP §5.12, §8.3, §0.6
+- If the work is long and multi-step → signs are followed much less often there. Do not carry the one-step result (85 of 86 followed) over without testing. → SOP §0.6, §11.1
+- If you are writing a pre-action hook → only exit 2 blocks. Every other code allows. **An exit 3 silently let writes through for weeks.** → SOP §4.2
+- If you are relying on an end-of-turn block or a reminder → it is a request, scored as a preference. It beats forgetting, not disagreement. It can cause the miss it was meant to prevent. → SOP §4.3, §4.4
+- If you finish a build after an end-of-turn stop → the final message restates where the thing went. A follow-up message that dropped the location failed two builds that had done everything right; the stop now asks for the location to be restated. → SOP §4.4
+- If a guard reads command text → follow the `cd` chain. Check every tool that can reach the target. Same action, same verdict: if the shell is asked, Python is asked; if the shell is blocked, the Write tool is blocked. Expect false alarms on mere mentions, and decide what it does with a path held in a shell variable. → SOP §4.5, §4.7, §4.8, §4.32, §5.4
+- If a gap is found in one guard → fix the same gap in every guard in the same pass. → SOP §5.9
+- If you are testing a guard → test both directions. It must not stop `rm -rf build/` in a project. → SOP §5.5
+- If you fixed a stop → look at what else that stop was doing. A fix can remove the only stop on a case. → SOP §5.13
+- If you are testing a hook → feed faithful JSON on stdin, never `echo`. Test an `sh` hook with `sh`, not `bash`. Test it on what it really receives, and prove it live in a real window before calling it closed. Make sure it can create its temp file; on macOS, `mktemp` ignores `TMPDIR`. → SOP §4.9, §4.10, §4.11, §4.30, §8.12
+- If a change sits where something else depends on it → it carries a warning that something downstream will probably break, and it gets extra protection. If it changes settings → it meets a one-time stop with a sign, and it can be changed back. → SOP §5.11
+- If someone proposes changing every ask to a hard block → that was withdrawn; lighter layers come first. Skills get a speed bump and signs, not a block. → SOP §8.13
+- If a hook is renamed or retired → older windows print harmless "file not found" errors and run without it until restarted. A forwarding shim at the old name bridges the gap. → SOP §4.15
+- If you landed from a worktree → the shared checkout is behind, and every window runs the old version until it is fast-forwarded. Windows run what is on disk, not what is on GitHub. → SOP §4.16, §7.1
+
+**Testing**
+- If you are setting up isolation → it is not real until someone deliberately tried to break it and saw it fail. That means no credentials in the environment, a private PATH, a kernel lock around the actor, a pre-run check, and a read-only canary that tries. → SOP §6.1
+- If a task is destructive → never aim it at a machine with live logins unless the ability has been removed underneath. A guard alone is not enough. A throwaway home folder does not isolate logged-in tools. → SOP §6.2, §4.13
+- If you are isolating configuration → Claude loads `.claude` from every parent folder. A swapped home folder and `CLAUDE_CONFIG_DIR` do not stop this. A working folder outside the home, or a kernel read-deny, does. → SOP §4.12
+- If you are adding a check → give it a control that has to show up, such as a planted known file. Deliberately broken copies of a fence should fail its tests. → SOP §6.3
+- If you are running a scored test → use one frozen version with nothing landing mid-run, and tie every result to its commit. Results do not combine across commits. → SOP §6.4
+- If you are scoring → use an independent scorer that never saw the briefs. For exam grading, one fresh grader per case from full evidence is what we trust; grouping cases or shortening the evidence to save money was tried and did not work. Elsewhere bulk model work is usually batched. Give graders the rules and the evidence, not your explanation: a "known noise" note blinded graders once. → SOP §6.5, §6.19, §6.23, §7.10, §8.11
+- If you are reporting student results → count them only from a clean setup. A student run refuses to start if any personal path loads, and a planted control file has to appear. → SOP §6.8
+- If you are choosing a folder to run tests in → use a real folder, never a throwaway one. **The throwaway exemption is silent and turns fine china off.** → SOP §6.9
+- If you are starting a runner → clean up afterwards. Leftover temp folders filled the disk and froze every window; runners now refuse to start below 5 GB free. → SOP §6.11
+- If you are testing permission asks headless → they cannot be observed, because they are auto-denied or auto-approved. Measure a sign on the first attempt instead. → SOP §4.14
+- If a test says the system is broken → suspect the test first. That cuts both ways, including against a helper's report. → SOP §6.12
+- If a rig problem shows up → ask whether fixing it would change the answer to the real question. Do not test the tester. → SOP §6.10, §8.10
+- If you are planning a run → set the numbers and the scorer before running. If the scorer proves wrong, keep both figures. → SOP §6.22
+- If you are reading results → tag each case for likelihood and stakes before the run, and hide the tags from graders. Name each failure's cause (rig, product or model), sort from fix now to accept, and show the close calls. → SOP §6.20
+- If a miss shows up in a few runs → three runs can show a miss exists, not that it is gone. n=1 resolves nothing. A miss is "leftover" only once someone has read why it happened. → SOP §6.16, §6.18
+- If you are working in the macOS test sandbox → reads are open by default. A nested sandbox is refused with rc 71. Probe `crontab` and `at` read-only. `os.path.exists()` returns False on a kernel-denied path, and only ENOENT means absent. `open x.command` raises a dialog, so use `lsappinfo front` instead. → SOP §4.23, §4.25, §4.26, §4.27, §4.28
+
+**Machine and windows**
+- If the disk is full → free the space, reopen the sync client, then compare what it set aside against what is live. Do not reset. → SOP §4.19
+- If the vendor's delete popup would fire → write commands without `rm` and without packed one-liners. Move leftover throwaway files instead. → SOP §4.17
+- If an order names a project → it applies to that project only, unless the person says "every window". → SOP §7.3
+- If you use helpers → give them their own worktrees and absolute output paths. Quote every Drive path, because the root contains a space. → SOP §7.1, §7.2, §7.9
+
+## 3. Good practice (recommended, not required)
+
+- De-risk from cheap to expensive: a syntax check, then a synthetic dry run, then one real supervised run, then automate. → SOP §9.1
+- Prove a cheap but risky integration (an API call, an upload, a permission, a path) with throwaway data first. → SOP §9.2
+- Back up a hand-edited or always-loaded file before you change it. → SOP §9.3
+- When you find a stale command form, search the whole system for it. → SOP §9.4
+- `commands/` and `skills/` share one namespace, so a command with the same name shadows the skill. → SOP §9.5
+- A verification regex using `\s*` spans newlines. → SOP §9.6
+- A script the harness runs as a bare command needs its execute bit. → SOP §9.7
+- After a rebase, a push can silently do nothing. "Checks settled", read right after a push, is a false result. → SOP §9.8
+- For a bulk archive or migration: back up, then move, never delete. → SOP §9.9
+- Fix live references by hand. Never blanket-rewrite journals or records. → SOP §8.9
+- Subtraction counts as building. Aim for the least shared code with the most efficacy. → SOP §5.7, §11.4
+- Trust a record of the SHAs over commit messages. → SOP §4.22
+- If a background helper stalls, nudge it to read its own output file. Ask helpers to report any deviation from the brief. → SOP §7.6, §7.7
+- Judge a cheap-model canary by what it attempted. → SOP §7.8
+- Do not hand a human a code fence to paste when a script and one line will do. → SOP §7.9
+- Batch bulk model work, except where each item needs its own full judgment, as in grading. → SOP §7.10
+- Check a summary sentence the way you check a number. → SOP §6.21
+- Say what the exam cannot see, and pick another check, such as one real person trying it. → SOP §6.24
+- Prove it on a real specimen. A passing validator is not the thing working. Write down the shape you searched for. State the full set a claim covers and which members were checked. → SOP §6.13 to §6.17
+- Turning off automatic compaction leaves idle compaction on. → SOP §4.18
+
+— end of checklist —
+
 ## 1. Where things go, and the layer that notices
 
 The harness knows a person through two pointers only: their brain folder (the knowledge layer; content, never code) and their personal code folder (the personal code layer). Nothing in the shared plugin names anyone. Within that, each kind of thing has one folder, and one or more layers notice when it lands elsewhere. A build names which layer an edit is in (the platform, personal code, configuration or knowledge), so the work tracks it as it goes (owner's ruling, 2026-11-03).

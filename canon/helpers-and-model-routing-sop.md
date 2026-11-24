@@ -22,6 +22,94 @@ history: "canon/helpers-and-model-routing-sop.history.md"
   - A helper has reported back → "Accepting a helper's work".
   - A scheduled job needs a model → "A scheduled job calls a model".
 
+# Doing helper work right means…
+Every line traces to `canon/helpers-and-model-routing-sop.md`.
+
+> **Words used here**
+> - **helper** — a sub-agent: a separate model session a window spawns to do one job and report back.
+> - **tier** — small, medium or large: a class of model, mapped to a model id in one table.
+> - **pin** — the model line on a spawn or in an agent file.
+> - **wall** — the tool list an agent is limited to (its `tools:` line).
+> - **delegation line** — the one line injected every turn saying helpers are standing-authorized, how to pin them, and that a document someone will rely on goes to the reading tool, otherwise the chart.
+> - **routing order** — the first-match list in the harness brief, `CLAUDE.md`, section "Sending work to a sub-agent".
+> - **the chart** — the helper-choosing flowchart in the SOP, between the `helper-chart:start` and `helper-chart:end` markers.
+> - **caller** — the window that spawned the helper and will act on its report.
+
+## 1. Every time…
+
+- Decide first whether a helper is needed at all: use the smallest tool that does the job; expect a helper only where the work is separable and its result can be checked. → SOP Choosing the model 1
+- Choose by tier (small, medium, large), not by a model's name. → SOP Read This First; Principles
+- Classify the job with the routing order (`CLAUDE.md`, "Sending work to a sub-agent"), first match wins, and read off the tier; a job that fits no row takes the medium tier, the default for helpers. → SOP Choosing the model 2
+- Name the model on the spawn, or in the agent file's `model:` line. A spawn with no model takes `CLAUDE_CODE_SUBAGENT_MODEL` where the session's launcher sets one (the harness's own test launchers set it to the medium tier), and otherwise inherits the window's model, often the most expensive tier. → SOP Choosing the model 3
+- Brief and supervise the helper as `canon/build-conformance-sop.md` §7 describes (output paths, reporting deviations, batching, stalls, safety stops). → SOP Briefing a helper 2
+- Before acting on a report, re-check every factual claim you will act on against its source (the diff, the file, the source line); for each one, you can name what you opened. → SOP Accepting a helper's work 1; Desired Outcome
+- Treat the helper's account of its own work as a claim, not evidence; check the effect. → SOP Read This First; Principles
+
+## 2. In these situations…
+
+**Choosing — the chart asks these in this order; a "yes" stops at that answer, a "no" goes to the next question.** → SOP Choosing the model, chart
+- If ordinary code can do it (find, count, compare, run) → no helper: run the command.
+- If it is your own brief, plan or handoff → read it whole yourself.
+- If it is a web page or email → only the safe readers: `web-searcher`, ingest.
+- If it is a push, a delete, or anything that cannot be undone → only on the person's word, in the window that does it; their physical steps go to them as human hands.
+- If someone will rely on what a whole document says (checking, judging, comparing) → the reading tool, the librarian, which hands over every line and checks the answer. If you do not know which documents, a cheap helper first finds the files and returns names only.
+- If that reading is more than 2,664 lines or 8 files (the tested size) → split into groups of whole documents, one run each; otherwise one run.
+- If it is checking someone's work without reading documents → a different model from the author, blind to the expected answer.
+- If it is only one fact from a file → read it yourself or use a cheap helper; partial is fine.
+- If it is building and the spec is written → a worker on the small model; someone else runs the tests.
+- If it is building and the design is not decided → a lead on the large model, on the person's say, writes the spec; then workers build.
+- If none of these fit, or you are unsure → a medium-tier helper, the default.
+
+**Tiers**
+- If the job is a mechanical lookup (a file, a search, one fact, a shape check), or a tool-less reader of untrusted text behind a Read-only wall → small tier: scheduled-job name `small`, agent model line `haiku`; shipped agents `worker`, `ingest-reader`, `ingest-tagger`. → SOP Choosing the model 2 (tier table); Principles
+- If a helper has any tool beyond Read and its reading has to summarize, compare or judge → medium tier or above. → SOP Principles
+- If the job is reading that summarizes, compares or judges; reading untrusted content for meaning with any tool beyond Read; driving many tool calls in a row; or judgment someone relies on without re-checking → medium tier: `medium` / `sonnet`; shipped agents `archivist`, `sentinel`, `web-searcher`, `ingest-conclusions`. → SOP Choosing the model 2 (tier table)
+- If the reasoning is the deliverable (a deliberate exception) → large tier: `large` / `opus`; the person decides when the large tier runs. Shipped uses: the advisory council's advisors; the autoplan review lenses `canon`, `value`, `postmortem`, `skills-sop`. → SOP Choosing the model 2 (tier table); Pointers
+- If a cheap reader sits behind a Read-only wall → what it returns reaches the actor as tight typed data, never free text. → SOP Principles
+- If the person is steering the work, or it is high-judgment work → it stays in the main session; a document the window has to act on is read whole by the window, not through a helper's summary. → SOP Principles
+- If a cheap model returns values (for example, a classification) → check the values it returns, not only their format. → SOP Principles
+- If an operator wants a different routing policy on their own machine → put it in the override file the delegation hook reads, `$LIFEHACK_DELEGATION_OVERRIDE` (by default `$HOME/.config/lifehack/delegation-override.txt`). A non-empty file's text replaces the whole default line every turn, the pin-a-model sentence included, so restate anything you still want; an empty or missing file leaves the default. Check: `bash system/hooks/tests/test_delegation_override.sh` passes. → SOP Choosing the model 4
+
+**Briefing**
+- If the helper's result will be merged → give it the context the job needs; missing context loses decisions. → SOP Briefing a helper 1
+- If the helper is doing a check → usually leave out the answer you expect; where that line falls is a judgment call (the person ruled it so on 2026-10-30). → SOP Briefing a helper 1; Principles
+- If the helper does not have to be addressable → leave the spawn unnamed. If it is named → tell it in the prompt to send its full text back, because a named helper's final text is discarded when it finishes. `system/hooks/guard_agent_return_channel.sh` refuses a named spawn whose prompt states no way back; it is a text match, so a negated "sendmessage" gets past it. → SOP Briefing a helper 3
+
+**Accepting**
+- If several helpers on the same base model agree → that is correlated, not independent confirmation, unless their sources are independent; it does not replace re-checking the claims. → SOP Principles; Accepting a helper's work 1
+- If you check a helper's work → use a different model family, or a stricter filter than the helper used, not the same session re-reading its own work (a separate window on the same model is a real layer; a different family is stronger). → SOP Principles
+- If a helper claims nothing is missing → run a mechanical check (a diff, a count, a search) rather than accept its word, and first see that check fail on known-bad input. → SOP Accepting a helper's work 2; Principles
+- If the output is unusable → re-run once on the next tier up and say so; from the medium tier, ask the person before using the large tier. A helper saying it is unsure is not a reason to escalate: hedging is not failure. → SOP Accepting a helper's work 3
+- If a helper's claim does not match what you opened → discard the claim, re-run on the next tier (ask the person first if that is the large tier) or do it yourself, and say so in your own report. → SOP When Something Goes Wrong
+- If you keep output you have not checked → label it unverified where it lands. → SOP Accepting a helper's work 4; Principles
+- If the thing being judged is model-shaped → one run is not a result. → SOP Principles
+
+**Scheduled jobs**
+- If a scheduled job needs a model → name a tier in the job's row and call `run_model` from `system/tools/model.lib.sh`; the wrapper's contract is in `canon/cron-jobs-sop.md` §9. Check: `bash system/tools/tests/test_no_hardcoded_model_ids.sh` passes. → SOP A scheduled job calls a model 1; Principles
+- If you change which model a tier means → edit only the table at the top of `system/tools/model.lib.sh` (Python reads it through `shared/tools/model_ids.py`). → SOP A scheduled job calls a model 2; Before You Start
+- If a scheduled job fails with "unknown model tier" or exits with a model error → check the row names `small`, `medium` or `large`, and that no literal id was added. → SOP When Something Goes Wrong
+
+**When something goes wrong**
+- If you write or change a shipped helper agent's model line → a model line is replaced, not deleted. Check: `python3 system/tools/test_agent_pins.py` passes. → SOP Choosing the model 3
+- If the pin test fails → add or restore the agent's `model:` and `tools:` lines; do not delete a pin to save cost. → SOP When Something Goes Wrong; Don't Retry
+- If a spawn's report does not arrive → check whether it was named without a way back (Briefing step 3); for a stalled helper, see `canon/build-conformance-sop.md` §7.6. → SOP When Something Goes Wrong
+- If you need to undo a model or tier change → it is one line in the agent file or the table; revert that line. → SOP When Something Goes Wrong
+- If a helper hit a safety stop (`canon/build-conformance-sop.md` §7.4), a job seems to need the large tier routinely, a new large-tier use is proposed, or a check would mean trusting output nobody can verify → stop and ask the person. → SOP When Something Goes Wrong
+- Don't retry: a hook on every spawn that refuses or defaults a helper started without a named model (the person ruled it out, 2026-11-05; no hook checks the model on each spawn). → SOP Don't Retry; Choosing the model 3
+- Don't retry: unregistering the delegation line as a personal preference; it stays registered for every session the harness starts. → SOP Don't Retry; Principles
+- Don't retry: a cheap model as a per-turn judge — a rubber stamp, and slow. → SOP Don't Retry; Principles
+- Don't retry: stricter mechanical checks of whether a skill's dispatch is pinned — each produced false positives. → SOP Don't Retry
+
+## 3. Good practice
+
+- Decide delegation at planning time, not as a mid-task reflex. → SOP Principles
+- Reshape the context (a missing fact, or bloat) before reaching for a bigger model. → SOP Principles
+- Cheap for verbatim and mechanical work, strong for judgment someone relies on. → SOP Principles
+- Cost tracks error rate, not model price; a cheaper model can cost more. → SOP Principles
+- To check the whole setup: `python3 system/tools/test_agent_pins.py`, `bash system/tools/tests/test_no_hardcoded_model_ids.sh` and `bash system/hooks/tests/test_delegation_override.sh` pass. → SOP Desired Outcome
+
+— end of checklist —
+
 ## Desired Outcome
 
 Every helper runs on a named tier chosen for its job; no spawn inherits the window's model by default; scheduled jobs name a tier and call the one wrapper; and nothing a helper reports is acted on until its effect has been checked by the caller.

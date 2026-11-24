@@ -186,3 +186,15 @@ PostToolUse hooks always exit 0. Use stderr for warnings. **Fail-closed:** a gua
 it. `citation_lint.py` catches the file-vs-registration mismatch; it cannot tell you the session was
 never restarted.
 ~~~~
+
+## 2026-11-24 - reason: canon update round 2, 2026-11-24, ledger 63: drop internal 'R2 Part B' reference
+
+~~~~
+  ⛔ **CORRECTED 2026-09-16 (R2 Part B):** this `Edit(system/hooks/**)` deny entry is now
+~~~~
+
+## 2026-11-24 - reason: canon update round 2, 2026-11-24, ledger 63: reword 'private-clone only' to owner's wording
+
+~~~~
+  > `system/register/register.jsonl`, run through `system/register/generate.py`), not "confirm its symlink."  ⛔ not shipped to the public subset — private-clone only.
+~~~~

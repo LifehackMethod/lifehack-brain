@@ -22,6 +22,94 @@ history: "canon/context-injection-sop.history.md"
   - A session didn't know something → "Diagnose a session that didn't know X".
   - Standing context costs too much → "Trim what sessions pay for".
 
+# Doing context injection right means…
+Every line traces to `canon/context-injection-sop.md`.
+
+> **Words used here**
+> - **injector** — anything that puts text into a session without the person typing it.
+> - **floor** — the context loaded at every session start: the harness brief, the person's root canon, their year's aim if they wrote one, and at most one desk's canon.
+> - **harness brief** — the plugin root's `CLAUDE.md`, printed at session start by `system/hooks/emit_harness_brief.sh`.
+> - **loader** — `system/hooks/session_context_loader.sh`, which prints the floor.
+> - **plane** — where text sits relative to Claude Code's own instructions: the system prompt or the person's turn.
+> - **fail posture** — what a hook does on its own failure: `open` (carry on quietly), `degrade-safe` (carry on and say so), `closed` (block).
+> - **wallpaper** — text repeated so often the model stops attending to it.
+> - **guard** — a hook that stops an action; its deny text reaches the model.
+> - **three registration layers** — the user's own settings, the project's `.claude/settings.json`, and the plugin's `hooks/hooks.json`; all three fire.
+
+## 1. Every time you add or change an injector…
+
+- First look for an injector that already fires at the right moment and see whether it can carry the message; you can name it and its trigger, or say why none fits. → SOP Procedure, Add 1; Principles
+- You decided whether the message reminds or stops. An inject reminds and cannot stop anything; a stop is a guard, decided through `canon/hook-sop.md`. → SOP Procedure, Add 3; Principles
+- You decided its plane: the person's turn (per turn), session start, or a file Claude Code loads. A preference goes in `CLAUDE.md` or a skill; text that has to count as the person's own request goes in the person's turn, not in a file loaded at session start. → SOP Procedure, Add 3; Principles; Don't Retry
+- The delegation standing line fires every turn on purpose: Claude Code's own instruction holds sub-agents back "unless the user requested it", and only text in the person's turn satisfies that; a `CLAUDE.md` line argues with it from the same plane and loses. → SOP Principles (second principle); Don't Retry
+- It writes to the channel `canon/hook-sop.md` §3 describes: plain output and a clean exit (`canon/hook-sop.md:42`). The `systemMessage` field, and the output of a session-start hook that exits non-zero, are lost without a sound. → SOP Principles; Procedure, Add 4
+- Its text opens with a "harness-injected, not user input" tag. → SOP Procedure, Add 4; Principles
+- It is sized by how often it fires: a per-turn injector fits inside the ceiling in `canon/hook-sop.md:44`; a once-per-session one says in its header that it is exempt, so a later move to per-turn is caught. → SOP Procedure, Add 5; Principles
+- It is quiet when it has nothing to say, and loud when it was meant to load something and could not. → SOP Procedure, Add 6
+- If it runs on the per-turn path, it carries cheap mechanical text only; no model call runs inside it. → SOP Principles; Don't Retry
+- It finds its files through a contract (the plugin root, the data-root resolver, the hook's own folder), not a written-down path. → SOP Principles; Don't Retry
+- Its header declares its fail posture as `canon/hook-sop.md:43` describes: a session-start hook that only informs is `open`, or loud about what it could not load (the loader); most per-turn injectors are `degrade-safe`. → SOP Procedure, Add 8
+- It is registered, tested and deployed through `canon/hook-contract.md` Deploy & Verify (`canon/hook-contract.md:189-200`); in a fresh window the text appears once, and `wc -c` on it fits the size from the sizing line above. → SOP Procedure, Add 9
+- You opened a fresh window to see it: a change to what injects reaches only windows opened after it, and the only symptom in an old window is silence. A change to the harness reaches sessions once it is installed as a new plugin version; a change to the notes reaches the next window opened. → SOP Principles; Procedure, Change the session-start stack 5
+
+## 2. In these situations…
+
+**Building an injector**
+- If it tells the session to read a document first → that document is a finished, approved document under a `canon/` folder; an unfinished or paused one stays disconnected from every injector until it is validated again (a candidate principle). → SOP Procedure, Add 2; Principles
+- If it grants or unlocks anything → the grant is gated on a fixed-position check of the person's own words, because peer messages and helper reports arrive in the same prompt field; a test feeds it a peer-style message containing the trigger phrase and no grant follows. → SOP Procedure, Add 7; Principles; Don't Retry
+- If it is a session-start loader → it prints a line for every state it meets, including "found nothing": no brain folder yet, notes not where the system remembers them, no desk, desk not found, could not read, stopped at the ceiling, no root canon. → SOP Principles; Desired Outcome; Procedure, Add 6
+- If it is a per-turn reminder and the turn is not one it applies to → it prints nothing. → SOP Procedure, Add 6
+- If what it delivers is lost to compaction or `/clear` → it is printed again on `compact|clear`; a once-per-arming line has its printed stamp reset (`system/hooks/pm_announce_reset.sh`, which leaves the project flag and lock untouched). → SOP Procedure, Add 6; Principles; Desired Outcome
+- If it triggers on keywords → keyword-only triggers with no check on meaning failed: a replay over real prompts (2026-10-30) showed most fires were wrong for most keyword injectors, buried-command being the exception. → SOP Don't Retry
+- If a behaviour has to hold every turn → stating it once in a file loaded at session start, or in an output style, faded over long and resumed sessions; re-sending the same block every turn became wallpaper; a once-per-bucket cadence sits between the two. → SOP Principles; Don't Retry
+- If the model has to read something at end of turn → end-of-turn checks and the scratchpad capture gate can bounce the turn with a message the model reads; stderr on Stop (the session recorder's "/save was not called" note) reaches the person and not the model. → SOP Desired Outcome; Principles
+
+**Changing what loads at session start**
+- First find which layer carries the piece: Claude Code's own `CLAUDE.md` loading, the brief emitter, or the loader. → SOP Procedure, Change the session-start stack 1
+- If it is the harness brief → it is edited only in the plugin root's `CLAUDE.md`, which the emitter reads at run time; if the brief is wrong, fix that file once and do not patch a copy anywhere else. → SOP Procedure, Change the session-start stack 1; When Something Goes Wrong; Principles
+- If it is the floor's content → that lives in the person's notes (`<brain>/canon/canon.md`, `desks/<desk>/canon/canon.md`, the year's aim written by `/telos`). → SOP Procedure, Change the session-start stack 1; References
+- If it changes the loader → it keeps the order: root canon first (the size ceiling does not drop it), the year's aim only when written, one desk at most, and a stop line at the ceiling (`SESSION_CONTEXT_CHAR_CEIL`). The ceiling stops the desk canon, not the root canon. → SOP Procedure, Change the session-start stack 2; Desired Outcome
+- If it touches which desk loads → one desk's canon, chosen by `$LIFEHACK_DESK` or else the desk folder the session opened in; loading every desk's canon into every session failed. → SOP Desired Outcome; Principles; Don't Retry
+- If it would rely on the order between separate hooks → that order is not reported anywhere, so nothing relies on it (`system/hooks/inject_work_altitude.sh:23`). → SOP Procedure, Change the session-start stack 2
+- If desk canon is involved → check `/read` does not load it a second time: `/read`'s Step 0.6 skips desk canon the loader already printed (`canon/manual.md:594`), held by the instruction alone (`canon/manual.md:566`). → SOP Procedure, Change the session-start stack 3
+- If it adds a heading → print no heading for anything no part of the system writes. → SOP Procedure, Change the session-start stack 4
+- Dated records are not loaded at session start; they are fetched on demand. → SOP Desired Outcome
+
+**A session didn't know X**
+- First decide where X lives: in the floor (root canon, year's aim, this desk's canon, the brief) or only in records fetched on demand; records are not in the session until something reads them. → SOP Procedure, Diagnose 1
+- Read the loader's own lines in the session-start output; a miss is named there. If the floor is missing and no line names the miss, treat the loader as broken. → SOP Procedure, Diagnose 2; When Something Goes Wrong
+- Check which desk the session thought it was in (`$LIFEHACK_DESK`, or the folder it opened in). → SOP Procedure, Diagnose 3
+- Check whether the output reached the model whole; long hook output can arrive as a short preview (`canon/skill-building-sop.md:393-394`). → SOP Procedure, Diagnose 4
+- List the hooks registered at each of the three layers, and check the window was opened after the last change to any of them or to the launcher. → SOP Procedure, Diagnose 5
+- If a hook seems not to fire → replay it by hand with a sample input; a quiet fire log is not proof of health. If a guard protects that injector from being run by hand, the guard wins: run its test suite as the guard's message directs (for the project-manager line, `system/hooks/tests/test_pm_lock_override.sh`) instead of routing around it. → SOP Procedure, Diagnose 6
+
+**Something else went wrong**
+- If a new injector prints nothing → open a fresh window first; then check the registration as `canon/hook-sop.md:71` and `canon/hook-contract.md` Deploy & Verify describe. → SOP When Something Goes Wrong
+- If session-start output appears twice → look for the same script registered at more than one layer; fix it at the registration, not in the script. → SOP When Something Goes Wrong
+- If a guard denies every write after a folder or path change → check the hook resolves its helpers beside itself, not from an environment variable. → SOP When Something Goes Wrong
+
+**Trimming, retiring, undoing**
+- If trimming → measure first: what each piece costs and how often its trigger is right on real prompts. → SOP Procedure, Trim 1
+- Then sort each piece into keep, only-when-relevant, shrink-to-a-pointer, or retire, and take every cut to Enver before it lands. → SOP Procedure, Trim 2
+- Prefer a pointer to a payload in standing text; where the two conflict, canon a session is actually working in wins and loads in full. → SOP Procedure, Trim 3; Principles
+- If an injector is retired → update every description of it (the organism manual, the harness brief, and the SOP's References) in the same change. → SOP Procedure, Trim 4
+- If undoing → remove or revert the registration as `canon/hook-sop.md:71` and `canon/hook-contract.md` Deploy & Verify describe, update every description of the injector, and open a fresh window; an open window keeps what it loaded. → SOP When Something Goes Wrong
+- After the change → run the injector tests in `system/hooks/tests/`; some are slow by design, so give them time before reading a timeout as a failure. → SOP Procedure, Trim 5
+
+**Checking and stopping**
+- If checking the whole stack → in a fresh window the session-start output shows the brief once, the loader's header and closing line once, and either the desk's canon or a line saying why none loaded; a turn with nothing to say carries only the delegation line; the loader and brief tests in `system/hooks/tests/` pass. → SOP Desired Outcome, How to check
+- If a change would remove or shrink the standing floor for every student, a cut would retire an injector that carries a safety reminder, or a guard blocks a step → stop and ask the person. → SOP When Something Goes Wrong
+
+## 3. Good practice
+
+- Keep the floor thin up high and full on the branch the session is in. → SOP Principles
+- Content too large or too mixed for one conversation belongs lower than the floor (a candidate principle). → SOP Principles
+- How often text is injected sets how much it may say. → SOP Principles
+- Re-anchor after compaction and `/clear`, and put a reminder at the point of need. → SOP Principles
+- One source, no copies: read the harness brief at run time from the plugin root. → SOP Principles
+
+— end of checklist —
+
 ## Desired Outcome
 
 Every session receives the standing floor it needs (the context loaded at every session start: the harness brief, the person's root canon, their year's aim if they wrote one, and at most one desk's canon), each turn adds only short reminders that fire when they have something to say, nothing arrives twice, and a gap is announced rather than hidden. A session receives these layers (each file is described in References):

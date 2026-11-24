@@ -6,6 +6,8 @@
 
 # Spec-component template (rebuilt 2026-11-21 from both originals, nothing dropped)
 
+Which sections apply depends on the kind of thing: friction per act only if the system guards actions, boundaries only if it holds anything sensitive, first principles only when the subject has them, and the person's workflow always (one line if the person never touches it); a section that doesn't apply gets one line, "doesn't apply, because…", never a filled-in section.
+
 > **One document, two states.** It starts as a SPEC, while something new is designed, and FLIPS to a COMPONENT page once
 > it is built and hooked into the system (the last step of every plan). A spec is a component page that hasn't been
 > born yet. It follows the C4 pyramid (round five, 2026-11-16): the map, then the manual, then one component page per

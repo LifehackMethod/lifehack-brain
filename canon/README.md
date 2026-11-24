@@ -32,6 +32,12 @@
 | `status-emission-sop.md` | working | the status tile contract and the one writer |
 | `status-health-proof-sop.md` | working | proof, receipts and labels for a part that works |
 | `sop-template.md` | working | the shape every SOP starts from |
+| `google-sheet-sop.md` | working | the rules for building any Google Sheet |
+| `manual.md` | working | how the whole system works together |
+| `map-format-specs.md` | working | the format contract for the organism map |
+| `recovery-runbook.md` | working | getting your personal code and notes back after a failure |
+| `v2-architecture-vision.md` | high | the intended architecture of V2, the highest-altitude document in V2 |
+| `components/` | working | a folder of component pages, one per component of the system |
 
 Each has its `.history.md` beside it.
 

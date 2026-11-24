@@ -20,3 +20,9 @@ The two bracketed phrases replace a private window name and a private plan refer
 ~~~~
   a reason, can be listed by a scan. (The scan itself goes on the debt ledger until built.)
 ~~~~
+
+## 2026-11-24 - reason: canon update round 2, 2026-11-24, templates ruling: inapplicable optional sections get a one-line note, not omission
+
+~~~~
+- A section marked *[optional]* that has nothing to say is **left out entirely** — not left empty.
+~~~~

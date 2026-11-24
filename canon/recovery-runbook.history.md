@@ -14,3 +14,9 @@
 - Notes in Google Drive: Drive web, right-click, **Version history** or **Restore** (30-day window).
 - Notes in a plain local folder: Time Machine, or dated copies you made yourself.
 ~~~~
+
+## 2026-11-24 - reason: canon update round 2, 2026-11-24, recovery-runbook: 'Part 1' slip, runbook has no Part numbering
+
+~~~~
+> The plugin itself is never lost: reinstall it. Part 1 applies to everyone.
+~~~~

@@ -16,9 +16,9 @@ authority: user
 > your personal code folder (default `~/lifehack-personal-code`; the pointer file
 > `~/.config/lifehack/personal-code` says where, and `python3 <plugin>/shared/personal_code_root.py --quiet`
 > prints it). **Your notes** live in your notes folder (the AI Brain; `python3 <plugin>/shared/brain_root.py --quiet`).
-> The plugin itself is never lost: reinstall it. Part 1 applies to everyone.
+> The plugin itself is never lost: reinstall it. This runbook applies to everyone.
 
-# Part 1. Everyone
+# Everyone
 
 ## 1. Your personal code folder
 - **Local git history (on by default).** Setup runs `git init` in the folder, so every commit you make is
