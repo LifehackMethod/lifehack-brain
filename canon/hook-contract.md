@@ -4,6 +4,8 @@ Canonical reference for hook creation. Read this before writing any hook. The DE
 whether a hook is the right tool at all, and which of the three kinds — is `canon/hook-sop.md`;
 this page is the mechanics.
 
+The checklist for building or changing a hook (covering this contract too) is at the top of `canon/hook-sop.md`.
+
 ---
 
 ## The LLM Context Block (on every hook)
@@ -106,7 +108,7 @@ DENY='{"decision":"block","reason":"BLOCKED: [what]. WHY: [the incident or rule]
 deny() { printf '%s\n' "$DENY" >&2; exit 2; }
 ```
 
-Both work: `exit 2` + stderr (house standard) AND the `{"decision":"block"}` JSON on **stdout**. The ONE dark trap: JSON on **stderr with `exit 1`** → neither channel is read → the guard is silently DARK. Do NOT use the `hookSpecificOutput` / `permissionDecision` format.
+Both work: `exit 2` + stderr (house standard) AND the `{"decision":"block"}` JSON on **stdout**. The ONE dark trap: JSON on **stderr with `exit 1`** → neither channel is read → the guard is silently DARK. Do NOT use the `hookSpecificOutput` / `permissionDecision` format. Measured narrowly: `additionalContext` from a `PreToolUse` hook on the Agent tool was seen by the session, 4 of 4 (2026-11-19, `experiments/launch-message-channels/`); this does not claim other channels or events.
 
 ---
 

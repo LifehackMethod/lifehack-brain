@@ -25,6 +25,88 @@ history: "canon/connecting-an-outside-service-sop.history.md"
   - A raw call is refused for its host → "Letting a raw call reach a new host".
   - A key is old, exposed or no longer needed → "Replacing or retiring a key".
 
+# Connecting an outside service right means…
+Every line traces to `canon/connecting-an-outside-service-sop.md` (approved 2026-11-16).
+
+> **Words used here**
+> - **credential / secret**: a key, token or password that proves who you are to a service.
+> - **key folder**: `~/.config/lifehack/`, the person's local, non-synced config folder.
+> - **hidden read**: a prompt that takes the secret without showing it on screen or saving it in shell history.
+> - **shared fetch**: the files listed in `system/tools/shared-fetch-allowlist.txt`. Only these may make a raw outside call or hold a credential.
+> - **runner**: the script a scheduled job runs.
+> - **raw call**: a hand-written network command (`curl`, `wget`, inline Python HTTP).
+> - **outbound host list**: `system/egress-allowlist.md`, the hosts a raw call may reach.
+> - **web-read seal**: `system/safe-fetch-allowlist.md`, the host list `safe_fetch.py` uses when it is switched ON. It ships OFF.
+> - **connector**: an MCP server that adds tools to a session.
+> - **stand down**: a job declining to run because its setup is missing. It counts as skipped, not failed.
+> - **Sentinel**: the Sentinel Auditor, `.claude/agents/sentinel.md`. It only reports and never changes anything.
+
+## 1. Every time…
+
+- Decide first whether the service is needed at all. Each optional service unlocks exactly one feature, and the harness works without it. → SOP Procedure, Research 1; Read This First
+- Before connecting, think the new path through with security-canon's "Lethal Trifecta + Blast Radius" lens. → SOP Procedure, Research 2
+- Before creating the key, be able to name the host the harness will talk to, the access level (read only, or read and write) and the cost, all taken from the provider's own pages. → SOP Procedure, Research 2
+- The person creates the account and the key themselves, in their own browser. A key that passes through the chat stays in the transcript. → SOP Procedure, Research 3; Before You Start
+- The person enters the secret through a hidden read in their own terminal, not through a session. It never goes in as a command argument, in the chat or in a log. → SOP Principles; Procedure, Adding a key 1
+- The credential is stored outside every git repo and every synced folder, in a store the person trusts: an owner-only file in the key folder, the keychain, or a password manager. → SOP Principles; Desired Outcome
+- Each service gets one file in the key folder, named the way its reader expects, with no second copy under another name. → SOP Procedure, Adding a key 1
+- The file shows as `-rw-------` and sits in a `700` folder. → SOP Desired Outcome, How to check
+- The person saves the key in their own terminal (not through a session) with this hidden read: `(umask 077; mkdir -p ~/.config/lifehack; read -rs KEY && printf %s "$KEY" > ~/.config/lifehack/<file-name>)`, then pastes at the silent prompt and presses Return. Use the file name the service's reader looks for. → SOP Procedure, Adding a key 1
+- In a session, list key file names only. Never open or print a key file. → SOP Procedure, Adding a key 1
+- Only the shared fetch reads the credential, never a runner or code a desk wrote for itself. → SOP Principles; Procedure, Adding a key 2
+- Code looks for the key in this order: environment variable, then the owner-only file, then (macOS only) the keychain. → SOP Principles; Procedure, Adding a key 2
+- When the key is missing, the reader names every place it looked and gives the command that fixes it. → SOP Principles; Procedure, Adding a key 2
+- Test the service through the skill that uses it. The call succeeds and the key appears in no output. → SOP Procedure, Adding a key 3; Desired Outcome
+- Every host list or vendor-read list touched for the service is one the person can name. → SOP Desired Outcome
+- Finish by running the Sentinel with `scope=secrets`. It reports no exposure and no loose permission. → SOP Desired Outcome, How to check
+
+## 2. In these situations…
+
+- If the service is Google → every scope accepted turns on both read and write. Check `INSTALL.md` ("What each scope reaches, and what refuses it"). → SOP Procedure, Research 2
+- If the service is one `INSTALL.md` covers → use the file path its command names. → SOP Procedure, Adding a key 1
+- If the key sits in the person's own `settings.local.json` → this is the one allowed exception inside the repo folder. Only `.gitignore` keeps it out of commits. → SOP Procedure, Adding a key 1
+- If a runner or a session tries a raw outside call itself → it is refused (the scheduler door at install; `ingest_gate_enforce.sh` in a session). Do not add a desk runner to the shared-fetch list. → SOP Procedure, Adding a key 2
+- If adding an MCP connector → add it in the person's own Claude Code configuration or claude.ai connectors. The harness ships none. → SOP Procedure, MCP 1
+- If a connector can send, write or delete (mail, calendar, tasks, sheets, files) → the person decides whether to accept those actions before it is turned on. → SOP Procedure, MCP 2
+- If the connector is mail → it never sends without the person's approval. Reply drafts only as markdown files, none in Gmail. → SOP Procedure, MCP 2
+- If a connector was added → run the Sentinel with `scope=inventory`. It lists the server, its transport and how sensitive its data is. → SOP Procedure, MCP 3; Desired Outcome
+- If a connector has just had its first real use → review the sentinel event log and the paused-source list. → SOP Procedure, MCP 4
+- If a scheduled job needs the credential → build the job through `canon/cron-jobs-sop.md`. Its reads go through the shared fetch, and the shared preflights (`claude-auth.lib.sh`, `gws-auth.lib.sh`) find the credential. → SOP Procedure, Scheduled job 1
+- If a scheduled job needs the credential → never make the keychain its only source. A scheduled job cannot read the login keychain. → SOP Principles; Don't Retry
+- If a scheduled job calls a model → the person runs `claude setup-token` and saves the token to `~/.config/lifehack/claude-oauth-token`. → SOP Procedure, Scheduled job 2
+- If a scheduled job reads Google → the person exports the keychain-free file from their own terminal after logging in to `gws`: `gws auth export --unmasked > ~/.config/lifehack/gws-credentials.json && chmod 600 ~/.config/lifehack/gws-credentials.json`. Check it with `bash system/tools/gws-audit.sh`. → SOP Procedure, Scheduled job 3
+- Never run `gws` from a context that cannot unlock the login keychain (a scheduled job, or a launcher outside the desktop session). It deletes its own credentials and Google sign-in ends for every window. → SOP Principles; Don't Retry
+- If a job reads a new web host → add it to the person's own `<personal-code>/job-fetch-hosts.txt`, not the plugin's copy, because an update overwrites the plugin's copy. → SOP Procedure, Scheduled job 4
+- If it is a vendor's logged-in read of the person's own account → add one `<job> <file>` line to the person's own `<personal-code>/vendor-read-allowlist.txt`, with the model column exactly `none`. → SOP Procedure, Scheduled job 4
+- If a scheduled job's credential is missing → the job stands down as "not set up yet", names the missing file and the command that creates it, and counts as skipped, not failed. → SOP Principles; Procedure, Scheduled job 4
+- If a job stands down for more than twice its interval → one "paused" text goes out. → SOP Procedure, Scheduled job 4
+- If a web read is refused for its host → check the seal with `python3 system/tools/safe_fetch.py --l2-status`. If it is ON, or about to be armed, add the base domain between the `ALLOWLIST-START` and `ALLOWLIST-END` markers in `system/safe-fetch-allowlist.md`. → SOP Procedure, Web reads 1–2
+- If the seal is ON with nothing listed, or has domains listed while OFF → every web read is refused until it is fixed. → SOP Procedure, Web reads 2
+- If the web read belongs to a scheduled job → use the job's fetch-host list instead. Jobs are sealed to that list whatever the switch says. → SOP Procedure, Web reads 3
+- If a raw call is refused for its host → first check whether a raw call is needed at all. Web pages go through `safe_fetch.py`. Mail goes through `shared/tools/email_fetch.py`. Python that speaks a mail protocol is refused whatever the list says. → SOP Procedure, Raw call 1; When Something Goes Wrong
+- If a raw call really is needed for a service connected on purpose → add the base domain (`example.com`, not `www.example.com`) between the markers in `system/egress-allowlist.md`. Check it with the hook test until it prints `rc=0`. → SOP Procedure, Raw call 2; When Something Goes Wrong
+- If a raw call's destination is a shell variable or command substitution → it is refused whatever the list says. Write the host out in full. → SOP Procedure, Raw call 2
+- Never give the push service an allowed host. It has one governed sender. → SOP Principles; Don't Retry
+- If a call is blocked for carrying a secret together with a network command → reference the secret from its file, or use the shared fetch. Never paste it inline, and never word around the guard. → SOP When Something Goes Wrong
+- If a skill says there is no key → read the places it looked and fix the one it names. The message carries the command. → SOP When Something Goes Wrong
+- If a scheduled job fails and a credential looks like the cause → confirm the failure class from the job's error file and `last-run` before touching the credential. → SOP Principles; When Something Goes Wrong; Don't Retry
+- If a connector result comes back as "content withheld" → retry the call. If it keeps happening, the sanitizer is failing and the door is holding. → SOP When Something Goes Wrong
+- If a Google login goes stale → the person signs in again themselves. Never log `gws` out, which destroys every Google credential at once. → SOP When Something Goes Wrong; Don't Retry
+- If a secret appeared in the chat, a transcript, a log or a commit → treat it as exposed. Revoke and replace it at the provider first, then find where it landed. → SOP When Something Goes Wrong
+- If replacing a key → revoke the old one at the provider, then save the new one with the same hidden read. → SOP Procedure, Replacing 1
+- If retiring a key → revoke it, delete its file, and remove every line added for it: outbound host, web-read host, job fetch host, vendor-read line, job row. Check that the Sentinel (`scope=secrets` and `scope=inventory`) no longer lists it. → SOP Procedure, Replacing 2
+- If undoing → a key file or a list line is undone by deleting it. Revoking a key at the provider cannot be undone, so stop and ask first. → SOP When Something Goes Wrong
+- Stop and ask the person if: the service needs write access; a credential would have to live in a repo or a synced folder; a job seems to need its own credential outside the shared fetch; a secret may have been exposed; or a guard blocks a step and the fix is not obvious. → SOP When Something Goes Wrong
+
+## 3. Good practice
+
+- Keep the outbound host list narrow, and prefer one governed door for a service over an allowed host. → SOP Principles
+- Read `docs/OUTSIDE-SERVICES.md` (what each service unlocks) and the matching `INSTALL.md` section before starting. → SOP Before You Start
+- A credential file older than 90 days gets a Sentinel warning only: it reports and changes nothing, and no rule forces a replacement. Replacing it is the person's call: revoke the old key at the provider, then save the new one with the hidden read. → SOP Procedure, Replacing 1; References (rotation path not built yet)
+- Use the shared credential check. Don't give each runner its own copy, because a fix to one copy leaves the rest broken. → SOP Don't Retry
+
+— end of checklist —
+
 ## Desired Outcome
 
 The service works through the skill or job that needs it; its credential sits outside every git repo and every synced folder, in a store the person trusts — an owner-only file in the local config folder (`~/.config/lifehack/`), the keychain, or a password manager; it is read by the harness's shared code, not by code a desk wrote for itself; the secret appears in no transcript, log or shell history; and every list touched for it (outbound hosts, web-read hosts, job fetch hosts, vendor reads) is one the person can name.
@@ -76,7 +158,7 @@ The service works through the skill or job that needs it; its credential sits ou
 1. **Do:** add the server in your own Claude Code configuration or your claude.ai connectors.
    - **Why:** the harness ships no MCP server configuration; the connector is the person's, and the harness guards what comes back.
    - **Expect:** every result from any `mcp__` tool passes through the connector door (`system/hooks/sanitize_connector_output.sh`), which strips hidden characters, redacts flagged spans, and swaps the cleaned text in; an error inside the script withholds the result.
-2. **Do:** before turning on a connector that can send, write or delete (mail, calendar, tasks, sheets, files), the person decides whether to accept those actions; for mail, the person's ruling is that it "should never be able to send without human in the loop approval. Yeah drafts are okay" (2026-11-13).
+2. **Do:** before turning on a connector that can send, write or delete (mail, calendar, tasks, sheets, files), the person decides whether to accept those actions; for mail, the person's ruling is that it "should never be able to send without human in the loop approval. Yeah drafts are okay" (2026-11-13); narrowed 2026-11-20: reply drafts only as markdown files, none in Gmail, and no sending.
    - **Why:** a connector that sends or deletes acts on the person's own accounts directly, and a sent message or a cloud delete cannot be taken back.
 3. **Do:** record it — run the Sentinel Auditor (`.claude/agents/sentinel.md`) with `scope=inventory`.
    - **Expect:** the server listed with its transport (local, local HTTP, or networked) and the sensitivity of its data.

@@ -233,5 +233,4 @@ This list is where the concepts above meet the code. It is a work in progress: e
 - **not built yet:** tests for the injectors that have none, and a size census of the skill and agent listing. Serves: `canon/canonical-principles-sop.md` §5.7 (only breaking the thing proves the detector).
 - **not built yet:** a fresh-window test of whether text loaded at session start counts as the person's own request. Serves: `canon/canonical-principles-sop.md` §4.1 (verify the effect, not the report).
 - **not built yet:** a check that a "read this first" injector points only inside `canon/`. Serves: `canon/canonical-principles-sop.md` §7.0 (trust from where a line sits).
-- **not built yet:** the delegation standing hook committed and registered in the plugin's `hooks/hooks.json` (on origin its only copy sits in the archive). Serves: this SOP's principle that text counting as the person's own request rides in the person's turn.
 - **not built yet:** a commit-time check that each injected message carries the "harness-injected, not user input" tag. Serves: `canon/canonical-principles-sop.md` §7.0 (written text carries no trust metadata).

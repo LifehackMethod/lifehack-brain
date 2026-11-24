@@ -18,3 +18,9 @@ Text cut or moved out of the SOP, copied verbatim first. Append-only.
 ~~~~
 
 ## 2026-11-16 - reason: step 4b (round five), CI2 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (text added; nothing left the document)
+
+## 2026-11-24 - reason: canon update 2026-11-24, card 41g: the delegation standing hook is built and registered (hooks/hooks.json), so this not-built-yet line is stale
+
+~~~~
+- **not built yet:** the delegation standing hook committed and registered in the plugin's `hooks/hooks.json` (on origin its only copy sits in the archive). Serves: this SOP's principle that text counting as the person's own request rides in the person's turn.
+~~~~

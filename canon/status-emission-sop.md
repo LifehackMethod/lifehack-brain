@@ -23,6 +23,8 @@ history: "canon/status-emission-sop.history.md"
   - Wanting a new field or status word → "Add a field or a status word".
   - A tile is missing or wrong → "Diagnose a missing or wrong tile".
 
+The checklist for status, health, proof and tiles (covering this SOP too) is at the top of `canon/status-health-proof-sop.md`.
+
 ## Desired Outcome
 
 Every producer leaves one tile, named for the producer, at `<brain>/status/<producer>.json` (`<brain>` is the brain folder, resolved by `shared/brain_root.py`; the folder is canon's, `canon/data-layout.md:39`, `:243`), overwritten on each run. A job that has a tile writes it on every outcome, failure included. Every tile goes through one writer, carries one envelope with a status word from the closed list, is written whole or not at all, and a malformed tile is refused at write time with the failed field named. A tile is a `*.json` file; `*.jsonl` event logs in the same folder are not tiles.
@@ -159,7 +161,7 @@ Every real thing this SOP points at, one line each. Paths are relative to the ha
 - `system/tools/health_line.py` — the session-start job-health line; reads job-runner state, not tiles.
 - `system/tools/skill_hud.sh` — a skill's status-bar line; not a tile.
 - `system/tools/emit_finding.py`, `system/tools/findings_reader.py`, `system/hooks/guard_findings_write.sh` — leftovers of the retired findings store, still in the tree.
-- **not built yet:** the tile folder at `<brain>/status/` in every writer and reader. Serves: not yet in canon.
+- **not built yet:** the tile folder at `<brain>/status/` in every writer and reader. Serves: canon's tile folder `<brain>/status/` (`canon/data-layout.md`); live code that still writes `state/status/` is filed as debt.
 - **not built yet:** the shell front door handing every tile to `emit_status.py` instead of writing its own. Serves: not yet in canon.
 - **not built yet:** the hand-written job scripts writing through the one writer. Serves: not yet in canon.
 - **not built yet:** the optional `detail` pointer field in the envelope. Serves: not yet in canon.

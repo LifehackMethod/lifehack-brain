@@ -737,3 +737,9 @@ On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for
 ~~~~
 **Reads go through the shared fetch.** Email: `shared/tools/email_fetch.py` only. What it hands back is already sanitised, scanned and judged: a message the judge could not clear is withheld (the run fails loudly), and a real attack pauses the label and sends one critical text. A runner never re-reads the raw message. It sets NO read policy: the job must pass `--query`, `--cap` and `--since`. Which mail, how many and from when is the SKILL's decision, made with the person when the skill is built; never a default here. Web: `system/tools/safe_fetch.py` and `safe_search_api.sh`; job-run seals web reads for scheduled runs to the plugin's `system/tools/job-fetch-hosts.txt` plus your own `<personal-code>/job-fetch-hosts.txt` (the setup makes it). Add a host to your own list, never to the plugin's: an update overwrites that. A list that exists but cannot be read refuses the run (exit 78) the way the door's run-time refusal does: a failed run with an `errors/` file, `last-run` saying rc=78, and the usual alert. Sheets: `safe_sheets.py`. Push: `shared/notify/notify-send.sh` only, and a runner usually should not push at all because job-run alerts. The credentials live only in the shared fetch; never export them into a runner.
 ~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, card 42c/42h: launchd weekly row daily trigger replaced by hourly heartbeat
+
+~~~~
+1. **launchd** runs one LaunchAgent per `yes` row (`ai.lifehack.<job>`), written by `install-schedulers.sh --install`. Its only line: `/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`. A run missed in sleep fires once on wake. An interval is a number of seconds, and a job may be set to any interval, on the hour or not; `--if-overdue` holds the real interval (a weekly row, for one, gets a daily trigger).
+~~~~

@@ -5,7 +5,7 @@ record_type: canon
 desk: root
 topic: [system-architecture, llm-engineering]
 created_at: 2026-09-02
-updated_at: 2026-11-03
+updated_at: 2026-11-24
 status: active
 authority: user
 confidence: CONFIRMED
@@ -25,27 +25,27 @@ route:
   - ["§0.3", 280, "a picture that helps: the hospital (illustrates friction, does not replace it)"]
   - ["§0.4", 296, "rules about rules: rules exist only as architecture; implementation has no rules, only code (Enver, 2026-11-15)"]
   - ["§0.5", 307, "canon as gravity: easier to carry down than up, in Enver's words (2026-11-15)"]
-  - ["§1", 310, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
-  - ["§2", 354, "subtract, do not add"]
-  - ["§3", 379, "complicated versus complex; the growth chain; the desk model"]
-  - ["§4", 401, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
-  - ["§4.6", 459, "code works when it takes away an ability or checks what happened; a hook is two different things"]
-  - ["§5", 539, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
-  - ["§5.4", 565, "bind what is predictable and catastrophic; the smallest tool that does the job"]
-  - ["§5.12", 695, "the smallest tool that does the job; decomposing by trust boundary; handoffs"]
-  - ["§5.20", 780, "compliance is the center of the Venn diagram, not a choice"]
-  - ["§6", 798, "learning, refutation, choosing not to build, secrets"]
-  - ["§7", 826, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
-  - ["§8", 920, "one-line practices"]
-  - ["§9", 971, "Enver's rulings, including the GitHub and shipping rulings"]
-  - ["§10", 1014, "claims retracted; do not carry forward"]
-  - ["§10a", 1048, "approaches proven not to work, with receipts"]
-  - ["§11", 1089, "corrections to earlier answers"]
-  - ["§12", 1099, "unresolved or resolved tensions, kept visible"]
-  - ["§14", 1172, "where the evidence lives"]
-  - ["§15", 1178, "research candidates, held, bind nothing"]
-  - ["§16", 1340, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
-  - ["§17", 1468, "experiments: proposed and run, with dated ground results"]
+  - ["§1", 324, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
+  - ["§2", 368, "subtract, do not add"]
+  - ["§3", 393, "complicated versus complex; the growth chain; the desk model"]
+  - ["§4", 415, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
+  - ["§4.6", 473, "code works when it takes away an ability or checks what happened; a hook is two different things"]
+  - ["§5", 553, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
+  - ["§5.4", 579, "bind what is predictable and catastrophic; the smallest tool that does the job"]
+  - ["§5.12", 709, "the smallest tool that does the job; decomposing by trust boundary; handoffs"]
+  - ["§5.20", 794, "compliance is the center of the Venn diagram, not a choice"]
+  - ["§6", 812, "learning, refutation, choosing not to build, secrets"]
+  - ["§7", 840, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
+  - ["§8", 934, "one-line practices"]
+  - ["§9", 985, "Enver's rulings, including the GitHub and shipping rulings"]
+  - ["§10", 1028, "claims retracted; do not carry forward"]
+  - ["§10a", 1062, "approaches proven not to work, with receipts"]
+  - ["§11", 1103, "corrections to earlier answers"]
+  - ["§12", 1113, "unresolved or resolved tensions, kept visible"]
+  - ["§14", 1186, "where the evidence lives"]
+  - ["§15", 1192, "research candidates, held, bind nothing"]
+  - ["§16", 1354, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
+  - ["§17", 1484, "experiments: proposed and run, with dated ground results"]
 ---
 
 # Canonical principles — the merged canon — v2 (in force in the V2 sandbox)
@@ -306,6 +306,20 @@ One line: rules exist only as architecture; implementation has no rules, only co
 
 ## 0.5 — Canon as gravity (v2, 2026-11-15)
 > Enver, 2026-11-15: "the way we should treat canonical documents is like gravity It's harder and harder and harder. It's a gravity that increases more as you go upward, right? It's not impossible But it's easy for higher level documents information to be persisted downward and it's harder for lower level documents to be persisted upwards, so But it is possible"
+
+When the person rules against canon, the stale passage gets a one-line marker the same day ("superseded by the person's ruling of <date>; see <home>"); the full rewrite waits for the canon round. (Enver's decision 3, approved 2026-11-21.)
+
+## 0.6 — Owed, not scheduled (v2, 2026-11-21)
+> Enver, 2026-11-21: "We cannot build a system around the diary, or around any computer writes in the background in general, that are locked to a specific time of day … If the human doesn't open their laptop then their system is stuck, and that's on the human. But we also can't make it so much human friction that everything breaks if the human doesn't open the laptop at a very specific date."
+
+Background work is OWED, NOT SCHEDULED.
+
+1. Each job states a rhythm ("once a day"), never a clock time.
+2. A heartbeat while the laptop is awake runs what is owed since the last success; one run covers a gap of days.
+3. What he needs first runs first after the lid opens.
+4. A missed run shows late, never silently.
+
+**His reason** (2026-11-20, Grand Central window): "the stuff that needs to run every so often, like once a day, is not going to cut it… We can't move that towards the evening when they're most likely to have it closed".
 
 ## 1. THE DIAGNOSIS
 
@@ -1388,6 +1402,8 @@ The evidence behind these principles lives in the builder's notes.
 20. **Drifting down to testing the tester** (four documented episodes July–November 2026, and by Enver's account dozens of times; no census). We build a test rig to serve a larger goal. Then the work drifts to low altitude: sessions start testing and perfecting the tester, and stop using it to reach that goal. Each fix is honest and provable, so it feels like progress, and nothing signals the drift. **A tester still has to work, so ask whether the next real run could go ahead without this fix. If it could, run it.** **Fixes:** open each plan with three altitudes, so every session can see what the tester is for: the real question, what must be true to answer it, and the mechanics that serve those two (working case by case, not yet proven over time). Climb by nibble, bite and full meal. Read what runs actually did, not only the scoreboard. · **OBSERVED** (added 2026-11-03 on Enver's ruling; episodes: cadence-skills detour, Conformance Lab, canonical-housecleaning, skill-system rig; self-reported, clustered where measuring is the job). Counter-case: hardening has also caught silent passes and a judge about 20% random, so this is about drift, never about skipping proof. Mode 21 is one cause of this drift. Experiment: 17.28.
 
 21. **Low-altitude pull** (by Enver's account, repeatedly, over long sessions and multi-window builds; no census). All work happens at ground level, so doing the work pulls attention toward ground level. As a session goes on, the middle and top altitudes fade from its context, and the human ends up holding them and pushing them back in. **It also travels up a chain of command.** We assume influence only flows down: a coordinator sets direction, a build window manages it, and sub-agents execute. But a sub-agent only knows the ground, so its reports only describe the ground. Those reports are most of what the levels above it see, so they gradually pull the coordinator down too. It's like a CEO whose only information comes from reports written by people who can see only their own task: nobody means any harm, yet the CEO's picture slowly narrows to what those reports contain. **What helps:** the harness re-injects three altitudes into a session every so often, which seems to work well in a single window. It doesn't address the chain: a sub-agent doesn't get them, and its reports still come up ground-level. **Candidate fixes, untested:** carry three altitudes through a plan, with the real question at the top and a line at each phase or step saying how that step serves it, so a build window has them at the moment it prepares work. It can pass them to a sub-agent in full, or let them shape the prompt it writes. Reports should say what a result means for the level above, not just what happened. A coordinator should re-read the goal before acting on a report. · **OBSERVED** (added 2026-11-03 on Enver's ruling; rests on his account and one session's experience, journals not yet searched). Mode 20 is its costliest known example. Experiment: 17.28.
+
+**22. The read nobody saw** (uncounted; entered by Enver's ruling 2026-11-17, not by the census). A session or helper is told to read a document and says it did, and nobody can see whether it did: reading happens inside the model, hidden from the person and from the session that asked. Cheap and long-context readers skim, opening part of a file or none and answering from its headings, and still report "read in full: yes." **It isn't lying.** A model is structurally worst at noticing what's missing (§4.2), so it can't see the part it skipped, and telling it to "read every line" is prose asked nicely (mode 11), which doesn't fix it. It bites hard because reading is how every written layer of friction reaches the work: canonical documentation, briefs, plans, the manual. A skimmed read quietly switches those layers off while every report says they held. **A read is verified by what the reader opened, never by its word. Count what was opened from the record of its tool calls, and for load-bearing reads, check something only a real read could produce.** · **OBSERVED** (CR-9 stress test, 2026-11-17: a code check caught GLM readers reporting "read in full: yes" after reaching only part of the document.) Mechanism RESEARCHED via §4.2 and §15.9. · **Category:** both. The coverage check is built once; deciding which reads are load-bearing is a live call. · **Relations:** the input side of mode 8 (mode 8 is a worker's account of what it did; this is its account of what it took in). A special case of §5.6, "a count of what you found cannot prove you looked." · **Rung:** a speed bump once the coverage check is built (§9 item 41). The structural form is the Code+ reading harness (§9 item 42). The code for this failure mode now exists as three built pieces: the reading tool itself (whole documents in front of a model, checked), the routing of cheap jobs to it (a `read` job never opens files itself), and the counter that reports from a helper's record how much of each file it opened.
 
 **v2 step-runner verdict (orchestrator-v2, 2026-10-28) — OBSERVED in a fault-injection harness only, not validated by multi-week use.** Does the one-step-at-a-time runner (§0.2) help with each mode? YES / PARTLY / NO:
 1. Built, then never called — PARTLY (a card step is called by the runner; an unwired card is not)

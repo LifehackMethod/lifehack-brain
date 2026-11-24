@@ -9,22 +9,22 @@ reader_note: "How it works lives in canon/manual.md (CRON AND ALARMS); this file
 history: "canon/cron-jobs-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
-  - ["§1", 38, "the three layers: alarm clock, envelope, steps; which layer a bug is in"]
-  - ["§2", 52, "the seven principles every job follows, and what holds each one"]
-  - ["§3", 66, "what is shared, what is the desk's, where files live"]
-  - ["§4", 75, "the chain from launchd to the text; local state; exit codes; the alert rule"]
-  - ["§5", 102, "the row contract: one row per job, its nine columns"]
-  - ["§6", 124, "the check: path ~ regex, written against the outcome; what the door refuses"]
-  - ["§7", 132, "the door: what it refuses, its limits, reads through the shared fetch"]
-  - ["§8", 152, "state, locks, bookmarks"]
-  - ["§9", 159, "the cost line (last-run) and run_model"]
-  - ["§10", 169, "the rig: job-sim.sh, the bite, a generated scenario per personal job and hand-written receipts for plugin jobs, what it does not cover"]
-  - ["§11", 179, "add a job: the recipe, with a worked example"]
-  - ["§11a", 223, "bring an existing job into line: personal folder, what may change, refusal texts, the steps, running outside the checker"]
-  - ["§12", 350, "the switch-on protocol"]
-  - ["§13", 362, "debugging a job from the session line"]
-  - ["§14", 371, "texts are written for a person; the approved wording"]
-  - ["§15", 408, "questions for the person: PROPOSED lines moved out of the live text"]
+  - ["§1", 120, "the three layers: alarm clock, envelope, steps; which layer a bug is in"]
+  - ["§2", 134, "the seven principles every job follows, and what holds each one"]
+  - ["§3", 148, "what is shared, what is the desk's, where files live"]
+  - ["§4", 157, "the chain from launchd to the text; local state; exit codes; the alert rule"]
+  - ["§5", 184, "the row contract: one row per job, its nine columns"]
+  - ["§6", 206, "the check: path ~ regex, written against the outcome; what the door refuses"]
+  - ["§7", 214, "the door: what it refuses, its limits, reads through the shared fetch"]
+  - ["§8", 234, "state, locks, bookmarks"]
+  - ["§9", 241, "the cost line (last-run) and run_model"]
+  - ["§10", 251, "the rig: job-sim.sh, the bite, a generated scenario per personal job and hand-written receipts for plugin jobs, what it does not cover"]
+  - ["§11", 261, "add a job: the recipe, with a worked example"]
+  - ["§11a", 305, "bring an existing job into line: personal folder, what may change, refusal texts, the steps, running outside the checker"]
+  - ["§12", 432, "the switch-on protocol"]
+  - ["§13", 444, "debugging a job from the session line"]
+  - ["§14", 453, "texts are written for a person; the approved wording"]
+  - ["§15", 490, "questions for the person: PROPOSED lines moved out of the live text"]
 ---
 
 # Cron jobs SOP
@@ -35,6 +35,88 @@ On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for
 
 > **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them. ⛔ archived 2026-11-22 (V1 element page, now in archive/organism-elements-v1-2026-11-22/; look for its V2 replacement)
 
+# Doing a scheduled job right means…
+From `canon/cron-jobs-sop.md` only (2026-11-23).
+
+> **Words used here**
+> - **job** — the envelope: did one run start, finish in time and pass its check. Owned by this SOP.
+> - **routine** — the steps inside: a skill or a script a person could run by hand. Not owned by this SOP.
+> - **row** — one line in a `jobs` block describing a job: `name | enabled | interval | outcome | check | model | budget | source | command`.
+> - **runner** — the job's own script that the row's command starts.
+> - **receipt** — the line the runner writes after it has verified the real result; the check reads it.
+> - **check** — `<path> ~ <regex>`: passes only if the file was written this run and a line matches.
+> - **door** — the test that refuses a bad row (`install-schedulers.sh --install` / `--check-row`, and `job-run.sh` before every run).
+> - **rig** — `system/tools/tests/job-sim.sh`: replays days in seconds on a fake clock, never touching real state.
+> - **personal code folder** — the person's own folder for their jobs (`python3 $CODE/shared/personal_code_root.py --quiet`). `$CODE` = whatever `$HOME/.config/lifehack/code-root` says.
+> - **stood down** — exit 75: nothing to do, not overdue, lock held, not logged in. Never a fault.
+
+## 1. Every time…
+
+- Ask "which layer?" before anything: did not fire = the alarm clock (launchd); did not come back or check failed = the job; step N wrong = the routine. → §1, §13
+- Keep the row and the runner thin: check whether there is work, start the routine, or exit 75. Anything longer belongs in the skill. → §1
+- Nothing in this SOP is a reason to edit a skill; a skill is rewritten only if the person starts that conversation. → Read this first, §1
+- Resolve every path from `$LIFEHACK_CODE_ROOT` / the code-root pointer; never type the harness code path, never rely on a bare tool name. → Read this first, §4, §7
+- A person's own job: row in `<personal-code>/jobs.md`, code in `<personal-code>/tools/<job>/`; never in the plugin, never in `$CODE`. → §3, §5, §11 step 3
+- A personal row's command is `bash "$LIFEHACK_PERSONAL_CODE/tools/<job>/<job>-run.sh"`: the door and job-run.sh both expand that variable; never a typed `/Users/…` path, never a made-up variable. → §11a "Checking a job on a branch", §7
+- The outcome is one sentence saying what is true after a good run; if you cannot write it, the job is not ready. → §5, §11 step 1
+- All nine columns are filled; no `TBD`; model is `none`/`small`/`medium`/`large`; budget is an integer (0 only for model `none`), about half again above the most calls a good run makes. → §5
+- The check tests content, never presence: it matches something that varies and took real work (a count of 1+, a verdict word, a date). `"rc":0`, `^.+$`, `^done$` or a check with no ` ~ ` are refused. → §2.1, §6
+- No `|` in the regex (write alternation as an optional group); the command column is last and the only one that may contain `|`. → §5, §6
+- The runner writes the receipt, a file of its own (e.g. `$HOME/.config/lifehack/<job>/receipt.txt`), AFTER verifying the artifact; the check reads that file. Never point the check at `last-run` or anything under `state/jobs/<job>/`: those are job-run.sh's, rewritten each run as `<ISO> rc=… calls=… secs=…`. The model never writes a file, state or a bookmark. → §2.5, §6, §9, §11 worked example
+- Every AI call goes through `run_model <tier> …` from `model.lib.sh`; no model id anywhere else. → §7, §9
+- Every outside read goes through the shared fetch (`email_fetch.py`, `safe_fetch.py` / `safe_search_api.sh`, `safe_sheets.py`); no raw `curl`, `urllib`, `requests`, Gmail, Calendar or sheets read in the runner or anything it calls or sources. → §7
+- No silenced errors (`|| true`, `|| :`, `2>/dev/null`, and the like); a failed fetch never reads as "nothing new". → §2.4, §7
+- Exit 75 when there is nothing to do or a lock is held; exit 0 is never proof of work. → §2.3, §4, §8
+- A step that changes something is safe to run twice, or records what it did before acting. → §2.2
+- Job state stays local in `$HOME/.config/lifehack/state/jobs/<job>/`; content may go to Drive, state never. → §2, §4
+- A new row goes in `off`. Never flip it to `yes` except at the switch-on gate. → §11, §12
+- The door passes as the run sees it: `CODE="$(cat "$HOME/.config/lifehack/code-root")"; env -i HOME="$HOME" PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" LIFEHACK_CODE_ROOT="$CODE" bash "$CODE/system/tools/install-schedulers.sh" --check-row <name> 2>&1; echo "rc=$?"`: last line `rc=0`, line above `PASS`; a refusal prints reasons, then a rulebook line, then `rc=1`. → §11 step 5, §11a "Check the way the run does"
+- The rig is green: `bash $CODE/system/tools/tests/job-sim.sh`. For a personal row it generates `personal:<job>` and proves only that the row's check passes a good receipt line and fails a bad one (a stub runs, never the real command); `SKIP personal:<job>` = the door still refuses. No hand-written scenario. → §10, §11 step 7
+- A new job adds `<job> = <plain name>` to `<personal-code>/job-names.txt` (a plugin job: `system/job-names.txt`) in the same change as its row. → §14
+- Commit a personal job's code, row and plain name in the personal code folder, never to `$CODE`; report what was proved and what was not tested. → §11 step 9
+
+## 2. In these situations…
+
+- If the door refuses a person's own row → say one short line offering to bring it into line, every time, never a block; give your best guess if you ask anything. → §11a "The window offers"
+- If the door refuses a row from the plugin's `system/jobs.md` → tell the person to report it (PR rulebook; until it exists, an issue on the plugin's GitHub page); do not edit it, do not copy it under its own name. → §5, §11a "Whose job decides the refusal"
+- If `--check-row` gives `rc=2` → no such row: check the name against the job list before offering anything. → §11a "Check the way the run does"
+- If bringing a job into line → change only the job's own code; nothing it reads, writes or sends changes, apart from its receipt line and exit code. → Read this first, §11a "What may change"
+- If bringing a job into line → get the reasons, fix each the standard way from the table, re-run until `rc=0` and `PASS`, then run the rig with the five seams unset: `env -u LIFEHACK_DESK_REPO -u LIFEHACK_JOBS_FILE -u PULSE_CONFIG -u LIFEHACK_PERSONAL_JOBS_FILE -u LIFEHACK_VENDOR_ALLOWLIST bash $CODE/system/tools/tests/job-sim.sh`. → §11a "The steps" 4
+- If a refusal reason has no fix in the table → do not invent one; use the reason text and tell the person. → §11a, after the table
+- If a reason points into a plugin file (including `shared-fetch allowlist unreadable`) → do not fix it here; report it. → §11a "The steps" 1, the table
+- If the personal folder lacks `tools/` or `job-fetch-hosts.txt` → run `python3 $CODE/shared/tools/personal_jobs_scaffold.py` first; it never overwrites. → §11a "The steps" 0
+- If tempted to make a row pass by hand → no crontab, no hand-written plist, no edit to `shared-fetch-allowlist.txt`, never add a desk runner to it. → §7, §11a
+- If the person wants a plugin job changed → copy it as a NEW job under a NEW name in their own folder; it is theirs, gets no plugin fixes ("you broke it, you bought it"); the plugin job keeps running. → §5, §11a "Copying a plugin job"
+- If the person wants their own refused job run anyway → warn plainly first; they say yes in their own words (a yes to "may I fix it" is not this); mark the row directly above with `# outside the checker, by choice, YYYY-MM-DD`; no session-start line. A mark on a plugin row does nothing. → §11a "A person may knowingly run…"
+- If the job reads email → pass `--query`, `--cap` and `--since` as the skill decided with the person; never invent a read policy; never drain a backlog without the person deciding. → §7, §8, §11 step 6
+- If the job reads the web → only through the shared web fetch; a new host goes in `<personal-code>/job-fetch-hosts.txt`, never the plugin's list. → §7
+- If the job writes to the person's own Google account → allowed; there is no shared writer (the routine calls it directly; `safe_sheets.py` is for reads), so it must be repeat-safe itself (ledger the id before the append, or write by key). → §2.2, §7
+- If the write is to a Sheet the person named as fine china → ask before the edit; unattended, it is parked for the morning and the run carries on. → §7
+- If the job would send email → it may not send; reply drafts are allowed only as markdown files, none in Gmail. → §7
+- If the job reads the person's own vendor account → only model exactly `none`, python `requests`/`urllib`, from one file on a `<job> <file>` line in the person's own `vendor-read-allowlist.txt`. → §7
+- If on Linux or Windows → only plain-code rows (model `none`) are installed. → Read this first, §1
+- If about to do a forced test run → ask first, with your best guess, saying what it does for real (its writes, any model spend); without a yes, report the job as checked, not run. → §11 step 8, §11a step 5
+- If switching on → one job at a time, on the person's word: `--check-row` PASS, rig green, one-time fixes, ask the three questions (spend needed? watch first run or background? fix the invoking skill now?), plus backlog handling if it reads one; then flip to `yes`, `--install`, one forced run on their yes. → §12
+- If the session line says `never ran`, `overdue`, `stood down`, `jobs cannot find the code` or `paused` → follow §13; read `last-run` first. Only a person removes a pause. → §13
+- If a state, governor or bookmark file is corrupt → refuse it and name the file; never start fresh. → §2.6, §8
+- If writing a text to the person → plain words: what happened, whether it matters, what to do; a title; no code names, exit codes, paths or programmer words; wording from `job-texts.txt` only. → §14
+- If a text is not urgent → it waits until morning; only something that needs the person right now may wake them. → §14
+- If checking a row on a branch → point the checker at the branch's `jobs.md` (`LIFEHACK_JOBS_FILE`); that is a test check, not the in-line check. → §11a "Checking a job on a branch"
+- If a helper reports a check result → run the check yourself and read the last line; never rely on a summary. → §11a
+- If the job should ship to every installer → it is a plugin change through the PR rulebook, never a direct edit or commit to `$CODE`. → §11 steps 3, 4, 9
+
+## 3. Good practice
+
+- Make the routine something a person could run by hand; the schedule is just one way of pressing its button. → §1
+- A card is an upgrade, never a prerequisite; no job waits for one. → §1, §12
+- A runner usually does not push at all; `job-run.sh` alerts. → §7
+- Keep raw calls out of imported Python modules too; the door does not follow imports. → §7
+- A change that cannot be expressed as a rig scenario is suspect. → §10
+- Add `<personal-code>/job-sim/<job>.json` only if the generated receipt lines or call count do not fit. → §10, §11 step 7
+- Start debugging from `last-run`: `rc`, `calls`, `secs` and the reason usually answer it. → §9, §13
+
+— end of checklist —
+
 ## 1. The three layers
 
 | layer | plain name | its one question | owner |
@@ -44,7 +126,7 @@ On Linux and Windows, jobs run through `pulse.sh`, not through `job-run.sh`; for
 | routine | the steps | what are the steps, in what order, and which one broke? | the skill; drawn as a card when it needs one |
 
 - Keep the top two dumb. A row's command checks whether there is work, then starts the routine, or stands down with 75. Anything longer belongs in the skill.
-- The test: if a person can run it by hand as a slash command or a script, that thing is the routine. The schedule is one way of pressing its button.
+- The test: if a person can run it by hand as a slash command or a script, that thing is the routine. The schedule is one way of pressing its button. A timer is only a trigger: the routine is either human-in-the-loop (some of its steps talk to the person) or out-of-the-loop (it runs alone), and the schedule does not change which.
 - The seam has two points only. (1) The command runs the routine. (2) The check reads the routine's result. Neither side needs the other's inside. Bringing a job into line (section 11a) changes the job's own code (its runner), never the skill it calls. A skill rewrite happens only if the person starts that conversation.
 - Card or no card is the skills rule, not this SOP's: `canon/skill-building-sop.md`, "The Procedure", "Build a skill", step 1 (command or skill) and step 5 (the stage card). Read it there; do not copy it here. A card is an upgrade, never a prerequisite: a job can be scheduled with its routine as it is.
 - Bugs: ask "which layer?" first. Did not fire: trigger. Did not come back, or the check failed: job. Step N was wrong: routine.
@@ -78,7 +160,7 @@ Also: "ran" is not "succeeded". No job writes job state to Drive: content yes, s
 launchd -> code-root pointer -> job-run.sh -> the row's command -> the row's check -> last-success -> session line / text
 ```
 
-1. **launchd** runs one LaunchAgent per `yes` row (`ai.lifehack.<job>`), written by `install-schedulers.sh --install`. Its only line: `/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`. A run missed in sleep fires once on wake. An interval is a number of seconds, and a job may be set to any interval, on the hour or not; `--if-overdue` holds the real interval (a weekly row, for one, gets a daily trigger).
+1. **launchd** runs one LaunchAgent per `yes` row (`ai.lifehack.<job>`), written by `install-schedulers.sh --install`. Its only line: `/bin/bash -c 'exec /bin/bash "$(cat "$HOME/.config/lifehack/code-root")/system/tools/job-run.sh" <job> --if-overdue'`. A job states a rhythm ("once a day"), never a clock time (`canon/canonical-principles-sop.md` §0.6, "Owed, not scheduled"). A run missed in sleep fires once on wake, and that one run covers the whole gap. An interval is a number of seconds, and a job may be set to any interval, on the hour or not; `--if-overdue` holds the real interval and counts from the previous due point. A row of a day or longer gets an hourly heartbeat (`StartInterval` 3600 plus `RunAtLoad`), not a clock-time trigger. A run that is overdue shows on the session line, never silently.
 2. **The pointer** `$HOME/.config/lifehack/code-root` holds one line, the code root. The session-start hook rewrites it every session. A plist never holds a code path. If it is wrong, launchd's stderr lands in `launch.err` and the session line says to open any desk once to repair.
 3. **job-run.sh** reads the row, takes the lock, runs the command under a watchdog, then runs the check. It is the only place exit 0 is earned.
 4. **The command** is `bash -c "<command>"`. By hand: `bash $CODE/system/tools/job-run.sh <job> [--force]`.
@@ -101,7 +183,7 @@ State is local, never Drive: `$HOME/.config/lifehack/state/jobs/<job>/` holds `l
 
 ## 5. The row contract
 
-One row per job, in a `jobs` block. A job that ships with the plugin is a row in `$CODE/system/jobs.md`. A person's own job is a row in the same format in `<personal-code>/jobs.md` (the plugin ships no such list, and an update would overwrite anything the person put in its own). One scheduler reads both (`shared/jobs_manifest.py`). To change a plugin job, copy it under a NEW name into your own folder: the row goes in your `jobs.md`, its code in `<personal-code>/tools/<new-name>/`, and the new job is yours and not supported by the plugin; the plugin's job keeps running unchanged (section 11a, "Copying a plugin job to change it"; decided by the owner, in session, 2026-11-05). The code still lets a personal row with a plugin row's name win, with a warning that names it; that is not the way to change a plugin job. A broken plugin job is reported through the PR rulebook, `system/sops/pr-sop.md`. A row in your own `jobs.md` that the checker refuses may run outside the checker only when you knowingly chose it and the row carries the mark above it (section 11a, T5).
+One row per job, in a `jobs` block. A job that ships with the plugin is a row in `$CODE/system/jobs.md`. A person's own job is a row in the same format in `<personal-code>/jobs.md` (the plugin ships no such list, and an update would overwrite anything the person put in its own). One scheduler reads both (`shared/jobs_manifest.py`). To change a plugin job, copy it under a NEW name into your own folder: the row goes in your `jobs.md`, its code in `<personal-code>/tools/<new-name>/`, and the new job is yours and not supported by the plugin; the plugin's job keeps running unchanged (section 11a, "Copying a plugin job to change it"; decided by the owner, in session, 2026-11-05). The code still lets a personal row with a plugin row's name win, with a warning that names it; that is not the way to change a plugin job. A broken plugin job is reported through the PR rulebook, `system/sops/pr-sop.md` (not written yet; until it exists, a report is an issue on the plugin's GitHub page, decided by the owner, in session, 2026-11-05). A row in your own `jobs.md` that the checker refuses may run outside the checker only when you knowingly chose it and the row carries the mark above it (section 11a, T5).
 
 ```
 name | enabled | interval | outcome | check | model | budget | source | command
@@ -139,7 +221,7 @@ The door refuses presence-grade checks: a regex that tests only an exit code wri
 - a presence-grade check;
 - a runner outside `$CODE` and your personal code folder, or a pinned code path (a clone or plugin-cache folder) where `$LIFEHACK_CODE_ROOT` belongs;
 - a command with no script in it; a script path built from any setting other than the code root or home; a script that does not exist; or a status-tile call that names a different job;
-- a raw outside READ (Gmail or Calendar reads, sheets `values get`, `curl`, `urllib`, `requests`) anywhere in the runner, what it sources or invokes, or the helper files beside it. Only files named in `system/tools/shared-fetch-allowlist.txt` may hold one. Never add a desk runner to that list. **Writes** to the owner's own Google account (labels, archive, Sheets, Tasks, Calendar, Docs) are allowed: an accepted risk (ruled 2026-10-28). Sending mail is not one of those writes: the person's ruling is that email "should never be able to send without human in the loop approval. Yeah drafts are okay" (2026-11-13); and a scheduled AI job earns its place only if it reads or drafts (`canon/canonical-principles-sop.md` §15.29). The one change: a write to a Sheet the person has named as fine china meets fine china protection A, "can't edit it without talking to the human first" (an ask before the edit; `canon/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)); a Sheet not named stays under the accepted risk. With nobody at the screen, as in a scheduled run, protections A and B are denied with a sign and parked for the morning, and the run carries on; protection C (a speed bump with a sign in front of a mass delete: a whole folder or hundreds of files) has its sign logged, and the action waits for the morning rather than being blocked outright. **One vendor-read exception:** a row whose model is exactly `none` may make its own logged-in read (python `requests` or `urllib` only) of the person's own vendor account from ONE file listed as `<job> <file>` in the person's own `<personal-code>/vendor-read-allowlist.txt` (`<file>` relative to the job's tools folder; the plugin's `system/tools/vendor-read-allowlist.txt` ships empty and is read first). A raw Gmail read and `curl` are never a vendor read. It ends if the row gains an AI step;
+- a raw outside READ (Gmail or Calendar reads, sheets `values get`, `curl`, `urllib`, `requests`) anywhere in the runner, what it sources or invokes, or the helper files beside it. Only files named in `system/tools/shared-fetch-allowlist.txt` may hold one. Never add a desk runner to that list. **Writes** to the owner's own Google account (labels, archive, Sheets, Tasks, Calendar, Docs) are allowed: an accepted risk (ruled 2026-10-28). Sending mail is not one of those writes: the person's ruling is that email "should never be able to send without human in the loop approval" (2026-11-13), and "we're getting rid of email drafts ... because of the permissioning, to just not allow" (2026-11-17), narrowed on 2026-11-20: reply drafts written as markdown files are allowed; none in Gmail, and no sending; and a scheduled AI job earns its place only if it reads or drafts as files (`canon/canonical-principles-sop.md` §15.29). The one change: a write to a Sheet the person has named as fine china meets fine china protection A, "can't edit it without talking to the human first" (an ask before the edit; `canon/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)); a Sheet not named stays under the accepted risk. With nobody at the screen, as in a scheduled run, protections A and B are denied with a sign and parked for the morning, and the run carries on; protection C (a speed bump with a sign in front of a mass delete: a whole folder or hundreds of files) has its sign logged, and the action waits for the morning rather than being blocked outright. **One vendor-read exception:** a row whose model is exactly `none` may make its own logged-in read (python `requests` or `urllib` only) of the person's own vendor account from ONE file listed as `<job> <file>` in the person's own `<personal-code>/vendor-read-allowlist.txt` (`<file>` relative to the job's tools folder; the plugin's `system/tools/vendor-read-allowlist.txt` ships empty and is read first). A raw Gmail read and `curl` are never a vendor read. It ends if the row gains an AI step;
 - a literal model id (or `--model X`) anywhere outside `model.lib.sh`. Name a tier;
 - a silenced error: `|| true`, `|| :` or `2>/dev/null` on a fetch, write, push or model call. Stderr goes to the job log.
 

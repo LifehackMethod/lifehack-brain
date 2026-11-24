@@ -144,6 +144,28 @@ history: "<path to this SOP's history/archive file>"
 - **Which situation are you in?** <only if the SOP covers more than one: one line per situation, pointing to its part
   of The Procedure>.
 
+## A complete <thing> has… / Doing <job> right means…   [required]
+
+A suggested order, like a highly recommended order of operations; it adds no musts. Written for a reader with zero context. Each line is one checkable thing and ends with the section that explains it.
+
+> **Words used here**
+> - **<term>** — <one-line meaning>.
+> - **<term>** — <one-line meaning>.
+
+### 1. Every time…
+
+- <one checkable thing>. → <section>
+
+### 2. In these situations…
+
+- If <situation> → <one checkable thing>. → <section>
+
+### 3. Good practice
+
+- <one checkable thing>. → <section>
+
+— end of checklist —
+
 ## Desired Outcome   [required]
 
 - <What "done right" looks like when this is finished.>

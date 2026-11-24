@@ -29,7 +29,7 @@ shared:
 checks:
   - {id: intervals-test, watches: "an interval is any whole number of seconds of 60 or more (canon/cron-jobs-sop.md:81 is the canon pointer for 'any interval, not only whole hours'; the 60-second floor is the code's: system/tools/install-schedulers.sh:545 and its test system/tools/tests/test_install_schedulers_intervals.sh)"}
   - {id: door-test, watches: "the door refuses a bad row, prints the reason, and job-run.sh runs the same door before every run of a yes row (canon/cron-jobs-sop.md:134,136) — held by system/tools/tests/test_job_run_door.sh"}
-  - {id: no-send-verb, watches: "email never sends without human approval; drafts stay allowed (COMPASS P-184; canon/canonical-principles-sop.md §15.29) — held by a probe of the door's Gmail write list"}
+  - {id: no-send-verb, watches: "email never sends without human approval; reply drafts are allowed only as markdown files, none in Gmail (COMPASS P-184; canon/canonical-principles-sop.md §15.29) — held by a probe of the door's Gmail write list"}
   - {id: refusal-rulebook-resolves, watches: "every refusal names a rulebook that exists and says where the rule lives (COMPASS P-127) — held by a probe of the door's refusal texts"}
   - {id: state-local-not-drive, watches: "job state is local, never Drive (canon/cron-jobs-sop.md:88) — held by the check's Drive-path probe; system/tools/tests/test_pulse_state_path.sh is a related test the check does not run"}
 receipts:

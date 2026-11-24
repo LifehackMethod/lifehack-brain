@@ -133,7 +133,7 @@ A session that opens cold can read one short session handoff (the message `/save
 3. **Do:** write it only on the person's explicit yes.
    - **Expect:** `system/hooks/guard_canon_write.sh` refuses fast-stale or oversized notes canon and asks before a whole-file replace.
 4. **Do:** grade it by THE FRAME's tiers in `canon/canonical-principles-sop.md`; one build's receipts stay OBSERVED.
-5. **Do:** let the daily diary carry the day: one entry per day, written by the diary job, with weekly and longer roll-ups drafted from it (`canon/data-layout.md:242`).
+5. **Do:** let the diary carry the day, as `canon/desk-building-sop.md` §6 says, with weekly and longer roll-ups drafted from it (`canon/data-layout.md:242`).
    - **Expect:** a roll-up is an unverified draft until a person's check-in stamps it.
 6. **Do:** for the harness's own `canon/` folders, route the change through a full canon-files run instead of `/save`.
    - **Why:** nothing lands in those folders until it has passed one (Enver, 2026-11-14).
@@ -232,7 +232,7 @@ Every real thing this SOP points at, with what it is and does. Paths are relativ
 - `system/tools/conform.py` — the build's conformance doors after each card and on the whole artifact.
 - `system/tools/project-manager/check_slug_folder.py` — audits folder-name and slug drift.
 - `system/tools/planning-diary-capture.py`, `system/tools/planning-diary-rollup.py`, `system/tools/planning-diary-run.sh` — the daily diary entry and the periodic roll-up drafts.
-- `system/jobs.md` — the scheduled-jobs manifest, where the diary job's row lives.
+- `system/jobs.md` — the scheduled-jobs manifest; how the diary is written is `canon/desk-building-sop.md` §6.
 - `canon/manual.md` — the system map that names the honour-system edges above.
 
 **Data** (paths are `canon/data-layout.md`'s)

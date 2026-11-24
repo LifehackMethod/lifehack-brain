@@ -29,3 +29,9 @@ Line 164 (before): "- `.gitignore` — keeps `.claude/settings.local.json` and `
 ~~~~
 - **not built yet:** guards on connectors' own send, write and delete actions, matching the shell-command write guards (`system/hooks/guard_gmail_send.sh` and its siblings). Serves: not yet in canon.
 ~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, card 33c: mail connector reply drafts only as markdown files (MCP 2)
+
+~~~~
+2. **Do:** before turning on a connector that can send, write or delete (mail, calendar, tasks, sheets, files), the person decides whether to accept those actions; for mail, the person's ruling is that it "should never be able to send without human in the loop approval. Yeah drafts are okay" (2026-11-13).
+~~~~

@@ -23,3 +23,9 @@ Every real thing this SOP points at, with what it is and does. Paths are relativ
 ~~~~
 - **not built yet:** the diary job switched on. Serves: `canon/data-layout.md:242`.
 ~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, card 42e (his diary ruling): this line becomes a pointer to desk-building §6
+
+~~~~
+5. **Do:** let the daily diary carry the day: one entry per day, written by the diary job, with weekly and longer roll-ups drafted from it (`canon/data-layout.md:242`).
+~~~~

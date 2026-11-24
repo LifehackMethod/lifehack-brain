@@ -223,7 +223,7 @@ route:
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: desk-building-sop-v2-draft hunk-003, ids in drafts/desk-building-sop-v2-draft/applied.md
 
 ~~~~
-> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them.
+> **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them. ⛔ (note 2026-11-24: the element pages were archived 2026-11-22.)
 ~~~~
 
 ## 2026-11-13 - reason: rulebooks run 2026-11-13, approved screen: desk-building-sop-v2-draft hunk-004, ids in drafts/desk-building-sop-v2-draft/applied.md
@@ -456,4 +456,30 @@ audiences, two delivery mechanisms. All three layers share a total token budget 
 
 ~~~~
   compliance buys: visibility everywhere — dashboards, alerts, throughlines, every renderer that ever gets built.
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, card 42d/41a: per-desk cron job diary writer replaced by append-per-machine-read rule
+
+~~~~
+One entry per desk per day, written by a per-desk cron job at end of day: a spare boil-down of that day plus
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, card 42d: diary cron midnight writer removed
+
+~~~~
+At midnight, the desk's diary cron writes the day's spare boil-down with pointers. Any future session can walk the
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, cards 41a/42d: primer diary written by robot at midnight, never edited, reworded
+
+~~~~
+- **What happened today** (the diary) — the milk. One short page per day, written by a robot at midnight, never
+  edited: what got done, in a few spare lines, with a pointer to where the full story lives.
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, card 42d: primer midnight robot reworded
+
+~~~~
+**The room remembers on its own.** At midnight, a little robot comes in and writes the day's page in the diary —
+not you, not the intern, nobody maintains it. Once a week another robot squints at the week's pages and drafts a
 ~~~~

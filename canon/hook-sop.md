@@ -10,13 +10,13 @@ reader_note: "The DECISION layer for hooks (WHEN + WHICH kind). Mechanics live i
 history: "canon/hook-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
-  - ["§1", 28, "when a hook is worth building at all: the two reasons, the smallest tool, what not to hook"]
-  - ["§2", 35, "which of the three kinds: BLOCK, INJECT, OBSERVE"]
-  - ["§3", 41, "the three build principles the mechanics doc omits: the channel, fail-closed, lean injection"]
-  - ["§3.2", 43, "fail postures: closed, degrade-safe, or open with its reason"]
-  - ["§4", 46, "prove it fires: read the message, test through the registered entry point, deploy and restart"]
-  - ["DO NOT BUILD", 73, "what was tried and failed, grouped by the failure it teaches (read by deadend_check.py)"]
-  - ["§5", 195, "the front door: pointers to the mechanics and the other files"]
+  - ["§1", 107, "when a hook is worth building at all: the two reasons, the smallest tool, what not to hook"]
+  - ["§2", 114, "which of the three kinds: BLOCK, INJECT, OBSERVE"]
+  - ["§3", 120, "the three build principles the mechanics doc omits: the channel, fail-closed, lean injection"]
+  - ["§3.2", 122, "fail postures: closed, degrade-safe, or open with its reason"]
+  - ["§4", 125, "prove it fires: read the message, test through the registered entry point, deploy and restart"]
+  - ["DO NOT BUILD", 152, "what was tried and failed, grouped by the failure it teaches (read by deadend_check.py)"]
+  - ["§5", 274, "the front door: pointers to the mechanics and the other files"]
 ---
 
 # Hook SOP — when & how to reach for a hook
@@ -24,6 +24,85 @@ route:
 > **This doc owns WHEN to build a hook and WHICH kind. `canon/hook-contract.md` owns the mechanics; where this doc restates one, the copies agree with `hook-contract.md`.** It is the single **front door** for hooks: it POINTS at the canonical files, never copies them. Keep it concise — if it grows into a second mechanics manual, it has failed. (Council-ratified 2026-06-17; diverge→argue→converge.)
 
 > **Shared tools:** `system/organism/elements/shared-layer.md` — common tools exist once in `shared/` (list: `system/register/toolbox.md`); use them, never copy them. ⛔ archived 2026-11-22 (V1 element page, now in archive/organism-elements-v1-2026-11-22/; look for its V2 replacement)
+
+# Doing hook work right means…
+
+> **Words used here**
+> - **hook** — a script the harness runs on an event (before a tool, after a tool, on the person's message, at session start).
+> - **guard** — a hook that blocks an act.
+> - **BLOCK / INJECT / OBSERVE** — the three kinds: stop the act (`PreToolUse`) / remind the model (`UserPromptSubmit`) / record or warn (`PostToolUse`).
+> - **deny message** — the text a BLOCK prints when it stops something; the half a human actually reads.
+> - **SIGNPOST** — the part of a hook that names where the rule is written and what to do instead.
+> - **dark** — a hook that runs and reports nothing wrong, but whose block or message nobody receives.
+> - **register row** — the one line in `system/register/register.jsonl` that registers a hook.
+> - **fail posture** — what a hook does when it hits its own error: `closed`, `degrade-safe` or `open`.
+> - **pipe test** — feeding a hook a fake payload through an echo pipe (full commands in Part 2); **live fire** — triggering it through the real harness.
+
+## 1. Every time…
+
+- Read `canon/hook-contract.md` before writing any hook; `canon/hook-sop.md` decides whether to build one and which kind. → hook-contract, top; hook-contract, Hook Creation Checklist
+- A hook is built only for a hard invariant that has to survive model drift and compaction, justified by EITHER (a) a real past incident OR (b) a catastrophic, silent failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). "It would be nice to enforce" is not justification. → hook-sop §1
+- Do not hook style or tone, anything needing judgment over conversation state (that goes to a skill gate or an Archivist sweep), or a speculative rule with no incident behind it. → hook-sop §1; DO NOT BUILD
+- Pick the kind by asking "should this be STOPPED, or REMINDED?" BLOCK = `PreToolUse`, deny + non-zero exit, for an act that should not happen (destructive / irreversible / wrong-target). INJECT = `UserPromptSubmit`, plain stdout + `exit 0`, to re-ground without stopping. OBSERVE = `PostToolUse`, always `exit 0`, to record or warn; it cannot block. A mis-pick is a failure. → hook-sop §2
+- The payload is read from STDIN (`INPUT=$(cat)`), never from `$1` or `$ARGUMENTS`. Reading `$1` fails silently: three hooks captured ZERO entries under 300+ daily calls and reported success throughout. → hook-contract, Hook Types; hook-sop DO NOT BUILD
+- The hook opens, immediately after the shebang, with the LLM CONTEXT block, all 5 fields filled, no blanks: `# WHY:` (the specific incident) · `# GUARDS:` · `# REDIRECT:` · `# SIGNPOST:` · `# UPDATED: [YYYY-MM-DD]`. → hook-contract, The LLM Context Block; Hook Creation Checklist
+- REDIRECT is specific: the exact path, ID, calendarId, desk name or command to recover. "See Lifehack architecture" is not a redirect. → hook-contract, The LLM Context Block
+- SIGNPOST, on every hook: names the canonical rule doc/file and what to do instead to comply; a change to this rule goes to the person. A block without a signpost is a wall. → hook-contract, The LLM Context Block
+- Start from a copy of the closest SHIPPED hook; there is no `system/templates/hook-template.sh` (⛔ none ships). → hook-contract, Hook Creation Checklist
+- Both halves are files in the repo: the script at `system/hooks/{name}.sh`, and a register row in `system/register/register.jsonl`, run through `system/register/generate.py`, which writes `hooks/hooks.json` and `.claude/settings.json` — in the SAME commit. Neither generated file is edited by hand. → hook-contract, Registration; Deploy & Verify 1–2; Hook Creation Checklist; hook-sop §4
+- A pipe test (echo pipe) was run — necessary, and nowhere near sufficient: it proves only that the script did not crash, not that the harness honored it. → hook-contract, Testing a Hook Locally; hook-sop §4
+- A suite in `system/hooks/tests/`, with its ALLOW cases first (a guard that blocks ordinary work gets unregistered and then guards nothing). → hook-contract, Testing a Hook Locally; Hook Creation Checklist
+- ⛔ RESTART after registering. The harness reads `settings.json` at session start, so a newly registered hook does nothing at all in the window that registered it, and the only symptom is silence — the single commonest reason a correct hook appears not to work. → hook-sop §4; hook-contract, Deploy & Verify 3
+- After ANY hook change: trigger it for real through the real harness and READ the message it prints, not just the exit code. A hook not watched blocking/injecting in a live attempt is not a control. → hook-sop §4; hook-contract, Deploy & Verify 4
+- Committed and pushed; then `git pull` on the other machine, confirm the registration reached it by the register-and-generate route (its row in `system/register/register.jsonl`, run through `system/register/generate.py`), and watch it fire on both. `~/.claude/settings.json` is a regular file, not a symlink into the repo; a `git pull` does not update it. (Private-clone only; not shipped to the public subset.) → hook-contract, Hook Creation Checklist (CORRECTED 2026-08-24)
+
+## 2. In these situations…
+
+- If it is a BLOCK → the deny text goes to stderr, then `exit 2` (the house standard): `DENY='{"decision":"block","reason":"BLOCKED: [what]. WHY: [the incident or rule]. REDIRECT: [specific path or action]. RULE: [canonical doc/file + what to do instead to comply; a change to this rule goes to the person]."}'` and `deny() { printf '%s\n' "$DENY" >&2; exit 2; }`. Mirror `guard_calendar_writes.sh`. → hook-contract, Canonical Deny Format; hook-sop §3.1
+- If it is a BLOCK → the `{"decision":"block",...}` JSON on STDOUT is also honored (with `exit 1` per the exit table). → hook-contract, PreToolUse; Exit Code Semantics
+- If it is a BLOCK → never `exit 0` on a deny path: exit 0 = ALLOW, silently. The block text prints and the act still runs; a calendar guard was non-functional this way from 2026-05-31 until fixed 2026-06-01. → hook-sop DO NOT BUILD
+- If it is a BLOCK → NEVER put the JSON on stderr with `exit 1`: neither channel is read, and the guard goes silently DARK. → hook-contract, PreToolUse; Canonical Deny Format
+- If it is a BLOCK → do not use the `hookSpecificOutput` / `permissionDecision` format. → hook-contract, Canonical Deny Format
+- If it is a BLOCK → the deny message carries WHY + REDIRECT + SIGNPOST (the RULE) inline. A wrong redirect is worse than none: it actively misroutes (13 payload tests passed on a deny that named the wrong store). → hook-contract, The LLM Context Block; hook-sop §4
+- After ANY hook change → trigger the block through the real harness, read the message it prints (not just the return code), and re-parse the deny JSON; a malformed deny goes silently DARK, honoured by neither channel. → hook-sop §4
+- If you want only a warning before a tool runs → a `PreToolUse` hook that prints a caution and `exit 0`s is invisible to the model; that was replaced by a hard block (`exit 2`) with a redirect. → hook-sop DO NOT BUILD
+- If it is an INJECT → deliver with plain `echo`/stdout + `exit 0`; NEVER the `systemMessage` JSON field — it is silently dropped: the hook reports success and nothing reaches the model. Mirror `pm_persist.sh`. → hook-sop §3.1
+- If it is an INJECT → injected text ≤ ~150 tokens, active-recall (the model restates its frame, not re-reads an identical block), a hard char-ceiling, and an escape path; re-anchor hardest at post-compaction. A static per-turn block becomes wallpaper; what replaced it was a rotating anchor (5 variants, active recall). → hook-sop §3.3; DO NOT BUILD
+- If it is an INJECT → it re-grounds as often as needed: every turn for a skill's lean anchor; once, and again after compaction, for the project-manager line. → hook-sop §2
+- If it is an OBSERVE (`PostToolUse`) → always `exit 0`; warnings go to stderr; never exit non-zero to block (`exit 1` is invalid here). → hook-contract, PostToolUse; Exit Code Semantics
+- If it is a narrow, single-target BLOCK → fail-closed: on ANY error (can't read stdin / parse fails) it DENIES (`exit 2`), never `exit 0`/allow-on-error. → hook-sop §3.2; hook-contract, Exit Code Semantics
+- If its matcher is broad (`Bash`, `Write|Edit`) → degrade-safe instead: on an internal error it exits 0 and says so on stderr (else a malformed payload walls the session off from the shell). See `guard_build_mode.sh` `FAIL_POSTURE`. → hook-sop §3.2
+- The posture follows the MATCHER, not how few commands you mean to block: a hook on a `Bash` or `Write|Edit` matcher is degrade-safe even when it guards only one script. → hook-sop §3.2
+- If a hook should fail open → allowed, if it says why, as `enforce_egress_allowlist.sh` does. → hook-sop §3.2; hook-contract, Exit Code Semantics
+- If you are writing the LLM CONTEXT block → declare one `# FAIL_POSTURE: closed|degrade-safe` line, or `open` with its reason (a declared intent, not a new checked field). → hook-sop §3.2
+- If it is the in-process scan gate (`shared/gate/ingest_gate.py`) → by default it refuses a read it cannot check, except email (only ever flagged, never quarantined); `INGEST_GATE_POSTURE=warn` makes every read it cannot check fail open (the instant revert). → hook-sop §3.2
+- If testing a hook that is a `.sh` wrapper around a `.py` → exercise it through its REGISTERED entry point, never the logic sibling; calling the sibling can fail OPEN (`rc=0`) and make a healthy guard look broken. When a healthy guard looks broken, suspect the test first. → hook-sop §4 Trap 1
+- If testing locally → `echo '{"tool_input":{"command":"ls -la"}}' | bash system/hooks/enforce_egress_allowlist.sh; echo "rc=$?"` (Bash matcher) or `echo '{"tool_input":{"file_path":"/tmp/test.md"}}' | bash system/hooks/guard_canon_write.sh; echo "rc=$?"` (Write|Edit matcher). → hook-contract, Testing a Hook Locally
+- If the guard matches the command STRING → it will block the commands that document or test it; assemble the trigger tokens from fragments so no literal appears, or put the work in a file and run the file. → hook-sop §4 Trap 2; hook-contract, Testing a Hook Locally
+- If a guard looks for keywords in a command → match the write-TO-TARGET pattern, not the bare keyword (later hardened with shlex tokenization); a keyword guard false-fired on its own build's commit. → hook-sop DO NOT BUILD
+- If you are tempted to put an LLM call inside a hook to gate a turn → don't: ~6.0–6.2s cold start per call (a Stop-hook judge measured 47–61s and flagged ZERO real violations in ~30–40 turns). → hook-sop DO NOT BUILD
+- If the problem is a delivery problem → do not answer it by building detectors; add one line to an injection that already fires. → hook-sop DO NOT BUILD
+- If an enforcement gate lives inside a skill → use an external mechanical check (`test -f GATE.ok || exit 1`), not prose; the AI reasons past prose gates. → hook-sop DO NOT BUILD
+- If a job or session needs an outside fetch (Gmail, calendar, sheet values, curl, urllib, requests) → go through the shared fetch (`safe_fetch.py`, `safe_search_api.sh`, the email shared fetch), the only files allowed a raw call, listed in `system/tools/shared-fetch-allowlist.txt`; a raw call is refused (`system/tools/install-schedulers.sh --check-row`, `system/hooks/ingest_gate_enforce.sh` clause (h)). → hook-sop DO NOT BUILD
+- If code names a model → by tier (`small|medium|large`) via `system/tools/model.lib.sh` (`MODEL_ID_SMALL/MEDIUM/LARGE`) or `shared/tools/model_ids.py` `model_id(tier)`, never a literal id; a literal id is refused and a retired one fails silently behind a fail-safe wrapper. → hook-sop DO NOT BUILD
+- If a hook seems not to fire on this machine → it may not be registered here: a hook not registered on the machine you are at is silently dark, and nothing reports it. `system/register/check_drift.py` (on commit) and `register-drift.yml` (CI, every push and pull request) catch a script without a registration or the reverse; neither can tell you the session was never restarted. → hook-contract, Deploy & Verify
+- If you need to change `.claude/settings.json` → it is on this repo's deny-list (`Edit(.claude/settings.json)`); editing it is a deliberate act by a person. → hook-contract, Registration
+- If you need to edit a hook script → `system/hooks/**` is on the Edit tool's deny-list; editing one is a deliberate act. This entry is register-governed: `generate.py` removes it for the duration of a declared, expiring `state=suspended` on the `guard_hook_sop_read.sh` row and appends it back when the suspension ends. → hook-contract, Permission Model
+- If you are editing the DO NOT BUILD section → do not "helpfully" de-duplicate it against the skills SOP; it is duplicated by design. → hook-sop DO NOT BUILD
+
+## 3. Good practice
+
+- Use the smallest tool that gets compliance — an instruction in CLAUDE.md, a gate inside a skill, the user-turn boundary, or a hook; don't open with the heaviest. → hook-sop §1
+- A preference forced into a hook becomes wallpaper; style, tone and "usually do X" live in CLAUDE.md or a skill. → hook-sop §1
+- A guard that reads a shell command as text is a speed bump; the controls that held were on typed tools (measured 2026-08-14). → hook-sop §1
+- Before trusting a hook is working, look for the shape under every failure: something reported success while producing nothing observable. → hook-sop DO NOT BUILD
+- Hook scripts are ordinary tracked files, mode `755`. ⚠ Do not `chmod 444` them — friction with no guarantee behind it. → hook-contract, Permission Model
+- The generated command starts from `${CLAUDE_PROJECT_DIR}` (the plugin's `hooks/hooks.json` uses `${CLAUDE_PLUGIN_ROOT}`); an absolute path baked into either file works on exactly one computer. → hook-contract, Registration
+- Read the LLM CONTEXT block of a worked example (`ingest_gate_enforce.sh`, `enforce_egress_allowlist.sh`, `guard_canon_write.sh`, `guard_throughline_write_scope.sh`, `pm_persist.sh`, `session_context_loader.sh`, all in `system/hooks/`) and copy the suites in `system/hooks/tests/`. → hook-contract, Worked examples; Testing a Hook Locally
+- Use the input-parsing patterns in the contract (Bash command; Write|Edit `file_path` falling back to `path`; PostToolUse `file_path` via grep). → hook-contract, Input Parsing Patterns
+- Arm/clear/TTL of a skill's anchor → `canon/skill-building-sop.md`, Build steps 9 and 14; the live hook catalog → `hooks/hooks.json`. → hook-sop §5
+
+— end of checklist —
 
 ## §1 — When to reach for a hook at all
 - A hook is for a **hard invariant that has to survive model drift + compaction** — justified by EITHER **(a)** a real past incident, OR **(b)** a catastrophic-**silent** failure on an unrecoverable surface (auth/credentials · the wrong calendar · a destructive write · the wrong machine). *"It would be nice to enforce"* is **not** justification.
@@ -100,7 +179,7 @@ dated INCIDENTS — evidence, not a restatement.**
 - **Tried:** a WARNING-ONLY PreToolUse hook (`guard_web_search.sh`) that printed a caution before an
   unsanctioned WebSearch, then `exit 0`'d → **failed:** "exit 0 hooks are invisible to the model" — the
   warning was security theater the model never saw. `2026-05-30` · a log record → replaced by a hard block (`exit 2`) with a
-  redirect to `/websearch`. **UNIVERSAL** — a structural fact about the harness, not this hook.
+  redirect to `/websearch`. **UNIVERSAL** — a structural fact about the harness, not this hook. Measured narrowly: `additionalContext` from a `PreToolUse` hook on the Agent tool was seen by the session, 4 of 4 (2026-11-19, `experiments/launch-message-channels/`); this does not claim other channels or events.
 
 ### a hook's payload comes in on STDIN, never `$1` / `$ARGUMENTS` (mechanics live in `hook-contract.md` per §5 below; these are the incidents that taught it)
 - **Tried:** `observability_logger.sh`, `validate_on_write.sh`, `auto_register_skill.sh` reading their

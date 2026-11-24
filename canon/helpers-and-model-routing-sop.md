@@ -159,7 +159,7 @@ flowchart TD
 
 - **Rulings behind this SOP:** the person's rulings, stated here in plain words: the default helper tier is medium (2026-11-14); the person decides when the large tier runs; cheap-helper mode is personal practice; no hook checks the model on each spawn (2026-11-05). How much context a helper or checker gets: `canon/canonical-principles-sop.md` §12.g (2026-10-30, canon).
 - **Evidence:** `system/tools/model.lib.sh`; `shared/tools/model_ids.py`; `system/tools/test_agent_pins.py`; `system/tools/tests/test_no_hardcoded_model_ids.sh`; `system/hooks/tests/test_delegation_override.sh`; `system/hooks/guard_agent_return_channel.sh`; `.claude/agents/*.md`; `system/ingestion-reader-contract.md`; commit `66a96a9`.
-- **Words used here:** **helper** — a sub-agent spawned to do one job and report back. **Tier** — small, medium or large: a class of model, mapped to an id in one table. **Pin** — the model line on a spawn or agent file. **Delegation line** — the one line injected every turn saying helpers are standing-authorized and how to pin them. **Wall** — the tool list an agent is limited to.
+- **Words used here:** **helper** — a sub-agent spawned to do one job and report back. **Tier** — small, medium or large: a class of model, mapped to an id in one table. **Pin** — the model line on a spawn or agent file. **Delegation line** — the one line injected every turn saying helpers are standing-authorized, how to pin them, and that a document someone will rely on goes to the reading tool, otherwise the chart. **Wall** — the tool list an agent is limited to.
 
 ## History
 
@@ -172,7 +172,7 @@ Where the concepts above meet the code. Work in progress: entries are added as t
 - `CLAUDE.md`, section "Sending work to a sub-agent" — the harness brief's first-match routing order for interactive helpers.
 - `.claude/agents/*.md` — the shipped helper agents; each file's `tools:` line is its wall and its `model:` line its pin.
 - `system/tools/test_agent_pins.py` — test: every shipped agent declares a tool list and pins a model; the untrusted-content readers hold Read only.
-- `system/hooks/inject_delegation_standing.sh` — every-turn sign: helpers are standing-authorized, pin a model, which tier for which job.
+- `system/hooks/inject_delegation_standing.sh` — every-turn sign: helpers are standing-authorized, pin a model, which tier for which job; for a whole document someone will rely on, the reading tool, otherwise the chart.
 - `$LIFEHACK_DELEGATION_OVERRIDE` (default `$HOME/.config/lifehack/delegation-override.txt`) — operator file whose text replaces the delegation line whole.
 - `system/hooks/tests/test_delegation_override.sh` — test: the override file replaces the default line, and an empty or missing file leaves it.
 - `system/register/register.jsonl` — the hook register; its row keeps the delegation line wired for every session.

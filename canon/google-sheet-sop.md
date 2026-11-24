@@ -17,6 +17,89 @@ authority: user
 > hooks enforce it. Craft detail (design tiers, internal-control layer, capabilities) lives in the
 > `google-sheet` skill + its `standards.md`/`capabilities.md` — this doc owns the **rules**, not the craft.
 
+# Doing Google Sheet work right means…
+Every line traces to `canon/google-sheet-sop.md`.
+
+> **Words used here**
+> - **`_LLM_GUIDE`** — the tab in every sheet this system builds that holds the sheet's rules and structure for a fresh session.
+> - **PURPOSE block** — the short orientation at the very top of `_LLM_GUIDE`.
+> - **calculating sheet** — a sheet that computes anything; a **pure store** holds data with no math.
+> - **error sweep** — one check flagging any broken cell anywhere in the sheet.
+> - **`_CHECKS` tab** — the tab of formula checks that prove a calculating sheet's math.
+> - **check-engine-light** — the one cell, at a fixed location, that says the sheet's health.
+> - **`🔒`** — the mark at the start of a formula-only column header.
+> - **fine china** — a billing/financial sheet, or one the person has named fine china.
+> - **owner-API write** — a write sent through the API, authenticated as the file's owner.
+> - **runner** — a scheduled run, with nobody at the screen.
+
+## 1. Every time…
+
+- The LLM never does math, calculation or analysis; it only reads what the sheet already computed and folds it in verbatim, never re-deriving a number at read time. → SOP Principle #1
+- Computation goes, in order of preference: maximum in the Sheet (formulas, `ARRAYFORMULA`, `XLOOKUP`), then Apps Script (via `clasp`) when logic is too complex for a formula, minimum in the LLM. → SOP Principle #1
+- Every check is a formula inside the sheet; a check a person has to run by hand is not a check. → SOP Principle #2
+- Before any write, read the sheet's `_LLM_GUIDE` tab, with `python3 <repo>/system/tools/safe_sheets.py <spreadsheet-id> '_LLM_GUIDE!A:Z'`. A raw `values get` is refused. → SOP Convention 1; gws sheets syntax; Workflow 1
+- If `safe_sheets.py` exits 1, spans were flagged and neutralised: read the stderr list. → SOP gws sheets syntax
+- Normal sheet work appends rows (`gws sheets spreadsheets values append --params '{...}'`); it never edits formulas or rewrites computed cells. → SOP The append-only model; gws sheets syntax
+- The sheet's own locks (dropdowns, protected ranges, "warn first") do NOT stop a write authenticated as the file owner; the only real guard is the hooks on this machine. → SOP The append-only model
+- Write only the columns you changed. Never read a whole row/range and write it back (`getValues` → `setValues`, or a full-width `values.update` that spans computed columns) — that silently turns every formula in the range into a static value. → SOP Write narrow
+- A full-row write fails without a sound: a script that has run for weeks with no visible problem may already have flattened its formulas, so new rows stopped calculating and nothing said so. "It ran fine" is not proof it did no harm. → SOP Write narrow (the measured 2026-07-06 example)
+- Never touch a formula or `🔒` cell without explicit confirmation. → SOP Workflow 3
+- Back up first for any non-append change. → SOP Workflow 4 (`canon/build-conformance-sop.md` §5 item 3)
+- Every sheet has an error sweep, no exceptions, flagging `#REF!`/`#N/A`/`#ERROR!`/`#DIV/0!`/`#VALUE!`/`#NAME?` — even a pure data store. → SOP Principle #2; Convention 4
+- Every sheet this system builds has a tab named `_LLM_GUIDE`, opening with a PURPOSE block. → SOP Convention 1, 1a
+- The PURPOSE block fills the slots North star, What this is + who reads it, The one rule, Out of scope, and Live stakes (optional — only when something time-sensitive is load-bearing right now). → SOP Convention 1a
+- The PURPOSE block ends with the one-line pointer `Recent changes → _LOG`. → SOP Convention 3
+- There is no separate `purpose.md`; nothing load-bearing lives only in a longer doc. → SOP Convention 1a
+- Every formula-only column header starts with `🔒` (e.g. `🔒 suggested_entity`); no `🔒` means the column accepts input. → SOP Convention 2
+- Every sheet has a `_LOG` tab, newest on top: one line per session that CHANGED the sheet — `date · what changed · why/conclusion` — rolling ~10 entries. Pure-read sessions do not append. (Best-effort for now — no hook.) → SOP Convention 3
+
+## 2. In these situations…
+
+- If the sheet CALCULATES anything → it has a `_CHECKS` tab that proves its math, right-sized; the anti-overbuild test decides how MANY checks, never whether. A pure store with no math carries the error sweep only, no tab. → SOP Principle #2; Convention 4
+- If the sheet calculates → it has one check-engine-light cell at a FIXED, predictable location (a named range, e.g. `sheet_status`), machine-readable (`OK` / `⚠ <n> FAILURES`). Turning a red light into a notification is the dashboard's job, not the sheet's. → SOP Principle #2; Convention 4
+- If the sheet calculates → it has at least one COMPLETENESS check: for each row that SHOULD have an input, assert the input is non-blank. A blank passes every consistency check, and a blank counts as `0` in arithmetic. → SOP Principle #2a
+- If you reconcile something by hand → make it a permanent `_CHECKS` row (encode-once). → SOP Principle #2
+- If a formula must use a fixed row ceiling → add a capacity check that warns at ~85% full. → SOP Convention 4
+- If a row's owner / category / classification comes from an authoritative reference (a map, glossary, registry) → a formula column must apply that map (e.g. `XLOOKUP(key → map.owner)`), paired with a check for zero unmapped / `UNKNOWN` rows. → SOP Convention 1b, G2a
+- If the sheet is a backup, archive, prior-year or deprecated copy → the PURPOSE block's FIRST line says so, e.g. `⛔ BACKUP — not the live sheet; writes go to <where>`. → SOP Convention 1a
+- If the tab is still named `LLM Instructions` or `README` → it is a legacy name being renamed to `_LLM_GUIDE`; the `guard_sheet_writes` hook accepts it during transition. → SOP Convention 1
+- If the sheet is fine china (any billing/financial sheet) → read first, append only, never bulk-overwrite. → SOP The append-only model
+- If the person has NAMED a sheet fine china → do not edit it without asking them first; with nobody at the screen (a scheduled run), park that edit for the morning. → SOP The append-only model
+- If a fine-china edit is needed with nobody at the screen (a scheduled run) → park it for the morning. → SOP The append-only model (`canon/cron-jobs-sop.md` §7, `canon/build-conformance-sop.md` §2)
+- If the operation is destructive (clear/delete/mass-overwrite) → it also needs an explicit confirmation. → SOP The friction layer
+- If a formula change is deliberate → it needs `LIFEHACK_SHEET_CONFIRM=1`, after showing the person whose sheet it is the exact before and after. → SOP The friction layer
+- If a write targets an `ARRAYFORMULA` spill cell → `guard_sheet_formula_writes` does not catch it (the hook's own header names that edge); every other formula (`=…`) or `🔒` cell is blocked, labelled or not. → SOP Convention 2
+- If you need the tab list → `gws sheets spreadsheets get --params '{"spreadsheetId":"<ID>"}'`. → SOP gws sheets syntax
+- If running in a runner → send stderr to a file (`2>"$TMP/gws.err"`), parse stdout only, read the file if the call fails; `2>/dev/null` is refused there. → SOP gws sheets syntax
+- If building a new sheet → use the `google-sheet` skill (Kickoff mode), so it is born with `_LLM_GUIDE` (PURPOSE block + the body guidelines that apply), `🔒` headers, per-tab purpose lines, a `_LOG` tab, and the error sweep + `_CHECKS` layer. → SOP Workflow 5
+- If writing, editing or deploying Apps Script, or setting a trigger → only on the person's named instruction. → SOP Apps Script via clasp
+- If there is Apps Script source (`.gs` / `appsscript.json` / `.clasp.json`) → it lives in the repo, in a dedicated Apps Script folder, versioned and pushed — never under your notes folder. → SOP Apps Script via clasp
+- If `clasp` is set up → `~/.clasprc.json` is a credential: machine-local, gitignored, never committed. → SOP Apps Script via clasp
+- If the API must touch format → `spreadsheets.batchUpdate` + `repeatCell` / `updateBorders` with an EXPLICIT field mask; never `values.batchUpdate` for formatting (it overwrites); requests small, single-range, idempotent. → SOP Formatting 2
+- If you need a format → format one cell by hand, read its `userEnteredFormat` via `spreadsheets.get`, reuse it verbatim; don't hand-author format JSON. → SOP Formatting 2
+- If you need to SEE a private sheet → publish-to-web first, render the public URL with headless Chrome and `--virtual-time-budget` ~15s (`render_shot.sh` alone shoots blank), and un-publish when done. → SOP Formatting 3
+- If reusing a styled tab across files with `sheets:copyTo` → re-apply row heights, protected ranges and named ranges separately; they do not come along. → SOP Formatting 4
+- If the work is visual/layout precision → it goes to HTML, not the Sheet; `/design-lifehack` is built for HTML and not for Sheets. → SOP Formatting 5
+- A summary tier a person has explicitly approved for a specific sheet is the one narrow exception to Principle #1. → SOP Principle #1
+
+## 3. Good practice
+
+- Style the LOOK once, by hand in the Sheets UI; never have the LLM rebuild a look from scratch via the API. → SOP Formatting 1
+- Prefer open-ended ranges (`A4:A`, whole-column, dynamic) over hardcoded ceilings like `A4:A2000`. → SOP Convention 4; Principle #2a
+- For the completeness check, you usually want both shapes: a `✗`-prefixed BLOCKING check on the current period, and a `⚠`-prefixed (NOT `✗`) WARNING check across all history. → SOP Principle #2a
+- Keep the PURPOSE block to a target of ~80–120 words, 5–7 lines, scannable in ~15 seconds; cap the slots, not the word count. → SOP Convention 1a
+- The PURPOSE block orients, it does not dictate: the why and the one load-bearing rule, no step-by-step procedure. Test: does it orient a smart stranger, or try to operate the sheet for them? → SOP Convention 1a
+- Below the PURPOSE block, carry the guidelines G1–G6 a stranger would get wrong, scaled to the sheet (a simple sheet needs two, a multi-tab financial sheet all six): G1 computed vs. input (and who writes a pipeline tab), G2 who owns each fact, G3 write rules + append direction + entry order, G4 route new things to existing homes, G5 conventions a stranger can't guess (write numbers, not `"$1,234"` strings), G6 status in ONE known spot, newest-wins. → SOP Convention 1b
+- Adding a tab requires justifying why a leaner build won't do — bias to consolidate. → SOP Convention 1b, G4
+- Each tab carries a one-sentence purpose line in row 1 (the `google-sheet` skill's convention). → SOP Convention 1a; Workflow 5
+- Reuse a look by copying a styled TAB (`sheets:copyTo`) or extracting a Style Kit — never hand-redo it. → SOP Formatting 4
+- Avoid "paste format only" onto an existing populated range — it silently drops widths/heights/protections. → SOP Formatting 4
+- Column width is whole-column, format state is additive, and there is NO live preview. → SOP Formatting 3
+- Apps Script is optional; most sheets never need it. → SOP Apps Script via clasp
+- Craft detail (check taxonomy, alert levels, right-sizing) lives in the `google-sheet` skill → *Internal Control Layer Design*; `/calculate` arms "arithmetic is computed" for a whole session. → SOP Principle #2; Pointers
+
+— end of checklist —
+
 ## Principle #1 — the sheet computes; the LLM interprets (the law)
 **The LLM NEVER does math, calculation, or analysis.** It fumbles arithmetic — so all computation lives in
 deterministic code. The design ladder, in order of preference:

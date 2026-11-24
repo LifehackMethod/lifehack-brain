@@ -78,6 +78,8 @@ The shape is the same at both levels:
 └── canon/canon.md    what this project has settled
 ```
 
+`packet/`: a builder's design packet (approved packet format, 2026-11-23). It is written by the builder, never by project-manager; the brief holds only a link.
+
 **Three more files appear beside the brief, written by the tool and never by hand.** They are named
 here because otherwise the first person to see one has to guess whether something went wrong:
 
@@ -219,7 +221,7 @@ the author's live notes on 2026-08-11.
 | `records/canon/` held the root desk's canon (38 files) | no such folder | canon is either the one top-level file or a folder's own `canon/`. A third canon folder was a desk-era artifact. |
 | `plans/` split into a folder per machine (five of them, named after their hosts, 359 files) | one flat `plans/` | the system is built and intended for one computer; more than one is a person's own layer on top, not part of the basic system. |
 | `<notes>/state/machine-log.md` recorded which machine changed what | gone | same reason. |
-| a desk was a heavy thing — `state/`, `views/`, `sources/inbox/`, its own `CLAUDE.md`, a registry entry, a health producer | a desk is a domain of knowledge plus a short card, and nothing that runs; its shape is set by the in-force desk-building SOP (`canon/desk-building-sop.md`), not by this page | everything that runs a desk lives once in the car platform (platform layer: the plugin), and a desk's tools live in the car model (personal code layer: personal code). `/ingest` builds `canon/current.md`, `canon/purpose.md` and `records/` for each subject it finds; for the full shape of a desk, read the desk-building SOP. |
+| a desk was a heavy thing — `state/`, `views/`, `sources/inbox/`, a registry entry, a health producer | a desk is a domain of knowledge plus a short card and its own `CLAUDE.md`, and nothing that runs; its shape is set by the in-force desk-building SOP (`canon/desk-building-sop.md`), not by this page | everything that runs a desk lives once in the car platform (platform layer: the plugin), and a desk's tools live in the car model (personal code layer: personal code). `/ingest` builds `canon/current.md`, `canon/purpose.md` and `records/` for each subject it finds; for the full shape of a desk, read the desk-building SOP. |
 | the topic vocabulary shipped in the repo | never ships | see the note under Types. It is yours; the tools refuse and teach rather than invent one. |
 | four record types existed for one desk each (`clients`, `billing`, `source-ingests`, `source-summaries`) | not here | they describe one person's work, not a general category. |
 
@@ -238,6 +240,8 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<brain>/projects/<slug>/records/` | `/save` | a finding belongs to one project |
 | `<brain>/projects/<slug>/canon/canon.md` | `/save` | a project settles something |
 | a desk's own `projects/<slug>/` (same three paths as above) | `project-manager`, `/checkin`, `/save` | a project is started from inside that desk |
+| `<brain>/drafts/builds/<name>/` (a folder) or `<brain>/drafts/builds/<name>.md` (small) | the builders (`/build`, `/skill-builder`) | a design packet with no project: it stays as the record, with the runner's run folder inside it |
+| `<brain>/projects/<slug>/packet/` | the builders (`/build`, `/skill-builder`) | a design packet for a project: the brief links to it through `project-manager` |
 | `<brain>/open-loops.md` | `/save` | something is started and not finished |
 | `<brain>/diary/YYYY/MM/DD.md` | not used for the main diary: that is the planning desk's Planning-Diary (the plugin's `planning-diary` job row stays off) | — |
 | `<brain>/status/<producer>.json` | each producer, its own tile | overwritten on every run |

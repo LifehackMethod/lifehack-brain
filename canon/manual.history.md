@@ -632,3 +632,21 @@ INTEROP:
 bare `system/organism/manual.md` then opens the private DESKS manual, not this one.
 ~~~~
 ⛔ moved 2026-11-22: the manual now lives at canon/manual.md (this entry quotes the old sentence word for word).
+
+## 2026-11-24 - reason: canon update 2026-11-24, manual reply-drafts narrowing: drafts-are-fine approval narrowed to markdown-only reply drafts
+
+~~~~
+approval; drafts are fine (approved by Enver, 2026-11-13). A Sheet the person has named as fine china meets
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, status-folder path to <brain>/status/ (ingest-provenance ledger)
+
+~~~~
+  WRITES→    ingest-provenance      · breadcrumb ledger ($DRIVE/state/status/ingest-provenance.jsonl) on every gate call
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, status-folder path to <brain>/status/ (email-fallback-events)
+
+~~~~
+  FEEDS       email-fallback-events.jsonl · every store miss that routes to raw fallback appended to state/status/email-fallback-events.jsonl via _log_fallback()
+~~~~

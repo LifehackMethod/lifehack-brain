@@ -98,7 +98,7 @@ to be:
 - **a skill** — a repeatable *how-to* the system should be able to run;
 - **a project / brief** — something that belongs to one specific project's state, not the world;
 - **a record** — evidence: a fact, number, finding or document, topic-named and searchable, never expiring, filed in one of the six closed record types (`canon/data-layout.md`) — NOT a rule, and not the story of a day;
-- **the diary** — what happened on a day, as a short summary that points to its records. Each desk has its own (`<Desk>-Diary`, made with the desk; one entry per desk per day, written by that desk's end-of-day job). The archivist does not file into it. When an item is a day's story, it belongs to the diary, and the evidence behind it is a record;
+- **the diary** — what happened on a day, as a short summary that points to its records. Each desk has its own (`<Desk>-Diary`, made with the desk; one page per desk per day, with two kinds of write: low-confidence machine entries and high-confidence human lines, where the high supersedes the low; `canon/desk-building-sop.md` §6). The archivist does not file into it. When an item is a day's story, it belongs to the diary, and the evidence behind it is a record;
 - **an open loop** — started, not finished → that folder's `open-loops.md`;
 - **a debt-ledger entry** — a known gap in the system itself → the root `debt-ledger.md`, never canon wording;
 - **an SOP / playbook** — a repeatable *procedure*; if no playbook exists to hold it, **propose creating a NEW one**;

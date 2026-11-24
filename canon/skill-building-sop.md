@@ -30,6 +30,96 @@ history: "canon/skill-building-sop.history.md"
   - Building or rebuilding a skill → The Procedure, "Build a skill".
   - Testing a skill, or reading a test result → The Procedure, "Test a skill".
 
+# A complete skill has…
+
+> **Words used here**
+> - **command** — one prompt behind a slash command: one shot, no steps that have to hold, nothing carried between turns.
+> - **skill** — two or more steps: one step is a command; two or more steps is a skill.
+> - **step (in code: stage)** — one step of a skill, with its own inputs, output and check; a step is a point where the run stops and waits (for the person, a wait, a hand-over).
+> - **sub-step** — one move inside a step, numbered N.M (Enver 2026-11-23, R58).
+> - **talk step / alone step** — a step that works with the person / one that runs without them.
+> - **card** — the file listing a skill's steps, which the runner reads.
+> - **runner** — the code that alone moves steps and writes the run's record.
+> - **record** — the file saying where a run is and what passed; each line carries a hash of the line before it.
+> - **seam** — a place where one part hands something to another (code to AI, one step to the next).
+> - **plant** — a deliberately bad input put into a test run, hidden from the AI.
+> - **stand-in** — an AI helper playing the person in a test.
+> - **routing-eval file** — a small list of prompts that should fire the skill and near-misses that should not.
+> - **[DESIGN] / [ALWAYS TRUE] / [BUILD AND TEST]** — where an item goes in a skill's spec (Enver 2026-11-23, R111): asked now, in design · always true, pre-filled by pointer · for the planner and the build (build and test items; they do not count against completion).
+
+## 1. Every complete skill has…
+
+- **[DESIGN]** Its step count written down, and so whether it is a command or a skill: one step is a command; two or more steps is a skill. A step is a point where the run stops and waits (for the person, a wait, a hand-over); work done in one go without stopping is sub-steps of one step. A one-step "switch" command is only the trigger; what it turns on is a separate part, designed on its own. → SOP Build 1, 2
+- A command passes on the light bar: a sharp description and clean, right-sized prose. Its build stops after step 3, with no card, runner or hooks. → SOP Build 1
+- **[BUILD AND TEST]** Its own folder, made from the skill scaffold; a personal skill lives in `~/.claude/skills/<name>/` with its scripts inside that folder. → SOP Build 2
+- **[BUILD AND TEST]** A `skill:` line in its frontmatter that matches the folder name. → SOP Build 2
+- **[BUILD AND TEST]** A `shape:` line naming one of three: `interactive-workflow`, `command`, `utility`. A skill is human-in-the-loop or out-of-the-loop; a timer is only a trigger, not a skill type. → SOP Build 2
+- **[DESIGN]** Its outcome stated in the first few lines of the file. → SOP Build 2
+- **[DESIGN]** Every file it writes named, with its path. → SOP Build 2
+- A `description:` in the third person, starting "Use when…", leading with the situation and the words a person would actually say, keywords inside the first 250 characters. → SOP Build 3
+- **[BUILD AND TEST]** A routing-eval file beside it, each case run three or more times every time the description changes. → SOP Build 3
+- **[ALWAYS TRUE]** All arithmetic done by code, never in the model's head. → SOP Rules
+- **[ALWAYS TRUE]** No error that looks like success: a skip, a missing input or a swallowed error is never reported as "done". → SOP Principles, Making failure visible
+- **[DESIGN]** No connection to an outside system the person has not set up; when it lacks the information, it says so. → SOP Principles, Building and fixing
+- **[BUILD AND TEST]** One real run with the person in the chair, watching it work and saying it is right — the acceptance test. A command needs this too. → SOP Desired Outcome; Test 10
+
+## 2. In these situations…
+
+- **[BUILD AND TEST]** If it is more than a command → its folder uses `scripts/` for files to run, `references/` for files to read, `assets/` for files used in output. → SOP Build 1, 4
+- **[BUILD AND TEST]** If it is more than a command → a passing test with valid evidence, including the skill seen stopping (pausing or refusing) on a planted bad input at least once. A command does not need this test. → SOP Desired Outcome; Build 1
+- **[DESIGN]** If it is a skill of two or more steps → it has a card naming, per step: talk or alone, inputs, output, and a check that reads the content, not just that a file exists. → SOP Build 5
+- **[ALWAYS TRUE]** If it is a skill of two or more steps → it uses the shared step runner (`system/parts/stage_runner.py`) and never writes its own; the runner, never the AI, moves the steps and writes the record, and stops if a line was edited by hand. Every way to finish or move on goes through the runner; there is no second door. → SOP Build 6 (shared-runner line: addition pending landing)
+- **[ALWAYS TRUE]** If it is a skill of two or more steps → an every-turn hook on the person's message delivers only the current step's instructions. → SOP Build 9
+- **[BUILD AND TEST]** If it is a skill of two or more steps → each clearly different step has its own prompt file, which the every-turn hook delivers only at that step; the whole sequence is never in one prompt, and the AI is never shown a template of the finished output outside the step that makes it. → SOP Build 9a (addition pending landing)
+- If a fact is used in more than one place → it lives in one place and every other copy is derived from it (count the copies, template included). → SOP Build 7
+- **[ALWAYS TRUE]** If the person moves steps on → /next and /back are registered commands, built once as the shared mover hook `system/hooks/run_step_hook.sh` (not as skill folders). Only the person typing /next or /back moves a step; there is no plain-speech fallback. Never match by keyword, whether in a move-on command, a guard or a detector. → SOP Build 8; Don't Retry
+- If the person pushes to skip ahead → the AI may write what was asked, but the step does not move except through the move-on command. → SOP Principles, Building and fixing; Build 9
+- Never hide the destination from the AI, or forbid it to mention later steps, to stop it working ahead; it cannot work when the person names the destination. → SOP Don't Retry; Principles, Building and fixing
+- **[BUILD AND TEST]** If a step reads inputs → code prints an inputs line on screen at the step's start and pauses on any empty or missing input until the person types /back or /next. The pause is code's guarantee; an AI that only shows the line, without also telling the person in its own words, is not a failed build. → SOP Build 10
+- **[BUILD AND TEST]** If code checks a step's output → the check passes honest work and fails padding. For example, a listed source outside the expected folder passes if it is marked as outside, and a listed source that no tool call touched fails. Test it on one known-good input, one honest edge case and one padded case. If it matches text, it denies by default and was seen refusing a real case first. → SOP Build 11
+- If a step must cover a known list of items → code compares the IDs produced against the source list (missing, duplicates, extras), taking the number in scope from the source's own count first. → SOP Build 11a (addition pending landing)
+- **[BUILD AND TEST]** If it runs scripts → each one exits non-zero, saying why, on a skip, a missing input or a caught error. → SOP Build 12
+- **[BUILD AND TEST]** If a step runs alone → it hands over through a Stop hook whose reason is one short line pointing to a handover file; no prompt text or code word shows on screen. → SOP Build 13
+- **[ALWAYS TRUE]** If a run can outlast a window → a start-up hook in the new window says the step, what is missing and the inputs line, then waits for the person. → SOP Build 14
+- If it warns about a filling window → the figure is the one Claude Code reports to the status line, written to a file; no figure means silence, never a guess or a fixed window size. The run's position shows on the same status line and changes when the step changes. → SOP Build 15; Don't Retry
+- **[ALWAYS TRUE]** If code hands the AI a choice → code offers a fixed set of outcomes that includes "no outcome". A guess or an assumed default, even a written-down one, does not count as "no outcome". → SOP Principles, How a skill holds
+- If an AI hands its answer back to code → be wary: that is where skills tend to break, and code should not be left holding free text or larger judgment. → SOP Principles, How a skill holds (addition pending landing)
+- If it is a `utility` (another skill or tool calls it) → its inputs and outputs are stated precisely, and it never asks the person a question, because its caller cannot answer one. → SOP Build 2
+- **[DESIGN]** If it can stop early or end with no outcome → that path is written down. → SOP Build 2
+- If a number crosses a seam → it becomes a named set, or it is written down that it is a number. → SOP Principles, How a skill holds
+- If it travels to another machine → it does not depend on a hook, a host path or `settings.json`. → SOP Principles, Building and fixing
+- **[BUILD AND TEST]** If a travelling skill copies a shared part → the copy is pinned by hash, with a check that it has not drifted from `system/parts/`. → SOP Open Tensions (settled 2026-11-16)
+- **[ALWAYS TRUE]** If it ships in the Harness → it carries no private names, window names or personal paths. → SOP Principles, Building and fixing
+- If files were renamed or moved → someone checked which copy actually loads. → SOP Principles, Building and fixing
+- If something broke → the failing seam was found before any fix, and the bug's siblings swept before the second fix. → SOP Principles, Building and fixing; When Something Goes Wrong
+- **[BUILD AND TEST]** If testing → every check was first seen failing on a deliberately broken copy, with no AI involved. → SOP Test 1
+- **[BUILD AND TEST]** If testing in a live window → it was launched with the person's real launcher flags, never plain `claude -p`. → SOP Test 2
+- **[BUILD AND TEST]** If reporting a test result → a planted control token is present and the raw hook log (not a summary of it) shows zero failures to start. Without both, the test is invalid: fix the launch, rerun, and report none of its numbers. → SOP Test 3; When Something Goes Wrong; Don't Retry
+- **[BUILD AND TEST]** If testing a full window → it runs on a contained copy of a real session, its fill measured by code from the copy's first call, the original's hash unchanged. → SOP Test 4, 5
+- **[BUILD AND TEST]** If planting bad input → the plant's record is hidden from the AI, each plant counted refused / told / silent, none silent, "told" read by hand. → SOP Test 6
+- **[BUILD AND TEST]** If a stand-in plays the person → it is built from the person's real messages minus personal content, and every result is labelled stand-in. → SOP Test 7
+- **[BUILD AND TEST]** If a helper reports its own work → the claim is re-checked, stricter than the helper did. → SOP Test 8; Principles, Making failure visible
+- **[BUILD AND TEST]** If reporting or retelling any result → write it with its evidence label and limits (hidden plants or not, stand-in or real person, fill level, number of runs), and keep them wherever it is retold. → SOP Test 10; Desired Outcome
+- **[BUILD AND TEST]** If a test failed, was fixed and then passed → the final passing result counts and earlier runs are listed as context. A report that meets every testing line above goes to the real run; do not add reruns, higher fill, more plants or a real person before that run. → SOP Desired Outcome; Test 10
+- If a test would touch real data, a result would change a ruling, a change adds a rule or hard block, or the destination is unclear → stop and ask the person. → SOP When Something Goes Wrong
+
+## 3. Good practice
+
+- Search before designing; measure before planning. → SOP Principles, Building and fixing
+- Carry only the machinery that earns its place, lightest first; drop a guard that never changes an outcome. → SOP Principles, How a skill holds
+- Use the shared tools in `shared/` and parts in `system/parts/` before writing your own. → SOP Before You Start
+- Prefer one `shape:`; if you cannot pick one, it is probably two skills. → SOP Build 2
+- Anything that has to fire gets an explicit invocation or a hook, not only a good description. → SOP Build 3
+- Re-inject a rule small and varied, and have the model restate it, instead of one long block every turn. → SOP Principles, How a skill holds; Pointers
+- Give every detector a way to show it is alive. → SOP Principles, Making failure visible
+- A finding is delivered only when it reaches the place the next session will look. → SOP Principles, Making failure visible
+- Watch one value travel the whole seam, producer to consumer. → SOP Principles, Building and fixing
+- A tool counts only once a live path calls it. → SOP Principles, Building and fixing
+- Edit files by identity, never by heading text, first match or line number. → SOP Don't Retry
+- Do not move a classifying step to a cheaper model to save money. → SOP Don't Retry
+
+— end of checklist —
+
 ## Desired Outcome
 
 - The skill can be found and understood from its first lines; it runs its stages in order in a real, filling window;
@@ -85,6 +175,8 @@ history: "canon/skill-building-sop.history.md"
 - **Where code meets the AI, code offers a fixed set of outcomes, including "no outcome", and the AI sorts into one of them.** Why: a legal answer is not
   a true answer; a workflow with no legal way to say "nothing was decided" invents a decision. Change if: Enver rules
   otherwise. Evidence: ruling (canon, the seam rule).
+- **Be wary wherever an AI hands its answer back to code: that is where skills tend to break.** Code should not be left holding free text or larger judgment.
+  Enver, 2026-11-23).
 - **A number at a seam drifts; turn it into a named set, or write down that it is a number.** Why: code thresholds a
   number wrongly and prose lets it drift. Change if: a reproduced counter-case appears. Evidence: REPRODUCED — four
   scalars eroded in one real ingest skill while five named sets held (archived SOP, Principle 1).
@@ -141,6 +233,10 @@ history: "canon/skill-building-sop.history.md"
   information it says so.** Why: every connection to an outside system is each person's own decision and setup, and
   the Harness does not encourage anyone to expose their data. Change if: Enver rules otherwise. Evidence: ruling
   (canon).
+- **A skill that sends reading someone will rely on uses the reading tool; it does not hand the documents to an
+  ordinary reader and take the reader's word.** Why: skills are the biggest senders of reading to helpers; one line
+  puts the floor inside the skill-building rules. Change if: Enver rules otherwise. Evidence: proposed (debt ledger
+  §10 entry 39; reading-harness plan card 8.3; the CR-9 stress test receipts).
 
 ### Testing
 
@@ -163,30 +259,32 @@ history: "canon/skill-building-sop.history.md"
 
 ### Build a skill
 
-1. **Do:** decide which of three sizes you are building: a command, a short skill or a long-phase skill. If it could
-   be pasted as one prompt, it is a command. It is a skill the moment it is any of: several steps in an order that
-   has to hold; stateful across turns; leading or questioning the person; carrying something that has to happen reliably.
-   The full 15 steps below belong to the long-phase skill.
+1. **Do:** count the steps: one step is a command; two or more steps is a skill. A step is a point where the run
+   stops and waits (for the person, a wait, a hand-over); work done in one go without stopping is sub-steps of one
+   step. A one-step "switch" command is only the trigger; what it turns on is a separate part, designed on its own.
+   The full 15 steps below belong to a skill of two or more steps.
    - **Why:** a command passes on a light bar — a sharp description and clean, right-sized prose — and does not need
      the card, runner and hooks below (archived SOP §III.1, carried on Enver's yes (RULED · Enver, 2026-11-10)).
-   - **Expect:** a command stops after step 3; a long-phase skill continues through step 15.
-   - **Check:** write down which size it is, and which of the four signs, if any, applies.
+     Counting the steps replaces the three sizes (RULED · Enver, 2026-11-23: "it should just be if there's more than
+     one step ... called a skill").
+   - **Expect:** a command stops after step 3; a skill of two or more steps continues through step 15.
+   - **Check:** write down the step count, and so whether it is a command or a skill.
 2. **Do:** create the skill from the scaffold in Claude's own skills folder, part of the car trim and options
    (configuration layer) (`~/.claude/skills/<name>/`), and fill the frontmatter: `skill:`
    (matching the folder), `description:`, and `shape:`, the kind of skill it is:
    - `interactive-workflow` — works through something with the person, in named phases (for example a weekly planning
      skill); it says what it asks at each phase and what "done" looks like.
-   - `command` — the command size of step 1: the person types it, it does one bounded job and ends (for example a web
+   - `command` — the one-step command of step 1: the person types it, it does one bounded job and ends (for example a web
      search).
    - `utility` — another skill or tool calls it; the person usually never types it; its inputs and outputs are stated
      precisely, because its caller cannot ask a question.
-   - `cron-producer` — a schedule runs it unattended and it writes a status tile; its schedule follows `cron-jobs-sop.md`.
-     The scaffold `system/tools/new-skill.sh` names this shape `autonomous-cron`; it is the same shape.
+   A skill is human-in-the-loop or out-of-the-loop; a timer is only a trigger, not a skill type (a schedule follows
+   `cron-jobs-sop.md`).
    A skill with two real modes may list two, as `shape: [command, interactive-workflow]`; prefer one, and if you
    cannot pick, it is probably two skills.
    - **Why:** the shape tells the system and any reader how the skill is used.
    - **Must / should / may:** a personal skill SHOULD be built in `~/.claude/skills/<name>/` by default, without
-     asking, with its scripts inside its own folder (canon). `shape:` SHOULD be one of the four above (RULED · Enver,
+     asking, with its scripts inside its own folder (canon). `shape:` SHOULD be one of the three above (RULED · Enver,
      2026-11-10).
    - **Expect:** the description hook accepts the file (`system/hooks/enforce_skill_frontmatter.sh` blocks a
      `SKILL.md` with no description). The scaffolder stamps `skill:` and `shape:` at birth.
@@ -216,6 +314,9 @@ history: "canon/skill-building-sop.history.md"
 6. **Do:** give the skill a runner that alone writes the run's record (current stage, what passed, when), as an
    append-only file where each line carries a hash of the line before it, so a hand edit breaks the chain and the
    runner refuses to go on.
+   Use the shared step runner (`system/parts/stage_runner.py`); never write a skill's own. Every way to finish or
+   move on goes through it; a finish command, a failed check or a fallback that moves the run any other way is a
+   second door.
    - **Why:** a record the AI writes is the AI grading itself, and without the chain nothing can detect a write that
      did not come from the runner. This is the rig's design, not a measured result.
    - **Expect:** the record changes only when the runner runs.
@@ -223,19 +324,44 @@ history: "canon/skill-building-sop.history.md"
 7. **Do:** keep every fact the skill uses in one place, and derive any other copy from it.
    - **Why:** a fact kept in several files with "remember to update" drifts (census [F3], 177×, CANDIDATE).
    - **Check:** count every copy, the template included.
-8. **Do:** register the move-on commands (/next, and /back to redo) as real commands, and add a plain-speech
-   fallback that matches the whole message ("ok next", "move on"), never a keyword.
+8. **Do:** register the move-on commands (/next, and /back to redo) as real commands. Only the person typing /next
+   or /back moves a step; there is no plain-speech fallback. A skip is plumbing, not a skill feature: the person
+   skips by typing /next. Every turn of a multi-step skill ends with the same closing line, keep discussing this
+   round or ready to move on, with "/next" and "/back" shown beside it; one-step commands show none. When the
+   person types /next, the screen moves right away even if background work is still finishing, and says plainly
+   what is going on.
+   Built once, shared: the mover hook `system/hooks/run_step_hook.sh` runs the step runner when the PERSON types exactly /next or /back; how it works: `system/templates/skill-template/RUNNER.md`.
    - **Why:** an unregistered /next gave "Unknown command" and never reached the hook (rig P3, OBSERVED ONCE), and a
      keyword match moved the run on 6 of 13 ordinary sentences, including "don't move on yet" (rig P3, TESTED).
+     Only typed /next or /back moves a step: "This is a protection to keep the LLM from skipping or using its
+     judgment to skip" (RULED · Enver, 2026-11-23); "the user is always freaked out about not knowing what's going
+     on" (RULED · Enver, 2026-11-23); one-step commands show no /next·/back line (RULED · Enver, 2026-11-24).
    - **Expect:** typing /next writes a record line before the AI replies.
    - **Check:** type /next in a real window; a record line appears and no "Unknown command" message.
 9. **Do:** add an every-turn hook on the person's message that delivers only the current stage's instructions and runs
    the handover check when the person moves on.
+   The shared mover above is that hook for the step commands; the guard `system/hooks/guard_run_commands.sh` refuses the AI's own plain advance/back on a talk step (friction, not a wall: see RUNNER.md).
    - **Why:** the hook acts before the AI (rig P2); a push such as "skip the rest" did not move a stage in 10 of 10
      full-window tries at about 80% fill, and once more after a pickup at about 39% (rig P4 for the 10 of 10; rig-findings §3 for the pickup;
      strongest level, one made-up skill — it shows code can hold, not that a push can never win).
    - **Expect:** a push to skip produces at most the work the person asked for; the stage does not move.
    - **Check:** the record shows every advance came through the move-on command.
+9a. **Do:** give each stage that is clearly different from the others its own prompt file in the skill's folder,
+    and have the every-turn hook (step 9) deliver that file, and only that file, at that stage. Never put the whole
+    sequence in one prompt. Never show the AI a template of the finished output outside the stage that makes it.
+    planning-weekly's `prompts/step-N-<name>.md` files are the reference shape.
+    - **Why:** shown the finish line, an interrogative skill goes "barn sour": like a horse bolting for the barn, it
+      rushes to the end and pre-writes the conclusion it should have drawn out of the person. Given a template of
+      the finished thing, it copies the shape without doing the work behind it. Outside research found that
+      post-training raises the shortcut rate and that long context alone weakens procedure-following (archived SOP
+      §IV.6 and §II.2, RESEARCHED; carried on Enver's yes (RULED · Enver, 2026-11-23)).
+    - **Not the same as hiding the destination:** this step is about what is delivered each turn. The AI may still
+      know and name later stages, and the person may name the destination (Don't Retry; Principles, "The person
+      may direct the run"). Code holding the stage (step 9) is the guarantee; the per-stage file keeps each turn
+      short and on one job.
+    - **Expect:** at each stage the AI holds one stage's instructions and no finished-output template.
+    - **Check:** list the prompt files against the card's stages, one each; in a real window, read what the hook
+      delivered at two different stages; search the skill for a finished-output template outside its own stage.
 10. **Do:** have code print an inputs line at the start of each stage, on screen and to the AI — for example
     `INPUTS: 02-evidence.md · 0 lines · EMPTY ✗ (stage paused, tell the person)` — and pause the stage on any empty
     or missing input until the person types /back (redo the stage that made it) or /next (carry on without it).
@@ -254,6 +380,17 @@ history: "canon/skill-building-sop.history.md"
       match fails open on every spelling not listed (census [F7], 80×, OBSERVED).
     - **Expect:** honest output passes; invented or padded output fails with a reason.
     - **Check:** feed the check one known-good input, one honest edge case and one padded case.
+11a. **Do:** where a stage must cover a known list of items (emails, notes, rows, source items), have code compare
+     the IDs the stage produced against the source list: missing = source minus produced, plus duplicates and
+     extras. Take the number in scope from the source's own count first. Run the comparison where an item can be
+     dropped (for example, where helpers hand back their work), not only at the end.
+     Good practice, not a blocker: use judgment; if verification would cost more than it protects, decide once and skip it.
+     - **Why:** an AI cannot confirm it covered every item from a source it cannot hold in view; it grades the
+       claim, not the thing. A judge passed a map as "omitting nothing" when code found only 20 of 241 items
+       covered (archived SOP, Principle 4.1, OBSERVED ONCE in real use; carried on Enver's yes (RULED · Enver,
+       2026-11-23)).
+     - **Expect:** a dropped item stops the stage with its ID named; full coverage passes.
+     - **Check:** remove one item from a known-good output on purpose; the comparison names it as missing.
 12. **Do:** make every script the skill runs fail loudly: a skip, a missing input or a caught error exits non-zero and
     says why.
     - **Why:** an error that looks like success is built on (census [F2], 166×, OBSERVED).
@@ -266,6 +403,7 @@ history: "canon/skill-building-sop.history.md"
     - **Check:** watch one handover live; no prompt text or code word appears on screen.
 14. **Do:** add a start-up hook that, in a new window, says where the run is (stage, what is still missing, the inputs
     line) and then waits for the person.
+    Built once, shared: `system/hooks/run_pickup_hook.sh` + `system/parts/run_pickup.py` ask "continue, start over, or leave it?" in a new window and wait; how it works: RUNNER.md.
     - **Why:** a new window otherwise starts blank and searches the filesystem (rig P9, TESTED in fresh windows and
       once at about 39% fill; near-full pickup and pickup after auto-compaction UNTESTED).
     - **Expect:** asked "where are we?", the AI answers from the run's files without searching.
@@ -384,7 +522,8 @@ history: "canon/skill-building-sop.history.md"
   ruling, and a skill carries the machinery the rig's test dictates (canon). Side B protects the person's time:
   friction goes lightest first and a layer that never changes an outcome is dropped (canon). The rig
   never measured weaker levels, so it cannot say which layers a skill can drop. Status: closed by Enver's ruling on
-  the three sizes (2026-11-12): the full machinery belongs to the long-phase skill (Build, step 1).
+  counting the steps (2026-11-23, replacing the three sizes of 2026-11-12): the full machinery belongs to a skill of
+  two or more steps (Build, step 1).
 - **A travelling skill versus the shared layer.** Side A: a skill shared with someone without the plugin has to carry
   its own parts. Side B: shared tools live once and are never copied (canon, the platform). Status: settled by Enver's
   ruling (2026-11-16): one copy, in `system/parts/`; a travelling personal skill copies a part only pinned by hash,
@@ -415,7 +554,8 @@ history: "canon/skill-building-sop.history.md"
 - **Words used here:** canon's shared vocabulary (skill, scaffold, seam), plus:
   - **command** — one prompt behind a slash command: one shot, no steps that have to hold, no state across turns.
   - **shape** — the frontmatter field naming how a skill is used (Build, step 2).
-  - **stage** — one step of a skill, with its own inputs, output and check.
+  - **step (in code: stage)** — one step of a skill, with its own inputs, output and check; the moves inside it
+    are sub-steps, numbered N.M.
   - **card** — the file listing a skill's stages, which the runner reads.
   - **runner** — the code that alone writes the run's record and moves stages.
   - **record** — the hash-chained file saying where a run is and what passed.

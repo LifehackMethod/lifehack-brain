@@ -11,6 +11,79 @@
 
 ---
 
+# A complete desk has…
+Every line traces to `canon/desk-building-sop.md`.
+
+> **Words used here**
+> - **desk** — one domain of a person's life (wealth, auditions, health), kept in its own folder `desks/<name>/`.
+> - **card** — the desk's `desk.yaml`: three lines read by code before the model wakes; the model never sees it.
+> - **canon** — what is durably true; lives in the desk's `canon/` folder.
+> - **diary** — the dated tree, `diary/YYYY/MM/DD.md`, one entry per day.
+> - **records** — the file cabinet: raw, undated research, search results, big documents.
+> - **open loops** — `open-loops.md`: started, not finished — to improve, to build, broken, alerts fired.
+> - **glasses** — the desk's `CLAUDE.md`: the model's day-one note (who this desk is, how to talk here, what matters).
+> - **platform** — the plugin and shared code: everything that runs a desk, once, identical for everyone.
+> - **door** — the build-mode checks a desk must pass (§5, the six check lines).
+> - **tile / status note** — a JSON status snapshot a desk's job or skill writes through `emit_status.py`.
+> - **`/deskname`** — the SOP's placeholder example for a desk's command; `.claude/skills/deskname/` is a placeholder example path, not a file in the repo.
+
+## 1. Every complete desk has…
+
+- Eight items in `desks/<name>/`: `canon/canon.md` and `canon/purpose.md` (both inside `canon/`), `records/`, `diary/`, `open-loops.md`, `desk.yaml` (the card), `CLAUDE.md` (the glasses), and `projects/` (one `projects/<slug>/` folder per project started from this desk, holding its brief, same shape as the root `projects/`). → §2; §7 birth step 1
+- A card holding only its three facts — name, canon, diary. Anything else is rejected. → §2; §5 check 1; §7 birth step 2
+- Every pointer on the card resolving to a real file. → §5 check 2
+- Canon sitting where the card says it does. → §5 check 4
+- Nothing that duplicates a fact owned elsewhere: jobs belong to the job list, access grants to the capability registry, status notes to their producers. One fact, one place. → §2; §5 check 3
+- Nothing that runs. The loader, the diary pen, the guards, the doors, the job runner and the status writer live once in the plugin; the desk never contains a copy. → §2; §3
+- No copied shared tools: the desk uses the platform's tools or its own — skills in `~/.claude/skills/<name>/`, scripts in the personal code folder, with `desks/<name>/tools/` only for code that truly serves this one desk. → §3; §5 check 6
+- Any jobs it ships passed through the job door (`--check-row` PASS). → §5 check 5
+- A `purpose.md` of two lines saying why this domain exists. → §2; §7 birth step 3
+- Glasses in their own file, the desk's seventh item — not folded into `purpose.md` (purpose is knowledge; glasses are instructions). → §6; §8 point 4
+- Glasses that fit, with the plugin's and the personal root's `CLAUDE.md`, inside one shared total token budget across the three layers. → §6; §8 point 4
+- A diary made when the desk was created, called `<Desk>-Diary` (the planning desk's is Planning-Diary); shared code knows only that pattern, never a desk's name. → §6
+- One diary page per day: each machine read appends its own low-confidence entry, the person's sessions add high-confidence lines, and the machine never overwrites a high-confidence line; each entry a spare boil-down plus pointers to the raw records. → §6; §8 point 3
+- Exactly two machine-readable artifacts: the card (`desk.yaml`, YAML) and whatever its producers emit as status tiles (JSON). All knowledge is prose. → §8 point 1
+- A card that never lists its tiles: tiles are written through the single writer `emit_status.py` and register by existing in `status/` at the brain folder's root, named for the producer. → §3; §8 point 2
+- A `/deskname` command (placeholder example) created with the desk, working in the CLI and the Anthropic app both. → §5; §7 birth step 5
+- A registry row: an index line that points the loader at the card and holds none of the card's facts. → §7 birth step 6
+
+## 2. In these situations…
+
+- If building a desk → it is build mode, not use mode. The desk is born by writing knowledge and a card, never by building machinery. → §5
+- If building a desk → the birth sequence is: (1) scaffold or hand-write the eight items; (2) fill the card's three lines; (3) write two lines of purpose and two lines of canon; (4) the door checks it; (5) the `/deskname` command invocation is created; (6) the registry row is added. The first real desk's run corrects this sequence. → §7
+- If the door names a problem → fix what it names and re-run. → §7 birth step 4
+- If it is the planning desk, or any desk that ships with the harness → same shape; everything that runs it lives in the platform. → §2
+- If something should behave the same for every desk → it is platform machinery, and the desk never contains a copy. → §3
+- If a desk needs a special tool → it lives in personal code, not in the desk (`desks/<name>/tools/` only for code that truly serves this one desk). → §3; §9
+- If deciding where a fact goes → at the broadest scope where it is always true, no higher, no lower. → §1
+- If canon is nested below a desk → it is true for that desk's subfolders (vertical), never for siblings (lateral); the loader flags nested canon as not loaded. → §1; §4
+- If something is too big for a spare diary entry → it was never diary material; it is a record, and the entry points at it. → §6
+- If cron builds weekly, monthly, quarterly or annual roll-ups → they are low-confidence computer assumptions until a human validates them. → §6
+- If summarizing unattended → never touch hard-to-summarize work; the unattended step only handles what was already spare. → §6
+- If judging trust → canon is trusted because of where it sits; everywhere else starts from a default of doubt; confidence accumulates as points of evidence; a load-bearing decision needs a human sign-off. → §1; §3
+- If a tile is written → its `stale_after_s` (the producer's rhythm) is set in the envelope; its `detail` field points into the diary or records. → §8 points 3, 5
+- If opening a desk → folder, shortcut or the `/deskname` command all set the same fact, "this window is in this desk"; the command route is what makes desks work in the Anthropic app. → §4
+- If a session starts in a desk → the session-start hook reads the card, loads the root canon and the one desk's canon (never sideways), and injects the actual text. → §4
+- If pulling canon on demand → the read-canon subagent searches the folders, does not trust the filing, and returns canonical passages verbatim, never summarized. → §4
+- If choosing protection for a desk's things → the person chooses which get fine china protection A (an ask before an edit) or B (no delete); protection C (a speed bump with a sign before a mass delete — a whole folder or hundreds of files) covers every folder. → §5
+- If it is fine china outside git (canon always lives in git) → protection B is a hard block with no override. → §5
+- If protection C applies → it is a speed bump with a sign, never a hard block or a pop-up. → §5
+- If nobody is at the screen → protections A and B are denied with a sign and parked for the morning, and the run carries on; protection C's sign is logged and the action waits for the morning rather than being blocked outright. → §5
+- If someone wants to see the desk (dashboard, alert) → that is the person's business, not the desk's or the plugin's; looking is free, touching goes through the door. → §3; §9
+- If this SOP and Enver's words differ → the difference goes to him to settle; no precedence rule settles it. → the header at the top
+
+## 3. Good practice
+
+- Write for a blind reader with a finite context window: what is absorbable, not what is tidy. → §1
+- Start small: the desk is born walking; everything else accretes. → §7 birth step 3; §9
+- Canon is expected to change rarely — "edited on the order of every six months, changed by big life events". → §2; §8 point 3
+- Structured data only where a program parses, prose where a model reads; do not format diaries for robots. → §8 point 1
+- Treat organization as a bonus, not a load-bearing assumption. → §4
+- Keep the skeleton boring: the schema stable and dull while everything living flows through it. → §1
+- The glasses carry two biases: lean toward the newer; read trust by location. → §6
+
+— end of checklist —
+
 ## 1. 10,000 ft — Why desks exist
 
 **In the stack: a desk is the business logic layer's unit** — the tenant's domain of knowledge, run entirely by
@@ -42,7 +115,7 @@ machinery serves any of them identically.
 
 **The system is an organism, not a flat folder schema.** The closet of clothes works until it doesn't; V2 is the
 point where organization became metabolism. Canon is DNA (rarely changed, human-gated, inherited vertically, thin).
-The diary cron is metabolism — current state is produced by the system, not maintained by hand. The guards are the
+The diary is metabolism (§6) — current state is produced by the system, not maintained by hand. The guards are the
 immune system: layered, lightest first. Open loops are the repair ledger. A desk is a graft that takes because the
 organism already has the organs. Organisms grow tumors — machinery accreting per desk — and the shared-code rule and
 the doors are the anti-cancer. The skeleton stays boring: the schema is stable and dull while everything living flows
@@ -65,7 +138,7 @@ desks/<name>/
 │   ├── canon.md    ← the desk's canon
 │   └── purpose.md  ← why this domain exists (2 lines)
 ├── records/        ← the file cabinet: raw, undated research, search results, big documents
-├── diary/          ← the dated tree: YYYY/MM/DD.md, one entry per day
+├── diary/          ← the dated tree: YYYY/MM/DD.md, one page per day
 ├── open-loops.md   ← started, not finished: to improve, to build, broken, alerts fired
 ├── desk.yaml       ← the card: name, canon, diary — nothing else
 ├── CLAUDE.md       ← the desk's glasses, in its own file: the seventh item (section 8, point 4)
@@ -139,7 +212,7 @@ command invocation, working in the CLI and the Anthropic app both.
 covers every folder; what each protection does is fixed. All three are there "to prevent broad catastrophic events
 from a misguided agent" (`canon/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)):
 - **Fine china protection A** — "can't edit it without talking to the human first" (an ask before an edit).
-- **Fine china protection B** — "can't delete it" (no delete). For canon and fine china outside git, protection B is
+- **Fine china protection B** — "can't delete it" (no delete). Canon always lives in git, so "outside git" means fine china only. For canon and fine china outside git, protection B is
   a hard block with no override (canon).
 - **Fine china protection C** — a speed bump with a sign in front of a mass delete (a whole folder or hundreds of
   files), on any folder, to slow down a possible catastrophic event. It is never a hard block or a pop-up.
@@ -153,15 +226,15 @@ carries on; protection C's sign is logged and the action waits for the morning r
 
 Each desk's diary is made when the desk is created, and is called `<Desk>-Diary`: the planning desk's is Planning-Diary. Shared code knows only that pattern, not any desk's name.
 
-One entry per desk per day, written by a per-desk cron job at end of day: a spare boil-down of that day plus
+One page per desk per day. There is no single midnight writer: each machine read appends its own low-confidence entry to that day's page; the person's sessions add high-confidence lines; the machine alone never overwrites a high-confidence line, so the page can be rewritten but never over the person's own words. Any desk appends through `append_entry` in `shared/diary_page.py`. Each entry is a spare boil-down plus
 pointers to the raw records. Size is controlled upstream, at generation — anything bigger was never diary material;
-it's a record, and the entry points at it. Weekly/monthly/quarterly/annual roll-ups are built by cron as
+it's a record, and the entry points at it. Weekly/monthly/quarterly/annual roll-ups are assembled on demand as
 low-confidence computer assumptions; they become high-confidence only when a human validates them. Unattended
 summarization never touches hard-to-summarize work; the unattended step only handles what was already spare.
 
 **The skeleton is three pieces:** the glasses (CLAUDE.md — plural: plugin, personal root, per desk, the per-desk one
 in its own file as the desk's seventh item, with a total size budget across the three — carrying the two biases: lean toward the newer; read trust by location (canon by where it sits, a
-default of doubt elsewhere)), the card, and the diary cron. Everything else exists or flows from these.
+default of doubt elsewhere)), the card, and the diary (§6). Everything else exists or flows from these.
 
 ---
 
@@ -181,7 +254,7 @@ default of doubt elsewhere)), the card, and the diary cron. Everything else exis
 one deliberate act. The glasses go on (the harness brief, plus the desk's CLAUDE.md, within the shared
 budget). The hook reads the card, chain-loads the canon, injects the text — code, not model. The model wakes
 situated. Work happens guarded (every tool call through the policy friction points). Raw output lands in records.
-At midnight, the desk's diary cron writes the day's spare boil-down with pointers. Any future session can walk the
+Machine reads append their spare boil-downs, with pointers, to the day's diary page (§6). Any future session can walk the
 diary tree at whatever resolution a question needs, cheaply.
 
 ---
@@ -200,13 +273,13 @@ mistake (formatting diaries for robots no robot reads).
 
 **2. Tiles are the desk's pulse, and the card never mentions them.** A desk's jobs and skills emit status tiles
 through the shared single writer (`emit_status.py`), as a byproduct of metabolism. Tiles self-register by
-existence — **convention over configuration**: registration happens by being in `status/` at the brain folder's root, named for the
+existence — **convention over configuration**: registration happens by being in `<brain>/status/` (the brain folder's root), named for the
 producer; no declaration lists. The manifest stays three lines because it holds only facts no other system owns.
 The seam between the two SOPs is zero-declaration: the desk never lists its tiles; the status interface never
 asks. (Organism capstone: the tile is the desk's pulse — literally the Pulse machinery.)
 
 **3. Every artifact type carries its freshness horizon.** Canon: years (should not have to be edited more than every
-six months; changed by life earthquakes). Diary: days (one append-only entry per day). Tiles: seconds
+six months; changed by life earthquakes). Diary: days (one page per day, entries appended; §6). Tiles: seconds
 (`stale_after_s`, the producer's intended rhythm, set in the envelope). Each type has its own horizon — milk,
 canned soup, whiskey: each aisle knows its own dates. The reader derives staleness by comparing last-verified time
 against that rhythm (a TTL). The date axis made mechanical.
@@ -220,7 +293,7 @@ context is paid for every turn — the guard against context bloat. It is its ow
 folded into purpose.md (purpose is knowledge and decays slowly; glasses are instructions and decay differently).
 
 **5. Now, always, raw — the three tenses of a desk.** Tiles are NOW: current-state snapshots, whiteboard
-semantics, last-write-wins, idempotent overwrite. The diary is ALWAYS: the append-only event log — event
+semantics, last-write-wins, idempotent overwrite. The diary is ALWAYS: the event log, one page per day, each machine read appending its own entry and never overwriting the person's high-confidence lines — event
 sourcing, state derived never stored. Records are RAW: the undated archive. The tile's `detail` field is a
 pointer from the snapshot layer into the event log or the archive — a cross-layer reference that keeps "now"
 honest by always able to say "here's the history behind me." Three layers, three tenses, one pointer: the
@@ -236,8 +309,8 @@ stuff so a conversation about money doesn't drag your headshots into it.
 **The room has eight shelves, and only three of them matter at first:**
 - **What's true for years** (canon) — the whiskey. "I'm married. My agent is <name>." Changes only in a life
   earthquake, no more than every six months or so.
-- **What happened today** (the diary) — the milk. One short page per day, written by a robot at midnight, never
-  edited: what got done, in a few spare lines, with a pointer to where the full story lives.
+- **What happened today** (the diary) — the milk. One short page per day, added to by machine reads and by you, never
+  overwritten over your own high-confidence lines (§6): what got done, in a few spare lines, with a pointer to where the full story lives.
 - **The raw pile** (records) — the file cabinet. Every search result, every big document, unsorted and undated.
   It's fine that it's a mess; nobody reads it wholesale, they dig when pointed.
 - Plus: **why the room exists** (purpose, two lines), **the to-fix list on the door** (open loops — broken things,
@@ -252,8 +325,8 @@ butler.
 matters here, what the boss likes. Three pairs of glasses get worn at once — the building's, yours, and this
 room's — and together they can't be too heavy, because you pay for them every single minute you work.
 
-**The room remembers on its own.** At midnight, a little robot comes in and writes the day's page in the diary —
-not you, not the intern, nobody maintains it. Once a week another robot squints at the week's pages and drafts a
+**The room remembers on its own.** Whenever a machine read happens, a little robot adds its own low-confidence entry to the day's page in the diary (§6) —
+nobody maintains it by hand. When someone asks, another robot squints at the week's pages and drafts a
 summary, marked "computer's guess — don't fully trust me" until a human glances at it and says "yes, that's
 right." That's the confidence ratchet: the system proposes, your glance promotes.
 

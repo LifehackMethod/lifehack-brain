@@ -440,3 +440,69 @@ purpose: "Build a skill that keeps doing its job in a real, filling window, by l
 ~~~~
 
 ## 2026-11-16 - reason: step 4b (round five), SB3 (FIX: a stale citation or detail, no change of meaning), on Enver's 'land it' (text added; nothing left the document)
+
+## 2026-11-24 - reason: canon update 2026-11-24, q4(b)/q2: three sizes replaced by counting steps (Build 1 Do)
+
+~~~~
+1. **Do:** decide which of three sizes you are building: a command, a short skill or a long-phase skill. If it could
+   be pasted as one prompt, it is a command. It is a skill the moment it is any of: several steps in an order that
+   has to hold; stateful across turns; leading or questioning the person; carrying something that has to happen reliably.
+   The full 15 steps below belong to the long-phase skill.
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, q4(b): Build 1 Expect/Check reworded to step count
+
+~~~~
+   - **Expect:** a command stops after step 3; a long-phase skill continues through step 15.
+   - **Check:** write down which size it is, and which of the four signs, if any, applies.
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, q4(b): command shape no longer 'command size'
+
+~~~~
+   - `command` — the command size of step 1: the person types it, it does one bounded job and ends (for example a web
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, ledger 54: drop cron-producer shape (Build 2)
+
+~~~~
+   - `cron-producer` — a schedule runs it unattended and it writes a status tile; its schedule follows `cron-jobs-sop.md`.
+     The scaffold `system/tools/new-skill.sh` names this shape `autonomous-cron`; it is the same shape.
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, ledger 54: shape one of three (Build 2)
+
+~~~~
+     asking, with its scripts inside its own folder (canon). `shape:` SHOULD be one of the four above (RULED · Enver,
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, q4(d)/ledger 52: no plain-speech fallback for /next /back (Build 8)
+
+~~~~
+8. **Do:** register the move-on commands (/next, and /back to redo) as real commands, and add a plain-speech
+   fallback that matches the whole message ("ok next", "move on"), never a keyword.
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, q4(b): Open Tensions status reworded to counting steps
+
+~~~~
+  the three sizes (2026-11-12): the full machinery belongs to the long-phase skill (Build, step 1).
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24, q4(c): stage definition now step (in code: stage)
+
+~~~~
+  - **stage** — one step of a skill, with its own inputs, output and check.
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24: citation-lint fix; /next and /back written as plain words (they are hook commands, not skill folders)
+
+~~~~
+- **[ALWAYS TRUE]** If the person moves steps on → `/next` and `/back` are registered commands (✅ built once as the shared mover hook `system/hooks/run_step_hook.sh`, not as skill folders). Only the person typing /next or /back moves a step; there is no plain-speech fallback. Never match by keyword, whether in a move-on command, a guard or a detector. → SOP Build 8; Don't Retry
+~~~~
+
+## 2026-11-24 - reason: canon update 2026-11-24: citation-lint fix; /back and /next written as plain words
+
+~~~~
+- **[BUILD AND TEST]** If a step reads inputs → code prints an inputs line on screen at the step's start and pauses on any empty or missing input until the person types `/back` or `/next` (✅ the shared mover hook `system/hooks/run_step_hook.sh`). The pause is code's guarantee; an AI that only shows the line, without also telling the person in its own words, is not a failed build. → SOP Build 10
+~~~~

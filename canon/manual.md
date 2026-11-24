@@ -22,7 +22,7 @@ authority: user
 > **The three altitudes (the operator, locked 2026-07-22):**
 > - **TIP = a MAP** — a bare schematic (boxes · arrows · pointers) that sits whole inside the harness brief, the plugin's root `CLAUDE.md`, delivered at session start by the plugin's SessionStart hook. There are no per-desk copies. Loads every session.
 > - **MIDDLE = this MANUAL** — how the system works together at 5,000 ft. One medium file. On-disk, on-demand.
-> - **BASE = an ENCYCLOPEDIA** — `system/organism/elements/<name>.md`, one deep entry per load-bearing element (the in-the-weeds detail + every interaction/overlap). On-disk, on-demand.
+> - **BASE = an ENCYCLOPEDIA** — `system/organism/elements/<name>.md`, one deep entry per load-bearing element (the in-the-weeds detail + every interaction/overlap). On-disk, on-demand. New pages are component pages in `canon/components/`, one per part: a spec is written first, as the same document, and flips to its component page once the part is built and hooked in, only when every "to prove" item has a real check (`canon/v2-architecture-vision.md`, "Component page"; Enver, 2026-11-21).
 >
 > **Scope = the WHOLE architecture** (the operator 2026-07-19): skills · hooks · tools · system files · memory ·
 > desks · Cron and Alarms (scheduled jobs) · the security plane — and how they combine. Not a skill-map; skills are one slice.
@@ -386,7 +386,7 @@ helper files beside it, except in the files listed in `system/tools/shared-fetch
 (`|| true`, `|| :`, `2>/dev/null`) on a fetch, write, push or model call · a literal model id anywhere but the one model
 table. **Writes** to the owner's own Google account (labels, archive, Sheets, Tasks, Calendar, Docs) are allowed from a job
 within the safety restrictions (an accepted risk, ruled 2026-10-28). A job must not send email without the person's
-approval; drafts are fine (approved by Enver, 2026-11-13). A Sheet the person has named as fine china meets
+approval; reply drafts are allowed only as markdown files, none in Gmail (Enver, 2026-11-13; narrowed 2026-11-20). A Sheet the person has named as fine china meets
 protection A; with nobody at the screen, A and B are parked for the morning (canon/cron-jobs-sop.md).
 **One exception for reads:** a row with `model=none` may make its own logged-in read of the owner's own vendor
 account from ONE file listed as `<job> <file>` in the person's own `<personal-code>/vendor-read-allowlist.txt` (the plugin's
@@ -442,7 +442,7 @@ INTEROP:
   READS      sanitize               · L0 scrub (system/tools/sanitize.py); gate imports it directly
   READS      safe_input             · injection scanner (system/tools/safe_input.py); gate imports it directly
   TRIGGERS   sentinel               · sentinel_response.py called on any findings (non-empty scan result)
-  WRITES→    ingest-provenance      · breadcrumb ledger ($DRIVE/state/status/ingest-provenance.jsonl) on every gate call
+  WRITES→    ingest-provenance      · breadcrumb ledger (<brain>/status/ingest-provenance.jsonl) on every gate call
   FEEDS      ingest-reader          · on FLAG/CLEAN, safe_* tools write cleared content to /tmp/rdr for the tool-less reader subagent
   SHARES     email_convert          · email_convert.py calls gate(source_type="email") → holds the email FLAG floor, which lifts on a REAL-ATTACK verdict
   SHARES     safe_calendar/tasks    · safe_calendar.py and safe_tasks.py call gate(source_type="calendar"/"api") — same pipeline
@@ -710,7 +710,7 @@ INTEROP:
   GUARDED-BY  ingest_gate_enforce.sh · Ra-2 scratch-dir lock blocks main/controller session Read of /tmp/rdr/*; sub-agent (has agent_id) is allowed — the sanctioned reader-actor path
   READS       email_service_contract.py · janitor imports SUMMARY_MODEL · MAX_WORKERS · entrypoint pins at startup; validate_contract() greps tree for single-writer invariant; import fail → hard-stop
   KEYS-OFF    email-summary health tile · reads <brain>/status/email-summary.json in _store_is_stale() to classify a miss as MISS-NEW vs MISS-SYNCLAG
-  FEEDS       email-fallback-events.jsonl · every store miss that routes to raw fallback appended to state/status/email-fallback-events.jsonl via _log_fallback()
+  FEEDS       email-fallback-events.jsonl · every store miss that routes to raw fallback appended to <brain>/status/email-fallback-events.jsonl via _log_fallback()
   SYNCS       email_thread_schema.py · both the janitor's write path and read_thread() Step 3 import email_thread_schema; load-bearing assertion: message_count == len(messages)
   SYNCS       ingestion-reader-contract.md · adapter's _write_scratch() must stay in sync with the contract's scratch-dir path format, MARKER prefix, and scan-verdict semantics
 
