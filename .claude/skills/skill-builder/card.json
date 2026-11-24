@@ -1,0 +1,98 @@
+{
+  "_readme": "The stage card for the skill builder, run by the shared step runner (system/parts/stage_runner.py). Five steps, all conversations with the person: what you want, the proposed steps, role-play it, shake the tree, the hand-off. The runner owns the order, the record, /next and /back and the status line. Steps 3 and 4 are optional: the person skips one by typing /next, and the runner records that it was skipped by the person. Steps 4 and 5 read the step 2 output so a skipped step never strands them. Each step checks only that its output has the named headings, enough words and the code word; the checks come from the runner's closed list. Never edit this card or a prompt while a run is open.",
+  "skill": "skill-builder",
+  "stop_limit": 3,
+  "stages": [
+    {
+      "id": "step-1",
+      "mode": "talk",
+      "prompt": "prompts/step-1-what-you-want.md",
+      "out": "out/step-1.md",
+      "checks": {
+        "headings": [
+          "## Outcome",
+          "## Harness check",
+          "## Size sense"
+        ],
+        "min_words": 60,
+        "code_word": true
+      },
+      "_note": "What the person wants, the harness check and the size sense. A too-big idea may end the run here by hand-off to /build."
+    },
+    {
+      "id": "step-2",
+      "mode": "talk",
+      "prompt": "prompts/step-2-the-proposed-steps.md",
+      "out": "out/step-2.md",
+      "inputs": [
+        "out/step-1.md"
+      ],
+      "checks": {
+        "headings": [
+          "## Steps draft",
+          "## Step count"
+        ],
+        "min_words": 80,
+        "code_word": true
+      },
+      "_note": "The steps draft and the step count (command or skill)."
+    },
+    {
+      "id": "step-3",
+      "mode": "talk",
+      "optional": true,
+      "prompt": "prompts/step-3-role-play-it.md",
+      "out": "out/step-3.md",
+      "inputs": [
+        "out/step-2.md"
+      ],
+      "checks": {
+        "headings": [
+          "## Done by hand",
+          "## Answers"
+        ],
+        "min_words": 40,
+        "code_word": true
+      },
+      "_note": "Optional. Notes on what was done by hand and the person's answers. A skip is the person's own /next: the checks then fail and the runner records the step as skipped by the person."
+    },
+    {
+      "id": "step-4",
+      "mode": "talk",
+      "optional": true,
+      "prompt": "prompts/step-4-shake-the-tree.md",
+      "out": "out/step-4.md",
+      "inputs": [
+        "out/step-2.md"
+      ],
+      "checks": {
+        "headings": [
+          "## Rulings",
+          "## Validation"
+        ],
+        "min_words": 40,
+        "code_word": true
+      },
+      "_note": "Optional (a one-step command skips it). The person's rulings on the findings and the validation result. Skipped the same way as step 3."
+    },
+    {
+      "id": "step-5",
+      "mode": "talk",
+      "prompt": "prompts/step-5-the-hand-off.md",
+      "out": "out/step-5.md",
+      "inputs": [
+        "out/step-2.md"
+      ],
+      "checks": {
+        "headings": [
+          "## Parts result",
+          "## Draft check",
+          "## Destination"
+        ],
+        "min_words": 60,
+        "code_word": true
+      },
+      "_note": "Parts round, draft check and destination. The draft spec and packet live in the packet folder; this file records pointers."
+    }
+  ]
+}

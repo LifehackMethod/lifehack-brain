@@ -1,0 +1,97 @@
+# BUILD-NOTES — skill-builder
+
+Build record for this skill: the gate table, the checks and their results, and every deliberate
+departure from the templates.
+
+## Gate table
+
+Every item from the spec's FOR THE PLANNER AND THE BUILD list, with its pass check and the build phase
+that closes it. Status is one of: open · closed (receipt) · deferred (reason, by the person).
+
+| Gate | What | Pass check | Closes in | Status |
+|---|---|---|---|---|
+| G1 | Scaffold | Folder made from `system/templates/skill-template/`; no `{…}` or guidance comments left; every folder has a one-line purpose | P2 | open |
+| G2 | Frontmatter | `skill`, `shape: interactive-workflow`, `status`, `triggers`, third-person "Use when…" description with keywords in the first 250 characters | P2 | open |
+| G3 | Routing eval ×3 | Each case run 3 times in a cold window; 3/3 holds, 0/3 fails, 1–2 of 3 re-run; k/3 and the commit SHA recorded | P2 (re-run at P6 and on the final commit) | open |
+| G4 | Card | `card.json` has five `talk` stages, steps 3–4 `optional`, checks only from the runner's closed list | P2 | open |
+| G5 | One prompt per step | `prompts/step-1…5` exist, each from the step-prompt template; acceptance checks A–G recorded | P3 | open |
+| G6 | Helper briefs | Every helper brief is a file under `prompts/subagents/`, names its tier, and is re-quizzed if changed | P4 | open |
+| G7 | Inputs-line code + pause | Code checks each step's inputs and pauses; every code-read choice ends in `none-of-these`, which never moves the run | P5 | open |
+| G8 | Output checks | Each check tested on a good, an edge and a padded case, and seen failing on a broken copy first | P5 | open |
+| G9 | Loud scripts + timeouts | Every script exits pass / fail / could-not-check with distinct codes, refuses off-list values loudly, and times out loudly | P5 | open |
+| G10 | Stop-hook handover | Not applicable: the skill has no step that runs alone | P2 | open |
+| G11 | Hash pins | The skill uses the shared step runner in place; it pins and copies nothing | P2 | open |
+| G12 | Testing rules | Every testing rule in the skills checklist met or deferred with a reason | P6 | open |
+| G13 | Status writer | Stays DEFERRED, with the reason recorded | P2 (recorded) | open |
+| G14 | Example specs | `references/examples/` holds a scrubbed example spec | P2 | open |
+| G15 | Completion figure | Code computes the completion figure; it never gates and writes no tile | P5 | open |
+| G16 | Proofs | The spec's §7 proofs run and recorded | P6 | open |
+| G17 | Optional steps on host | The runner's optional-steps support read back from GitHub on `V2` | P0 | closed: `git ls-remote origin V2` = 91e0d681; optional-steps commit is an ancestor (2026-11-24) |
+| G18 | Finish after build | The spec is finished with what the build learned and becomes the component page | LAST | open |
+| G19 | Nothing answerable by looking left open | Research notes checked against the newest decisions; every clash listed below | P1 | open |
+| G20 | Status line | The status line shows the step and changes on /next | P6 | open |
+
+## G19 — research notes against the newest decisions
+
+The build's research notes (written before the last round of decisions) were read whole against every
+later decision; the newest decision wins. Nine clashes were found; each is fixed in the notes
+(struck through with the reason) or kept with its reason.
+
+| # | Research note said | Newer decision | Kind | Done |
+|---|---|---|---|---|
+| 1 | Copy the template into the personal skills folder | The skill builder is plugin code; it lives in the plugin's skill folder on the V2 branch | explicit | struck |
+| 2 | Landing place and promotion point at the personal skills folder | Same as 1 | explicit | struck |
+| 3 | Step prompts are delivered by an every-turn hook | Shared prompts are delivered only at the start of each step, never every turn | explicit | struck |
+| 4 | A quoted precedent heading says "every turn" | Same as 3; each step fully reorients once, at its start | explicit | struck |
+| 5 | Step 5 sends only the spec plus a pointer to the packet | The whole packet, research included, goes to the planner | explicit | struck |
+| 6 | Step 5 "never send the packet contents" | Same as 5 | explicit | struck |
+| 7 | "/build does not exist in the plugin" | The front door's command is /build; today's plugin `build` is the old one and is replaced later | explicit | struck |
+| 8 | Where a vague "how do I make a skill" goes is open | It goes to /build, the front door, not to this skill | explicit | struck |
+| 9 | Step 5 asks the person three code-read choices | Step 5 is leader mode: no question section unless a question is really outstanding | judgment | kept: the destination and send choices are real outstanding decisions; step 5 asks only the one for-me / for-everyone question on screen, and the code-read answer sets stay for what the person types |
+
+Source of the check: one whole-document read of both files by the reading tool (every heading listed,
+18 of 18 quotes verified). No model reliably notices what a document leaves out; this list is what was
+found, not proof that nothing else clashes.
+
+## Helper routing during the build
+
+From 2026-11-24 (P1), the cheap helper model ran out of credit. Reading and checking jobs that would have
+gone to it go to a medium-tier Claude helper instead, until the cheap model is back. One reading job
+that finished before the cut-off (G19 above) is kept, with its reading proof.
+From later on 2026-11-24 (still P1) the cheap model is back and is the default again, with a medium-tier
+Claude helper for load-bearing reads and anything the cheap model gets wrong.
+
+## Template completeness (the producer-spec template, first pass)
+
+The spec was compared section by section with `system/templates/producer-spec-template.md`: 2 sections
+covered, 12 partly, 3 missing (§3 rails with a "held by" column, §5 the grid, §11 evidence and
+enforceability tags), and none yet marked as deliberately absent. Where each gap closes:
+- At the finish (L.1), once the built files exist to read: §3 rails "held by" from the built files, §11 tags,
+  §7 exact write targets, §0 section-to-file map, §5 grid (ambient column stated as not active: no
+  scheduled run, no tile), §2 inputs table, §6b per-step outcomes, §10 scratchpad location and pruning.
+- In the step prompts (P3), then written back into the spec at L.1: §6c the person's-turn fields (what they
+  decide, what only they can give, the valid answers), §6a when a repeatable round ends and what carries
+  between rounds, and what is cleared on /back.
+The full comparison is kept with the build's records; the finish (L.2) re-checks it.
+
+## Records block (P2)
+
+- **Size and signs:** five talk steps, no step runs alone; a manual command (`/skill-builder`).
+- **Input channels:** typed text goes through the sanitizer only; files the person supplies go through the ingest-reader; research only via `/research`.
+- **No hook, anchor, injector or scheduled job of its own.** The shared runner's hooks are already registered.
+- **G13 status writer: DEFERRED.** Reason: an interactive manual skill with no scheduled run. Change condition: if it ever gains a scheduled or unattended step.
+- **G10 stop-hook handover: not applicable** (no alone step).
+- **Blast radius:** manual command; writes only into its one folder per skill being designed (packet files and the runner's run folder). Nothing into `records/`, no journal row.
+- **Deliberate difference from the template:** a `prompts/` layout (`prompts/step-N-*.md`, `prompts/subagents/`) instead of the template's flat prompt files, following planning-weekly.
+- **Departures from the template, one line each:**
+  - JUDGMENT_SPEC, Storage, Tile, Notification, Dedup and Authorization sections removed (interactive-workflow).
+  - RUNNER.md and SKILL.history.md not copied.
+  - Description quoted in the frontmatter (it contains a colon).
+  - Card ids are `step-N` (planning-weekly precedent), not the template's `01-gather`.
+  - Steps 3 and 4 carry real heading and word checks, not just the code word: a person's skip makes the checks fail and the runner records "skipped by the person".
+  - `routing-eval.md` sits beside SKILL.md.
+  - Triggers omit the bare phrase "build me a skill", because a bare request must not fire (routing-eval N7).
+  - Writes line: one folder per skill being designed (coordinator ruling 2026-11-24).
+- **opening-screen.md:** screen text copied unchanged. One bookkeeping line removed: the title line's approval attribution (a person's name, a date and a quotation); the title now reads "The skill builder's opening screen (approved, fixed text)".
+- **Example spec (G14):** not copied; see the return note. `references/examples/` holds only its README.
+- Frontmatter also carries `name:` beside `skill:` (the template has only `skill:`): the commit check for new skills requires `name` + `description`, and Claude Code reads `name`.
