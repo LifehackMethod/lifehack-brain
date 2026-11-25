@@ -23,7 +23,8 @@ trap 'lhb_journal_fire "$?" "run_step_hook.sh" "UserPromptSubmit" "" 2>/dev/null
 # SIGNPOST: runner contract in system/parts/stage_runner.py header + RUNNER.md; the spec is the
 #      run-pickup spec (G2). The AI-side rule lives in /next and /back's own text: no [RUN STEP]
 #      line this turn means the mover did not run — tell the person.
-# UPDATED: 2026-11-25 (SB-10: run pointer second door; no-run line for an exact command).
+# UPDATED: 2026-11-25 (round 2b B1/B5: the /skill-builder prompt starts or resumes the skill builder's run via
+#      lib/sb_start.py; per-turn RUN line while it is live; /skill-builder catch-up; SB-10: run pointer second door; no-run line for an exact command).
 #      2026-11-23 (Phase 4c fix pass: person.log for every person prompt,
 #      mover.log written before person-turn, damaged-marker line, capped failure
 #      output naming the stage prompt file, empty-payload line, journal.sh sourced
@@ -62,7 +63,32 @@ if not isinstance(pid, str) or not pid or not isinstance(cwd, str) or not cwd:
     sys.exit(0)
 if not_the_person(prompt if isinstance(prompt, str) else ""):
     sys.exit(0)  # a peer message or a task notification is never the person
-import stage_runner
+sid = j.get("session_id") if isinstance(j.get("session_id"), str) else ""
+ptext = prompt if isinstance(prompt, str) else ""
+# B1 (round 2b): the skill builder cannot run without its runner. The person's own /skill-builder prompt starts (or resumes)
+# the run here, in code, before the model sees the message. observe/note/wrap are observe_ups.sh's and are left alone.
+NORUN = TAG + " NO RUN: %s. Stop. Tell the person this one line and do nothing else."
+try:
+    import sb_start
+except Exception:
+    sb_start = None
+    if "/skill-builder" in ptext and not any(w in ptext for w in ("observe", "note", "wrap")):
+        print(NORUN % "the run starter could not load")
+        sys.exit(0)
+sb_mode, sb_arg = sb_start.detect(ptext) if sb_start else (None, "")
+try:
+    import stage_runner
+except BaseException as _e:  # a runner that cannot even load: the skill builder must stop; anything else fails as before
+    if sb_mode in ("normal", "catchup"):
+        print(NORUN % ("the step runner could not load (%s)" % type(_e).__name__))
+        sys.exit(0)
+    raise
+if sb_mode == "normal":
+    print("\n".join(sb_start.begin(stage_runner, hooks, cwd, sid, pid, sb_arg)))
+    sys.exit(0)
+if sb_mode == "catchup":
+    print("\n".join(sb_start.catchup(stage_runner, hooks, sid, pid, sb_arg)))
+    sys.exit(0)
 try:
     found = stage_runner.find_run(cwd)  # reuse the runner's own marker walk, never a copy
 except stage_runner.Damaged as e:
@@ -101,7 +127,14 @@ try:
 except OSError:
     pass
 if not isinstance(prompt, str) or prompt.strip() not in ("/next", "/back"):
-    sys.exit(0)  # the person's word, but not a step command: logged above, nothing moves
+    # the person's word, but not a step command: logged above, nothing moves. While a skill-builder run is live the
+    # turn carries its state (B1.4), so the model cannot drift; observe/note/wrap turns belong to observe_ups.sh.
+    if sb_start and sb_mode != "other":
+        _l = sb_start.per_turn(stage_runner, hooks, cwd, sid)
+        if _l:
+            print(TAG)
+            print("\n".join(_l))
+    sys.exit(0)
 cmd = "back" if prompt.strip() == "/back" else "next"
 runner = os.path.abspath(os.path.join(hooks, "..", "parts", "stage_runner.py"))
 def run(args):
@@ -148,6 +181,10 @@ if p.returncode != 0:
 q = run(["advance" if cmd == "next" else "back", "--turn", pid, "--workdir", wd])
 print(TAG)
 emit(q.stdout + q.stderr)
+if cmd == "next" and q.returncode == 0 and sb_start:  # a catch-up run: stage the next finished step's file (code only)
+    _l = sb_start.after_move(hooks, wd, run_dir, q.stdout + q.stderr, sid)
+    if _l:
+        print("\n".join(_l))
 PY`
 rc=$?
 rm -f "$PAYLOAD_FILE" 2>/dev/null

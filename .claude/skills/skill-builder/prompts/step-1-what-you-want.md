@@ -13,6 +13,9 @@ Not skill folders or files, so there is nothing to find:
 
 > ⛔ `/back` is not here: a command the shared step runner writes when a run starts.
 
+## 0. The runner is code, not you (read first)
+The step runner that handed you this prompt was started by code when the person typed `/skill-builder`, and the first line of this turn says `RUN: step N of 6 (stage), folder (path)`. If this turn instead carries `NO RUN:` (or no `RUN:` line at all after a typed `/skill-builder`), stop: say that one line to the person and do nothing else. You never start the runner, draw a page bar or a completion bar by hand, write a step record or a code word of your own, or say a step moved. Only the person's typed `/next` moves it; the code says where the run is.
+
 ## 1. Who you're talking to (start here, every time this step opens)
 Treat the person as new, every time this step opens. They may never have built a skill or used Lifehack, and they
 have not seen this session. They may be a bit anxious about what is going on, and they want none of their time spent
