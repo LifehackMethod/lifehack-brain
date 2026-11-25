@@ -11,7 +11,7 @@ trap 'lhb_journal_fire "$?" "run_step_hook.sh" "UserPromptSubmit" "" 2>/dev/null
 #      advance/back with that turn id, and prints the handover. One person turn moves at most one step.
 # GUARDS: UserPromptSubmit, empty matcher (every prompt). Doors, in order: the sh prefilter only
 #      proceeds when the raw stdin contains /next or /back; python then requires the prompt to be
-#      EXACTLY /next or /back (trimmed), not_the_person false (peer messages and task
+#      EXACTLY /next, /back, /lifehack-brain:next or /lifehack-brain:back (trimmed), not_the_person false (peer messages and task
 #      notifications start with <cross-session-message / <task-notification — ups_triggers.py),
 #      and a run marker found from the payload cwd. "/next please" is not the command. A peer or a
 #      notification never moves a run. SB-10 (2026-11-25): the run is looked for in the payload cwd
@@ -23,7 +23,7 @@ trap 'lhb_journal_fire "$?" "run_step_hook.sh" "UserPromptSubmit" "" 2>/dev/null
 # SIGNPOST: runner contract in system/parts/stage_runner.py header + RUNNER.md; the spec is the
 #      run-pickup spec (G2). The AI-side rule lives in /next and /back's own text: no [RUN STEP]
 #      line this turn means the mover did not run — tell the person.
-# UPDATED: 2026-11-25 (round 2b B1/B5: the /skill-builder prompt starts or resumes the skill builder's run via
+# UPDATED: 2026-11-25 (also the plugin forms /lifehack-brain:next and :back, exact; round 2b B1/B5: the /skill-builder prompt starts or resumes the skill builder's run via
 #      lib/sb_start.py; per-turn RUN line while it is live; /skill-builder catch-up; SB-10: run pointer second door; no-run line for an exact command).
 #      2026-11-23 (Phase 4c fix pass: person.log for every person prompt,
 #      mover.log written before person-turn, damaged-marker line, capped failure
@@ -94,7 +94,9 @@ try:
 except stage_runner.Damaged as e:
     print(TAG + " the run marker is damaged (%s); nothing ran; tell the person" % str(e)[:300])
     sys.exit(0)
-is_cmd = isinstance(prompt, str) and prompt.strip() in ("/next", "/back")
+# the plugin form is what the window autocompletes; same meaning, same exactness
+STEP_CMDS = ("/next", "/back", "/lifehack-brain:next", "/lifehack-brain:back")
+is_cmd = isinstance(prompt, str) and prompt.strip() in STEP_CMDS
 if not found:
     # SB-10: the window's cwd is not the run folder. Second door: the session's run pointer, written
     # by the runner's start command (system/tools/run_pointer.sh over lib/flag.sh). cwd always wins first.
@@ -126,7 +128,7 @@ try:
         f.write("%s\t%d\n" % (pid, int(time.time())))
 except OSError:
     pass
-if not isinstance(prompt, str) or prompt.strip() not in ("/next", "/back"):
+if not isinstance(prompt, str) or prompt.strip() not in STEP_CMDS:
     # the person's word, but not a step command: logged above, nothing moves. While a skill-builder run is live the
     # turn carries its state (B1.4), so the model cannot drift; observe/note/wrap turns belong to observe_ups.sh.
     if sb_start and sb_mode != "other":
@@ -135,7 +137,7 @@ if not isinstance(prompt, str) or prompt.strip() not in ("/next", "/back"):
             print(TAG)
             print("\n".join(_l))
     sys.exit(0)
-cmd = "back" if prompt.strip() == "/back" else "next"
+cmd = "back" if prompt.strip() in ("/back", "/lifehack-brain:back") else "next"
 runner = os.path.abspath(os.path.join(hooks, "..", "parts", "stage_runner.py"))
 def run(args):
     return subprocess.run([sys.executable, runner] + args, capture_output=True, text=True)

@@ -373,15 +373,37 @@ BK=`mkbroken line 'print(TAG + " no run is open in this window; nothing moved")|
 O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-f2" "sess-no-pointer" "")"`
 case "$O" in *"no run is open in this window"*) bad "failing-first F2: broken copy should be silent" "$O" ;; *) ok ;; esac
 # F3 exact match loosened: "/next please" must move on the broken copy
-BK=`mkbroken loose 'prompt.strip() not in ("/next", "/back")|||not prompt.strip().startswith(("/next", "/back"))'`
+BK=`mkbroken loose 'prompt.strip() not in STEP_CMDS|||not prompt.strip().startswith(("/next", "/back"))'`
 newrun sess-f3
 O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-f3" "sess-f3" "/next please")"`
 grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && ok || bad "failing-first F3: broken copy should move on '/next please'" "$O"
 # F4 peer door removed AND the exact match loosened (the exact match alone also stops a peer): a cross-session /next must move the run on the broken copy
-BK=`mkbroken peer 'if not_the_person(|||if False and not_the_person(@@@prompt.strip() not in ("/next", "/back")|||"/next" not in prompt'`
+BK=`mkbroken peer 'if not_the_person(|||if False and not_the_person(@@@prompt.strip() not in STEP_CMDS|||"/next" not in prompt'`
 newrun sess-f4
 O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_peer.json" "$SANDBOX/elsewhere" "mv-f4" "sess-f4" "")"`
 grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && ok || bad "failing-first F4: broken copy should move on a peer /next" "$O"
+
+echo "plugin form: /lifehack-brain:next and :back"
+# P1 /lifehack-brain:next moves exactly one step like /next
+newrun sess-p1
+runhook "`mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-pf-1" "sess-p1" "/lifehack-brain:next"`"
+[ "`grep -c '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl"`" = "1" ] && ok || bad "plugin /lifehack-brain:next moves exactly one step" "out=$HOUT"
+# P2 with other words: moves nothing
+for pr in "/lifehack-brain:next please" "fuck it /lifehack-brain:next"; do
+  newrun sess-p2
+  runhook "`mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-pf-2" "sess-p2" "$pr"`"
+  grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && bad "'$pr' moves nothing" "it moved" || ok
+done
+# P3 a cross-session message containing it moves nothing
+newrun sess-p3
+mkpayload_s "$FIX/run_ups_next_peer.json" "$SANDBOX/elsewhere" "mv-pf-3" "sess-p3" "" | python3 -c 'import json,sys; j=json.load(sys.stdin); j["prompt"]=j["prompt"].replace("/next","/lifehack-brain:next"); sys.stdout.write(json.dumps(j))' > "$SANDBOX/p_pf_peer.json"
+runhook "`cat "$SANDBOX/p_pf_peer.json"`"
+grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && bad "peer plugin-form moves nothing" "it moved" || ok
+# P4 failing-first: the old copy (no plugin form) must NOT move on /lifehack-brain:next
+BK=`mkbroken oldcopy 'STEP_CMDS = ("/next", "/back", "/lifehack-brain:next", "/lifehack-brain:back")|||STEP_CMDS = ("/next", "/back")'`
+newrun sess-p4
+O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-pf-4" "sess-p4" "/lifehack-brain:next")"`
+grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && bad "failing-first P4: old copy should not move" "$O" || ok
 
 echo "mover suite: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
