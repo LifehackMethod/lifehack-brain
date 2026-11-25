@@ -32,7 +32,7 @@ SKILL="$(bash "$FLAGTOOL" get skill)"
 SKILL_FILE="$(bash "$FLAGTOOL" get skill_file)"
 NOTES_DIR="$(bash "$FLAGTOOL" get notes_dir)"
 OFFSET="$(bash "$FLAGTOOL" get offset)"
-FINDINGS="$NOTES_DIR/findings.md"; NOTES="$NOTES_DIR/notes.md"
+FINDINGS="$NOTES_DIR/findings.md"; NOTES="$NOTES_DIR/observe-notes.md"
 INBOX="$OD/inbox-$SID.txt"; FAILMARK="$OD/failnotified-$SID"
 mkdir -p "$NOTES_DIR" 2>/dev/null
 TS() { date '+%Y-%m-%d %H:%M:%S'; }

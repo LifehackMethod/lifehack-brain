@@ -14,12 +14,12 @@ trap 'lhb_journal_fire "$?" "observe_ups.sh" "UserPromptSubmit" "" 2>/dev/null |
 #      member's stdout, and this hook's stdout is one JSON object, which plain text from a sibling would break.
 # GUARDS: UserPromptSubmit, every prompt. Never blocks. Quiet path: no python, no model, no process beyond this shell
 #      unless the prompt names /skill-builder OR this session's inbox file has content.
-# REDIRECT: arm/clear = system/tools/observe_flag.sh; notes + findings = <notes folder>/notes.md, findings.md (the folder
+# REDIRECT: arm/clear = system/tools/observe_flag.sh; notes + findings = <notes folder>/observe-notes.md, findings.md (the folder
 #      is stored in the switch). A person who never typed an observe command sees nothing from this hook.
 # SIGNPOST: design = brief 2.1 (build-skill-v2). The reviewer = system/tools/observe_review.sh; the Stop launcher =
 #      end_of_turn_checks.sh. Cap: 5 lines, ~1,200 characters on screen.
 # FAIL_POSTURE: degrade-safe — any error exits 0 with no output (a prompt hook's failure must never stop a prompt).
-# UPDATED: 2026-11-25 (2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
+# UPDATED: 2026-11-25 (2.4: optional : - — after the mode word; notes go to observe-notes.md; 2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
 # ─────────────────────────────────────────────────────────────────────────────
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
@@ -50,7 +50,7 @@ def flag(*args):
 # buried_command_hint.sh). First match wins: one mode per message. A plain /skill-builder [skill] has no mode word: untouched.
 scan = re.sub(r"```.*?```", lambda x: " " * len(x.group(0)), prompt, flags=re.S)
 scan = re.sub(r"`[^`\n]*`", lambda x: " " * len(x.group(0)), scan)
-m = re.search(r"(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", scan)
+m = re.search(r"(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t]*[:\-—][ \t\r\n]*|[ \t\r\n]+|$)", scan)
 if m:
     verb = m.group(1); rest = prompt[m.end():]; before = prompt[:m.start()].rstrip()
     if verb == "observe":
@@ -75,16 +75,16 @@ if m:
         else:
             try:
                 os.makedirs(nd, exist_ok=True)
-                with open(os.path.join(nd, "notes.md"), "a", encoding="utf-8", newline="", errors="surrogatepass") as f:
+                with open(os.path.join(nd, "observe-notes.md"), "a", encoding="utf-8", newline="", errors="surrogatepass") as f:
                     f.write("\n### %s\n%s%s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), ("(before the command) %s\n" % before) if before.strip() else "", rest))
-                ctx.append("OBSERVE NOTE FILED: the person's words went into %s word for word. The reviewer will weigh the note after this turn." % os.path.join(nd, "notes.md"))
+                ctx.append("OBSERVE NOTE FILED: the person's words went into %s word for word. The reviewer will weigh the note after this turn." % os.path.join(nd, "observe-notes.md"))
             except OSError as e:
                 ctx.append("OBSERVE NOTE NOT FILED: could not write the notes file (%s)" % str(e)[:150])
     else:
         rc, nd = flag("get", "notes_dir")
         rc2, sk = flag("get", "skill")
         if nd:
-            ctx.append("OBSERVE WRAP: skill %s; notes file %s; findings file %s (either may not exist yet)" % (sk, os.path.join(nd, "notes.md"), os.path.join(nd, "findings.md")))
+            ctx.append("OBSERVE WRAP: skill %s; notes file %s; findings file %s (either may not exist yet)" % (sk, os.path.join(nd, "observe-notes.md"), os.path.join(nd, "findings.md")))
         else:
             ctx.append("OBSERVE WRAP: no skill is being observed in this window (the watch was never armed here, was turned off, or timed out); ask the person which skill and notes folder to wrap")
 
