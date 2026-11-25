@@ -52,7 +52,7 @@ They sit under the `# QUESTIONS` heading only. Every question uses the house sty
 three: *Recommendation:* what you would do · *Confidence:* high, medium or low · *Load-bearing:* high, medium or low.
 - The screen top is the step line, "**You're on step 3 of 6: the walk-through.**" and one sentence, then the page bar,
   then the 👉 line ("Read this section and answer the questions at the bottom."), in that order, exactly as Screen A has them. The bottom opens with the `# QUESTIONS` heading, then
-  the bar from code (the figure line). No figure from code this turn → no figure line, and the heading stays.
+  the bar from code (the figure line). No figure from code this turn → no figure line, and the heading stays. When this turn's `RUN:` line is followed by `PAGE BAR (from code ...)` or `FIGURE (from code)` lines, print them exactly as given, never typed from memory or redrawn; a line that says unavailable or none means show no bar.
 - **The page bar** is the printed output of `scripts/page_bar.py bar --workdir <packet folder> --section walk-through`,
   copied exactly, never drawn or edited by you.
 - Every reply ends with the house style's closing line:

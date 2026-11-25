@@ -9,7 +9,8 @@ the model sees the message. If it cannot start, the model is told one line and m
 WHAT: detect(prompt) -> (mode, arg): mode is None (not about the skill builder), "other" (observe / note / wrap: owned by
 observe_ups.sh, this code does nothing), "normal" (the interview), or "catchup". begin() starts or resumes the run and
 returns the lines to inject. catchup() starts a fresh run in an existing design folder from the step files already
-written. per_turn() is the one-line run state for every later prompt. after_move() prepares the next catch-up step file.
+written. per_turn() is the one-line run state for every later prompt (plus, from lib/sb_spec.py, the code-made bars, a bar mismatch and
+the files read last turn). begin()/catchup() also create the draft spec shell and flag the session for the spec reporter/writer. after_move() prepares the next catch-up step file.
 Every function returns lines to print; none raises (a failure is a NO RUN line). Nothing here writes a run record,
 a pass, a person line or a handover: only stage_runner.py does that.
 """
@@ -35,6 +36,8 @@ def _blank(prompt):
 
 def detect(prompt):
     """(mode, arg). Any observe/note/wrap command anywhere wins ("other"); then catch-up; then the normal job."""
+    if os.environ.get("SPEC_WRITER_RUNNING"):  # the spec writer's own model call quotes the person's words: never start a run from it
+        return None, ""
     if not isinstance(prompt, str) or "skill-builder" not in prompt:
         return None, ""
     scan = _blank(prompt)
@@ -132,6 +135,16 @@ def _get_pointer(hooks, sid):
         return ""
 
 
+def _spec_on(hooks, wd, sid):
+    """2b-Y: a run is live in this session: create the draft spec shell if missing and flag the session for the spec reporter
+    and writer (lib/sb_spec.py). Never raises."""
+    try:
+        import sb_spec
+        sb_spec.activate(_plug(hooks), wd, sid)
+    except Exception as e:
+        print("sb_start.py: spec activate failed: %s: %s" % (type(e).__name__, str(e)[:200]), file=sys.stderr)
+
+
 def _log_person(run_dir, pid):
     try:
         with open(os.path.join(run_dir, "person.log"), "a", encoding="utf-8") as f:
@@ -171,7 +184,16 @@ def per_turn(stage_runner, hooks, cwd, sid):
     """The one-line run state for a later prompt while a skill-builder run is live; [] otherwise."""
     try:
         a = active_run(stage_runner, hooks, cwd, sid)
-        return [_run_line(a[1], a[0])] if a else []
+        if not a:
+            return []
+        out = [_run_line(a[1], a[0])]
+        try:  # 2b-Y B4: the bars from code, a bar mismatch, the files read last turn
+            import sb_spec
+            out += sb_spec.turn_lines(hooks, a[0], sid)
+        except Exception as e:
+            out.append("per-turn bars unavailable: %s" % type(e).__name__)
+            print("sb_start.py: per-turn bars failed: %s: %s" % (type(e).__name__, str(e)[:200]), file=sys.stderr)
+        return out
     except Exception:
         return []
 
@@ -179,6 +201,12 @@ def per_turn(stage_runner, hooks, cwd, sid):
 def begin(stage_runner, hooks, cwd, sid, pid, name):
     """The normal job: status first; resume an active run, otherwise start. Returns the lines to inject."""
     try:
+        try:
+            import sb_spec
+            if not sb_spec.claim("begin", sid, pid):
+                return []   # the twin copy of this hook (same prompt) is starting or resuming the run; one run only
+        except ImportError:
+            pass
         card = _card(hooks)
         if not card:
             return _fail("the skill builder's card.json was not found next to the plugin")
@@ -225,6 +253,7 @@ def begin(stage_runner, hooks, cwd, sid, pid, name):
         if rc2 != 0 or not st2:
             return _fail("the step runner %s ran but its status could not be read afterwards" % verb)
         _set_pointer(hooks, wd, sid)
+        _spec_on(hooks, wd, sid)
         path = os.path.join(wd, "runs", st2.get("run") or "", "stage", "%02d.prompt.md" % int(st2.get("index") or 1))
         return [_run_line(st2, wd)] + notes + _emit(path, p.stdout + p.stderr)
     except Exception as e:  # never raise into the prompt hook
@@ -294,6 +323,7 @@ def catchup(stage_runner, hooks, sid, pid, arg):
         with open(out1, "w", encoding="utf-8") as f:
             f.write(bodies[1] + "\nCode word: %s\n" % (code.group(0) if code else ""))
         _set_pointer(hooks, folder, sid)
+        _spec_on(hooks, folder, sid)
         chk = _run(hooks, ["check", "--workdir", folder], sid)
         ok = chk.returncode == 0
         return [_run_line(st2, folder),

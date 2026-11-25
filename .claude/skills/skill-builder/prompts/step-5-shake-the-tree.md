@@ -55,7 +55,7 @@ question uses the house style's question block and carries all three: *Recommend
 *Confidence:* high, medium or low · *Load-bearing:* high, medium or low.
 - The screen top is the step line, "**You're on step 5 of 6: shake the tree.**" and one sentence, then (on a findings
   page) the page bar, then the 👉 line ("Read this section and answer the questions at the bottom."), exactly as Screen A has them. The bottom opens with the `# QUESTIONS` heading,
-  then the bar from code. The bar line and its footer phrase come from code; no figure from code this turn → no bar line, and the heading stays.
+  then the bar from code. The bar line and its footer phrase come from code; no figure from code this turn → no bar line, and the heading stays. When this turn's `RUN:` line is followed by `PAGE BAR (from code ...)` or `FIGURE (from code)` lines, print them exactly as given, never typed from memory or redrawn; a line that says unavailable or none means show no bar.
   The figure line is the output of `scripts/completion.py --spec <packet folder>/draft-spec.md`, printed as is; never
   computed by the AI.
 - **The findings come in pages, six to a page.** Once the findings checker has passed them, set up the page file:

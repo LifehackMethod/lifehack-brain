@@ -52,7 +52,7 @@ style's question block and carries all three: *Recommendation:* what you would d
 low · *Load-bearing:* high, medium or low.
 - The screen top is the step line, "**You're on step 4 of 6: role-play it.**" and one sentence, then the 👉 line ("Read this section and answer the questions at the bottom."),
   exactly as Screen A has them. The bottom opens with the `# QUESTIONS` heading, then the bar from code. The bar line
-  and its footer phrase come from code; no figure from code this turn → no bar line, and the heading stays.
+  and its footer phrase come from code; no figure from code this turn → no bar line, and the heading stays. When this turn's `RUN:` line is followed by `PAGE BAR (from code ...)` or `FIGURE (from code)` lines, print them exactly as given, never typed from memory or redrawn; a line that says unavailable or none means show no bar.
 - Every reply ends with the house style's closing line:
   "Keep discussing this round, or ready to move on? `/next` · `/back`"
 - Each acted screen goes inside the content slot, in the skill's own frame: the house style's Screen A with the

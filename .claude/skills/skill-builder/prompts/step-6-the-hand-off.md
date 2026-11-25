@@ -52,7 +52,7 @@ other question appears on the screen.
 - The opening is short: the step line and ONE sentence of where we are, then the 👉 line as Screen B has it ("Read
   this section; what to do next is at the bottom."). Screen B has no `# QUESTIONS` heading.
 - The bar's first line reads `🛠 Skill builder · Step 6 of 6: The hand-off` (emoji and name in bold, as the house
-  style shows). The bar line and its footer phrase come from code; no figure from code this turn → no bar line. The figure line is the output of `scripts/completion.py --spec <packet folder>/draft-spec.md`, printed as is; never computed by the AI. The
+  style shows). The bar line and its footer phrase come from code; no figure from code this turn → no bar line. When this turn's `RUN:` line is followed by `PAGE BAR (from code ...)` or `FIGURE (from code)` lines, print them exactly as given, never typed from memory or redrawn; a line that says unavailable or none means show no bar. The figure line is the output of `scripts/completion.py --spec <packet folder>/draft-spec.md`, printed as is; never computed by the AI. The
   bar carries no questions.
 - The closing line takes its leader form: "Type `/next` to hand it over, or `/back` if you want to change
   something."

@@ -47,6 +47,7 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 # UPDATED: 2026-11-25 (observe mode: one file test, then a detached reviewer when this session is watching a skill; see the step after the session id is read)
 #      observe mode (2026-11-25, brief 2.1): if ~/.claude/run/observe/observe-sess-<session>.flag exists, launch system/tools/observe_review.sh
 #          detached (one per session) and carry on; never waits, never blocks, never changes this hook's decision. Unarmed = one file test.
+#      spec writer + bar check (2026-11-25, 2b-Y): spec-sess-<session>.flag present -> detached lib/spec_write.sh (one at a time) and lib/sb_spec.py stop; absent = one file test.
 # 2026-11-02
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
@@ -78,6 +79,22 @@ if [ -f "$OBSD/observe-sess-$SID.flag" ]; then
       echo "end_of_turn_checks: observe mode could not save the stop payload; no review this turn" >&2
     fi
   fi
+fi
+# SPEC WRITER + BAR CHECK (round 2b-Y): if a skill-builder run is live in THIS session (flag set by the run starter), launch the
+# detached spec writer (one at a time, same pattern as above) and run the cheap bar/read-list check. No flag = ONE file test.
+if [ -f "$OBSD/spec-sess-$SID.flag" ]; then
+  _spec_run=""
+  [ -f "$OBSD/spec-write-$SID.pid" ] && kill -0 "$(cat "$OBSD/spec-write-$SID.pid" 2>/dev/null)" 2>/dev/null \
+    && [ -n "$(find "$OBSD/spec-write-$SID.pid" -mmin -10 2>/dev/null)" ] && _spec_run=1
+  if [ -z "$_spec_run" ]; then
+    if printf '%s' "$P" > "$OBSD/spec-stop-$SID.json"; then
+      nohup bash "$_lhb_dir/lib/spec_write.sh" "$OBSD/spec-stop-$SID.json" "$SID" </dev/null >>"$OBSD/spec-writer.log" 2>&1 &
+      echo $! > "$OBSD/spec-write-$SID.pid"; disown
+    else
+      echo "end_of_turn_checks: spec writer could not save the stop payload; no spec update this turn" >&2
+    fi
+  fi
+  printf '%s' "$P" | python3 "$_lhb_dir/lib/sb_spec.py" stop "$SID" >/dev/null || echo "end_of_turn_checks: the bar check failed (see ~/.claude/run/observe/spec-errors.log)" >&2
 fi
 DIR="${LHB_TURN_WRITES_DIR:-$HOME/.claude/run/turn-writes}"; LIST="$DIR/$SID.list"
 # push warnings (fc_private_push_mode=warn): unreported findings of a push this session made -> PWMSG (empty = nothing owed)

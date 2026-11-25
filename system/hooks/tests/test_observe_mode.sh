@@ -290,7 +290,7 @@ variant ups-no-clear        system/hooks/observe_ups.sh 'os.replace(inbox, os.pa
 variant ups-no-sysmsg       system/hooks/observe_ups.sh 'out["systemMessage"] = ' 'out["note"] = ' I1
 variant ups-no-cap          system/hooks/observe_ups.sh 'for i, l in enumerate(lines[:5], 1):' 'for i, l in enumerate(lines, 1):' I3
 variant ups-mangles-note    system/hooks/observe_ups.sh '(time.strftime("%Y-%m-%d %H:%M:%S"), rest))' '(time.strftime("%Y-%m-%d %H:%M:%S"), rest.replace(chr(96), "").replace("$", "")))' N1
-variant ups-quiet-path-slow system/hooks/observe_ups.sh '[ -n "$CMD" ] || [ -s "$INBOX" ] || exit 0' 'python3 -c pass; mkdir -p "$OD"' U3
+variant ups-quiet-path-slow system/hooks/observe_ups.sh '[ -n "$CMD" ] || [ -s "$INBOX" ] || [ -f "$OD/spec-sess-$SID.flag" ] || exit 0' 'python3 -c pass; mkdir -p "$OD"' U3
 
 variant ups-mode-optional   system/hooks/observe_ups.sh 'skill-builder[ \t]+(observe|note|wrap)(?:' 'skill-builder(?:[ \t]+(observe|note|wrap))?(?:' M1
 variant ups-mode-no-boundary system/hooks/observe_ups.sh '(observe|note|wrap)(?:[ \t]*[:\-—][ \t\r\n]*|[ \t\r\n]+|$)"' '(observe|note|wrap)"' M2

@@ -54,7 +54,7 @@ and carries all three: *Recommendation:* what you would do · *Confidence:* high
 high, medium or low.
 - The screen top is the step line, "**You're on step 1 of 6: what you want.**" and one sentence, then the 👉 line ("Read this section and answer the questions at the bottom.") ("Read this section and answer the questions at the bottom."),
   exactly as Screen A has them. The bottom opens with the `# QUESTIONS` heading, then the bar from code. The bar line
-  and its footer phrase come from code; no figure from code this turn → no bar line, and the heading stays.
+  and its footer phrase come from code; no figure from code this turn → no bar line, and the heading stays. When this turn's `RUN:` line is followed by `PAGE BAR (from code ...)` or `FIGURE (from code)` lines, print them exactly as given, never typed from memory or redrawn; a line that says unavailable or none means show no bar.
 - Step 1 has no step to go back to, so its closing line offers `/next` only:
   "Keep discussing this round, or ready to move on? `/next`"
 

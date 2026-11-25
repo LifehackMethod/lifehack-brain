@@ -6,7 +6,10 @@ is rendered for the draft spec.
 Sub-step: computes the draft spec's completion figure BY CODE, never by the AI (form's "READY FOR
 THE PLANNER?", and spec §10: informs and never insists).
 Usage:
-    completion.py --spec <path to draft-spec.md> [--timeout 20]
+    completion.py --spec <path to draft-spec.md> [--timeout 20] [--counts]
+    (also imported by system/hooks/lib/sb_spec.py, the spec reporter: counts() gives total / filled / confirmed, so there is
+    ONE counter; --counts prints those three numbers. A form blank whose `>` is on a later line, and the paragraph that
+    follows an *Example:* line, are handled the same way for both.)
 
 What counts (from the form's READY FOR THE PLANNER section + spec extract):
   A SLOT is a line in the counted sections (COVER SHEET through §11, RESEARCH FOLDED IN, DECISIONS,
@@ -49,6 +52,8 @@ import sys
 DEFAULT_TIMEOUT = 20  # seconds
 
 BLANK_RE = re.compile(r"<[^<>]{1,300}>")
+# a form blank whose closing `>` is on a later line (a long instruction wraps): its opening marker alone says "unfilled"
+OPEN_BLANK_RE = re.compile(r"<\[(?:ask|builder|after build)\]")
 OPEN_ITEM_RE = re.compile(r"^\s*\d+\.\s")
 D_CITE_RE = re.compile(r"\(D\d+\)")
 SECTION_RE = re.compile(r"^##\s+")
@@ -68,14 +73,19 @@ def receipt(verdict, reason, untested):
     print("RECEIPT completion.py %s %s | untested: %s" % (verdict, reason, untested))
 
 
+CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
+
+
 def _classify(line):
-    """Return 'done', 'not-done' or None (not a slot). First rule that fires wins."""
+    """Return 'done', 'not-done' or None (not a slot). First rule that fires wins. A mark inside a `code span` is the
+    form MENTIONING the mark (its own instructions), never a mark on the line: code spans are blanked first."""
+    line = CODE_SPAN_RE.sub(" ", line)
     stripped = line.strip()
     if "[stale]" in line or stripped.endswith("· stale") or stripped.endswith("- stale"):
         return "not-done"
     if "[inferred]" in line or "[hypothesis]" in line:
         return "not-done"
-    if BLANK_RE.search(line):
+    if BLANK_RE.search(line) or OPEN_BLANK_RE.search(line):
         return "not-done"
     if "[builder's choice]" in line:
         return "done"
@@ -84,19 +94,34 @@ def _classify(line):
     return None
 
 
-def count(spec_text):
-    total = done = 0
+def _filled(line):
+    """A slot line is FILLED when no blank is left on it (an unconfirmed [inferred] line is filled, not confirmed)."""
+    line = CODE_SPAN_RE.sub(" ", line)
+    return not (BLANK_RE.search(line) or OPEN_BLANK_RE.search(line))
+
+
+def scan(spec_text):
+    """Yield (offset, line, section) for every line that can be a slot: not in a fence, not an *Example:* paragraph (the
+    example line and its continuation up to the next blank line), not in a skipped section. section is "count" or "open"
+    (the numbered items of the open section). One reader of the form's layout, used by counts() and by the spec writer."""
     section = "count"  # lines before the first heading count too
     in_fence = False
-    for raw in spec_text.splitlines():
-        line = raw
+    in_example = False
+    off = 0
+    for raw in spec_text.splitlines(True):
+        start, off = off, off + len(raw)
+        line = raw.rstrip("\r\n")
         if line.strip().startswith("```"):
             in_fence = not in_fence
             continue
         if in_fence:
             continue
+        if not line.strip():
+            in_example = False
+            continue
         if SECTION_RE.match(line):
             heading = line.strip()
+            in_example = False
             if any(heading.startswith(p) for p in SKIP_SECTIONS):
                 section = "skip"
             elif heading.startswith(OPEN_SECTION):
@@ -105,20 +130,47 @@ def count(spec_text):
                 section = "count"
             continue
         if "*Example:*" in line:
+            in_example = True
             continue
+        if in_example or section == "skip":
+            continue
+        yield start, line, section
+
+
+def counts(spec_text):
+    """(total slots, filled slots, confirmed slots). Confirmed = what count() calls done. An open §8 item is one
+    unfilled, unconfirmed slot."""
+    total = filled = confirmed = 0
+    for _off, line, section in scan(spec_text):
         if section == "open":
             if OPEN_ITEM_RE.match(line):
                 total += 1
-            continue
-        if section != "count":
             continue
         verdict = _classify(line)
         if verdict is None:
             continue
         total += 1
+        if _filled(line):
+            filled += 1
         if verdict == "done":
-            done += 1
+            confirmed += 1
+    return total, filled, confirmed
+
+
+def count(spec_text):
+    """(total slots, done slots): done = filled AND confirmed."""
+    total, _filled_n, done = counts(spec_text)
     return total, done
+
+
+def figure_line(spec_text):
+    """The house style's figure line `<bar> <figure>% · *<phrase>*`, or "" when the spec has no countable slot."""
+    total, done = count(spec_text)
+    if total == 0:
+        return ""
+    figure = int(round(100.0 * done / total))
+    bar, phrase = bar_and_phrase(figure)
+    return "%s %d%% · *%s*" % (bar, figure, phrase)
 
 
 def bar_and_phrase(figure):
@@ -138,6 +190,8 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--spec", required=True, help="path to the draft spec (markdown, on the skill spec form)")
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
+    ap.add_argument("--counts", action="store_true",
+                    help="print `<total> <filled> <confirmed>` (the numbers behind the spec reporter's line) instead of the figure line")
     args = ap.parse_args(argv)
 
     if args.timeout <= 0:
@@ -173,6 +227,9 @@ def main(argv):
             receipt("COULD-NOT-CHECK", "spec unreadable", "the spec was not counted")
             return 2
 
+        if args.counts:
+            print("%d %d %d" % counts(text))
+            return 0
         total, done = count(text)
         if total == 0:
             # No figure to give: prints NOTHING, exit 0 (judgment call recorded in the docstring).

@@ -19,17 +19,18 @@ trap 'lhb_journal_fire "$?" "observe_ups.sh" "UserPromptSubmit" "" 2>/dev/null |
 # SIGNPOST: design = brief 2.1 (build-skill-v2). The reviewer = system/tools/observe_review.sh; the Stop launcher =
 #      end_of_turn_checks.sh. Cap: 5 lines, ~1,200 characters on screen.
 # FAIL_POSTURE: degrade-safe — any error exits 0 with no output (a prompt hook's failure must never stop a prompt).
-# UPDATED: 2026-11-25 (2.4: optional : - — after the mode word; notes go to observe-notes.md; 2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
+# UPDATED: 2026-11-25 (2b-Y: while a skill-builder run is live (flag spec-sess-<sid>.flag) the ONE spec line comes first in the merged systemMessage, reviewer lines capped at 4; 2.4: optional : - — after the mode word; notes go to observe-notes.md; 2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
 # ─────────────────────────────────────────────────────────────────────────────
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
 [[ $P =~ $re_sid ]] || exit 0; SID="${BASH_REMATCH[1]}"
 OD="$HOME/.claude/run/observe"; INBOX="$OD/inbox-$SID.txt"
 CMD=""; case "$P" in *skill-builder*) CMD=1;; esac
-[ -n "$CMD" ] || [ -s "$INBOX" ] || exit 0          # the quiet path: nothing typed, nothing waiting
+[ -n "$CMD" ] || [ -s "$INBOX" ] || [ -f "$OD/spec-sess-$SID.flag" ] || exit 0   # the quiet path: nothing typed, nothing waiting, no skill-builder run live
 TOOLS="$(cd "${_lhb_dir}/../tools" 2>/dev/null && pwd -P)"
 [ -n "$TOOLS" ] || exit 0
-PYTHONUTF8=1 PYTHONIOENCODING=utf-8 CLAUDE_CODE_SESSION_ID="$SID" OD="$OD" TOOLS="$TOOLS" python3 - "$P" 2>/dev/null <<'PY'
+HOOKS="$(cd "${_lhb_dir}" 2>/dev/null && pwd -P)"
+PYTHONUTF8=1 PYTHONIOENCODING=utf-8 CLAUDE_CODE_SESSION_ID="$SID" OD="$OD" TOOLS="$TOOLS" HOOKS="$HOOKS" python3 - "$P" 2>/dev/null <<'PY'
 import json, os, re, subprocess, sys, time
 TAG = "[harness-injected, not user input]"
 try:
@@ -88,6 +89,18 @@ if m:
         else:
             ctx.append("OBSERVE WRAP: no skill is being observed in this window (the watch was never armed here, was turned off, or timed out); ask the person which skill and notes folder to wrap")
 
+# 2b-Y B2: while a skill-builder run is live, ONE spec line goes first on screen and to the model (lib/sb_spec.py, code only)
+spec_line = None
+if os.path.isfile(os.path.join(od, "spec-sess-%s.flag" % sid)):
+    try:
+        hooks = os.environ["HOOKS"]
+        sys.path.insert(0, os.path.join(hooks, "lib"))
+        import sb_spec
+        spec_line = sb_spec.report(hooks, sid, j.get("prompt_id") if isinstance(j.get("prompt_id"), str) else "")
+    except Exception as e:
+        spec_line = "📋 Spec line unavailable: %s" % type(e).__name__
+        print("observe_ups.sh: spec report failed: %s: %s" % (type(e).__name__, str(e)[:200]), file=sys.stderr)
+
 inbox = os.path.join(od, "inbox-%s.txt" % sid)
 if os.path.isfile(inbox) and os.path.getsize(inbox) > 0:
     try:
@@ -96,7 +109,7 @@ if os.path.isfile(inbox) and os.path.getsize(inbox) > 0:
     except OSError:
         lines = []
     budget = 1200; kept = []
-    for i, l in enumerate(lines[:5], 1):
+    for i, l in enumerate(lines[:(4 if spec_line else 5)], 1):
         item = "%d. %s" % (i, l)
         if len(item) > budget:
             item = item[:max(budget - 1, 20)].rstrip() + "…"
@@ -105,13 +118,17 @@ if os.path.isfile(inbox) and os.path.getsize(inbox) > 0:
         if budget <= 0: break
     if kept: show = kept
 
-if not ctx and not show:
+if not ctx and not show and not spec_line:
     sys.exit(0)
 out = {}
 head = "🛠 Skill builder here:"
-if show:
+if spec_line:   # ONE merged message, five lines at most: the spec line first, then up to four reviewer lines
+    out["systemMessage"] = "\n".join([spec_line] + ["🛠 " + x for x in show[:4]])
+elif show:
     out["systemMessage"] = head + "\n" + "\n".join(show)
 parts = []
+if spec_line:
+    parts.append("%s %s" % (TAG, spec_line))
 if show:
     parts.append("%s %s\n%s" % (TAG, head, "\n".join(show)))
 for c in ctx:

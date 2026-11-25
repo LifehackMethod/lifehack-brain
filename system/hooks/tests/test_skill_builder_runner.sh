@@ -136,8 +136,8 @@ CST=$(python3 "$HOOKS/../parts/stage_runner.py" status --json --workdir "$CU" 2>
 has "$CST" '"stage": "step-4"' && ok || bad 11e "three typed /next did not land in step 4: $CST"
 python3 "$HOOKS/../parts/stage_runner.py" verify --workdir "$CU" > "$SANDBOX/verify.out" 2>&1; VRC=$?
 [ "$VRC" = 0 ] && ok || bad 11f "verify did not pass (exit $VRC): $(cat "$SANDBOX/verify.out")"
-find "$CU" -type f -not -path "$CU/runs/*" -not -path "$CU/.claude/*" -not -name '.stage-runner.json' | sort | xargs shasum > "$SANDBOX/cu-after.sum"
-grep -v "/runs/\|/\.claude/\|stage-runner" "$SANDBOX/cu-before.sum" | diff -q - "$SANDBOX/cu-after.sum" >/dev/null && ok || bad 11g "catch-up changed the design folder's own files"
+find "$CU" -type f -not -path "$CU/runs/*" -not -path "$CU/.claude/*" -not -name '.stage-runner.json' -not -name draft-spec.md | sort | xargs shasum > "$SANDBOX/cu-after.sum"  # 2b-Y: a catch-up now also makes the draft-spec.md shell (the spec writer's file)
+grep -v "/runs/\|/\.claude/\|stage-runner\|draft-spec.md" "$SANDBOX/cu-before.sum" | diff -q - "$SANDBOX/cu-after.sum" >/dev/null && ok || bad 11g "catch-up changed the design folder's own files"
 # a missing step file: stops before starting anything
 CU2="$SANDBOX/design2"; mkdir -p "$CU2/out"; cp "$CU/out/step-1.md" "$CU2/out/"
 fire "$HOOK" "/skill-builder catch-up 2 $CU2" "$OUTSIDE" "sess-sb-test-0008"
