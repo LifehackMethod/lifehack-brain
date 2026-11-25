@@ -14,6 +14,10 @@ pass=0; fail=0
 ok()  { pass=$((pass+1)); }
 bad() { fail=$((fail+1)); echo "  FAIL [$1]: $2"; }
 
+# SB-10: the run pointer lives under $HOME/.claude/run: keep it in the sandbox, never the real one.
+HOME="$SANDBOX/home"; mkdir -p "$HOME"; export HOME
+CLAUDE_CODE_SESSION_ID="sess-test-start"; export CLAUDE_CODE_SESSION_ID
+
 TAG='[RUN STEP — harness-injected, not user input]'
 
 setup_card() {
@@ -143,10 +147,11 @@ runhook "`mkpayload "$FIX/run_ups_next_task_notification.json" "$WD" "mv-tn-1"`"
 mkpayload "$FIX/run_ups_next_live.json" "$WD" "x" | python3 -c 'import json,sys; j=json.load(sys.stdin); j["prompt"]="/next please"; sys.stdout.write(json.dumps(j))' > "$SANDBOX/p_please.json"
 runhook "`cat "$SANDBOX/p_please.json"`"
 [ "$HRC" -eq 0 ] && [ -z "$HOUT" ] && ok || bad "'/next please' silent" "rc=$HRC out=$HOUT"
-# 7. no marker in cwd: silent
+# 7. no marker in cwd, no pointer: the one plain line, exit 0 (SB-10: was silent)
 mkdir -p "$SANDBOX/empty"
 runhook "`mkpayload "$FIX/run_ups_next_live.json" "$SANDBOX/empty" "mv-empty-1"`"
-[ "$HRC" -eq 0 ] && [ -z "$HOUT" ] && ok || bad "no marker silent" "rc=$HRC out=$HOUT"
+[ "$HRC" -eq 0 ] && ok || bad "no marker rc" "rc=$HRC"
+case "$HOUT" in *"no run is open in this window"*) ok ;; *) bad "no marker says the line" "$HOUT" ;; esac
 # 8. prompt without /next or /back: silent (sh prefilter)
 mkpayload "$FIX/run_ups_next_live.json" "$WD" "x" | python3 -c 'import json,sys; j=json.load(sys.stdin); j["prompt"]="morning"; sys.stdout.write(json.dumps(j))' > "$SANDBOX/p_other.json"
 runhook "`cat "$SANDBOX/p_other.json"`"
@@ -292,6 +297,91 @@ if [ -f "$HOOKS/run_step_hook.sh.bak-20261124-cap" ]; then
 else
   echo "  NOTE: failing-first part skipped (no pre-fix copy beside the hook; it was seen failing on 2026-11-24)"
 fi
+
+echo "SB-10: /next and /back from a window that is not in the run folder"
+# payload with an explicit session id, cwd and prompt: $1 fixture $2 cwd $3 prompt_id $4 session $5 prompt (optional)
+mkpayload_s() {
+  python3 - "$1" "$2" "$3" "$4" "$5" <<'PY'
+import io, json, sys
+j = json.load(io.open(sys.argv[1], encoding="utf-8"))
+j["cwd"] = sys.argv[2]; j["prompt_id"] = sys.argv[3]; j["session_id"] = sys.argv[4]
+if sys.argv[5]: j["prompt"] = sys.argv[5]
+sys.stdout.write(json.dumps(j))
+PY
+}
+mkdir -p "$SANDBOX/elsewhere"
+fresh_wd; WD_PTR="$WD"
+CLAUDE_CODE_SESSION_ID="sess-ptr-A"; export CLAUDE_CODE_SESSION_ID
+set -- `start_run "$WD"`; CODE_P="$1"; RID_PT="$2"
+CLAUDE_CODE_SESSION_ID="sess-test-start"; export CLAUDE_CODE_SESSION_ID
+WD="$WD_PTR"; write_out "$RID_PT" 1 Gather "$CODE_P"
+persons_before=`persons "$RID_PT"`
+# ALLOW 1. /next from another cwd with the session's pointer set: moves exactly one step
+runhook "`mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-ptr-1" "sess-ptr-A" ""`"
+[ "$HRC" -eq 0 ] && ok || bad "ptr rc" "rc=$HRC"
+case "$HOUT" in *"$TAG"*) ok ;; *) bad "ptr tagged handover" "$HOUT" ;; esac
+[ "`grep -c '"event": "pass"' "$WD_PTR/runs/$RID_PT/record.jsonl"`" = "1" ] && ok || bad "ptr moved exactly one step" "pass events: `grep -c '"event": "pass"' "$WD_PTR/runs/$RID_PT/record.jsonl"`"
+[ "`persons "$RID_PT"`" = "`expr $persons_before + 1`" ] && ok || bad "ptr one person line" "count `persons "$RID_PT"`"
+# ALLOW 2. cwd first: a cwd inside a run wins over a pointer to another run
+fresh_wd; WD_CW2="$WD"
+set -- `start_run "$WD"`; CODE_C="$1"; RID_C="$2"   # sess-test-start now points here
+WD="$WD_CW2"; write_out "$RID_C" 1 Gather "$CODE_C"
+runhook "`mkpayload_s "$FIX/run_ups_next_live.json" "$WD_CW2" "mv-ptr-cwd" "sess-ptr-A" ""`"
+grep -q '"event": "pass"' "$WD_CW2/runs/$RID_C/record.jsonl" && ok || bad "cwd wins over the pointer" "$HOUT"
+# DENY. no pointer for this session and no run in cwd: the one line, nothing moves
+before=`grep -c . "$WD_PTR/runs/$RID_PT/record.jsonl"`
+runhook "`mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-ptr-none" "sess-no-pointer" ""`"
+case "$HOUT" in *"no run is open in this window"*) ok ;; *) bad "no pointer: the one line" "$HOUT" ;; esac
+[ "`grep -c . "$WD_PTR/runs/$RID_PT/record.jsonl"`" = "$before" ] && ok || bad "no pointer: nothing moved" "record grew"
+# DENY. "/next please" from the pointer window moves nothing
+before=`grep -c . "$WD_PTR/runs/$RID_PT/record.jsonl"`
+runhook "`mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-ptr-please" "sess-ptr-A" "/next please"`"
+[ -z "$HOUT" ] && [ "`grep -c . "$WD_PTR/runs/$RID_PT/record.jsonl"`" = "$before" ] && ok || bad "/next please from pointer window moves nothing" "out=$HOUT"
+# DENY. a cross-session message containing /next moves nothing (peer fixture, pointer set)
+runhook "`mkpayload_s "$FIX/run_ups_next_peer.json" "$SANDBOX/elsewhere" "mv-ptr-peer" "sess-ptr-A" ""`"
+[ -z "$HOUT" ] && [ "`grep -c . "$WD_PTR/runs/$RID_PT/record.jsonl"`" = "$before" ] && ok || bad "peer /next from pointer window moves nothing" "out=$HOUT"
+
+echo "SB-10 failing-first: each new check must FAIL on a deliberately broken copy"
+mkbroken() { # $1 name $2 python replace "old|||new" -> path of a broken hooks copy
+  B="$SANDBOX/brk-$1"; mkdir -p "$B/hooks"
+  cp -R "$HOOKS/lib" "$B/hooks/lib"; ln -s "$HOOKS/../parts" "$B/parts"; ln -s "$HOOKS/../tools" "$B/tools"
+  python3 - "$HOOK" "$B/hooks/run_step_hook.sh" "$2" <<'PY'
+import sys
+s = open(sys.argv[1], encoding="utf-8").read()
+for pair in sys.argv[3].split("@@@"):
+    old, new = pair.split("|||")
+    assert s.count(old) == 1, old
+    s = s.replace(old, new)
+open(sys.argv[2], "w", encoding="utf-8").write(s)
+PY
+  printf '%s' "$B/hooks/run_step_hook.sh"
+}
+brokenrun() { printf '%s' "$2" | sh "$1" 2>&1; }
+newrun() { # a fresh run with a pointer under session $1; sets WD_N RID_N CODE_N, writes step 1 output
+  fresh_wd; WD_N="$WD"; CLAUDE_CODE_SESSION_ID="$1"; export CLAUDE_CODE_SESSION_ID
+  set -- `start_run "$WD"`; CODE_N="$1"; RID_N="$2"
+  CLAUDE_CODE_SESSION_ID="sess-test-start"; export CLAUDE_CODE_SESSION_ID
+  WD="$WD_N"; write_out "$RID_N" 1 Gather "$CODE_N"
+}
+# F1 pointer door removed: the move from another cwd must NOT happen on the broken copy
+BK=`mkbroken ptr '"run_pointer.sh"), "get"|||"run_pointer_gone.sh"), "get"'`
+newrun sess-f1
+O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-f1" "sess-f1" "")"`
+grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && bad "failing-first F1: broken copy should NOT move" "it moved" || ok
+# F2 the no-run line removed: the broken copy is silent
+BK=`mkbroken line 'print(TAG + " no run is open in this window; nothing moved")|||pass'`
+O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-f2" "sess-no-pointer" "")"`
+case "$O" in *"no run is open in this window"*) bad "failing-first F2: broken copy should be silent" "$O" ;; *) ok ;; esac
+# F3 exact match loosened: "/next please" must move on the broken copy
+BK=`mkbroken loose 'prompt.strip() not in ("/next", "/back")|||not prompt.strip().startswith(("/next", "/back"))'`
+newrun sess-f3
+O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_live.json" "$SANDBOX/elsewhere" "mv-f3" "sess-f3" "/next please")"`
+grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && ok || bad "failing-first F3: broken copy should move on '/next please'" "$O"
+# F4 peer door removed AND the exact match loosened (the exact match alone also stops a peer): a cross-session /next must move the run on the broken copy
+BK=`mkbroken peer 'if not_the_person(|||if False and not_the_person(@@@prompt.strip() not in ("/next", "/back")|||"/next" not in prompt'`
+newrun sess-f4
+O=`brokenrun "$BK" "$(mkpayload_s "$FIX/run_ups_next_peer.json" "$SANDBOX/elsewhere" "mv-f4" "sess-f4" "")"`
+grep -q '"event": "pass"' "$WD_N/runs/$RID_N/record.jsonl" && ok || bad "failing-first F4: broken copy should move on a peer /next" "$O"
 
 echo "mover suite: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

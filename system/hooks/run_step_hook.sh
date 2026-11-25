@@ -14,13 +14,17 @@ trap 'lhb_journal_fire "$?" "run_step_hook.sh" "UserPromptSubmit" "" 2>/dev/null
 #      EXACTLY /next or /back (trimmed), not_the_person false (peer messages and task
 #      notifications start with <cross-session-message / <task-notification — ups_triggers.py),
 #      and a run marker found from the payload cwd. "/next please" is not the command. A peer or a
-#      notification never moves a run.
+#      notification never moves a run. SB-10 (2026-11-25): the run is looked for in the payload cwd
+#      first, then in the session's run pointer (system/tools/run_pointer.sh get, session id from the
+#      payload), so /next and /back work from a window that is not in the run folder. An exact typed
+#      /next or /back with no run found prints one tagged line ("no run is open in this window").
 # REDIRECT: the runner's own refusals name the person's word ("only the person's typed /next moves
 #      this step"); a failed step check says "not finished: <codes>" — the person types /next again.
 # SIGNPOST: runner contract in system/parts/stage_runner.py header + RUNNER.md; the spec is the
 #      run-pickup spec (G2). The AI-side rule lives in /next and /back's own text: no [RUN STEP]
 #      line this turn means the mover did not run — tell the person.
-# UPDATED: 2026-11-23 (Phase 4c fix pass: person.log for every person prompt,
+# UPDATED: 2026-11-25 (SB-10: run pointer second door; no-run line for an exact command).
+#      2026-11-23 (Phase 4c fix pass: person.log for every person prompt,
 #      mover.log written before person-turn, damaged-marker line, capped failure
 #      output naming the stage prompt file, empty-payload line, journal.sh sourced
 #      a tagged line for a payload missing prompt_id or cwd (phase 4e),
@@ -64,8 +68,29 @@ try:
 except stage_runner.Damaged as e:
     print(TAG + " the run marker is damaged (%s); nothing ran; tell the person" % str(e)[:300])
     sys.exit(0)
+is_cmd = isinstance(prompt, str) and prompt.strip() in ("/next", "/back")
 if not found:
-    sys.exit(0)  # no run here: silent
+    # SB-10: the window's cwd is not the run folder. Second door: the session's run pointer, written
+    # by the runner's start command (system/tools/run_pointer.sh over lib/flag.sh). cwd always wins first.
+    env = dict(os.environ)
+    sid = j.get("session_id")
+    if isinstance(sid, str) and sid:
+        env["CLAUDE_CODE_SESSION_ID"] = sid
+    try:
+        ptr = subprocess.run(["bash", os.path.join(hooks, "..", "tools", "run_pointer.sh"), "get"],
+                             capture_output=True, text=True, env=env, timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        ptr = ""
+    if ptr and os.path.isdir(ptr):
+        try:
+            found = stage_runner.find_run(ptr)
+        except stage_runner.Damaged as e:
+            print(TAG + " the run marker is damaged (%s); nothing ran; tell the person" % str(e)[:300])
+            sys.exit(0)
+if not found:
+    if is_cmd:  # the person typed the command but no run can be found: one plain line, nothing moves
+        print(TAG + " no run is open in this window; nothing moved")
+    sys.exit(0)  # no run here: silent for any other prompt
 wd, run_dir = found
 if not os.path.isabs(run_dir):
     run_dir = os.path.join(wd, run_dir)

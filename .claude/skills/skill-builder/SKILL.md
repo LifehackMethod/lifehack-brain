@@ -48,7 +48,7 @@ Not skill folders, so there is no file to find:
 
 ## Procedure
 Five steps, each a conversation with the person (no step runs alone). The shared step runner moves between them: the person types `/next` to go forward and `/back` to go back one step. This skill has no move-on logic of its own.
-1. **What you want.** Show the approved opening screen (`references/opening-screen.md`), then work from the highest altitude down to the outcome, the harness check, and a size sense.
+1. **What you want.** If the window is not in the run folder, say one line first: `/next` and `/back` still work from here. Then show the approved opening screen (`references/opening-screen.md`), then work from the highest altitude down to the outcome, the harness check, and a size sense.
 2. **The proposed steps.** One overview screen, then a walk-through two steps per screen, with the step count (command or skill).
 3. **Role-play it.** Optional. Act the skill out by hand, screen by screen, in the person's chair.
 4. **Shake the tree.** Optional. A five-angle review of the spec, findings six at a time, then a validation moment.

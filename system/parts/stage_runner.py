@@ -618,6 +618,17 @@ _OLD_BODIES = {
 }
 
 
+def record_pointer(wd):
+    """SB-10: tell the mover, per session, where this run folder is, so /next and /back work from a
+    window whose cwd is elsewhere (system/tools/run_pointer.sh, over hooks/lib/flag.sh).
+    Best effort: a failure here never stops a start."""
+    sh = os.path.join(HERE, "..", "tools", "run_pointer.sh")
+    try:
+        subprocess.run(["bash", sh, "set", wd], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def ensure_commands(wd):
     """Write /next and /back as project commands (an unregistered slash command never
     reaches the hooks -- the rig's P3 lesson). Skill hook rows are registered through
@@ -938,6 +949,7 @@ def cmd_start(a):
     json.dump({"run_dir": run_dir, "run_id": rid, "card": os.path.abspath(a.card)},
               open(os.path.join(wd, MARKER), "w", encoding="utf-8"))
     ensure_commands(wd)
+    record_pointer(wd)
     prompt = render_prompt(card, run_dir, 0, code)
     print("run %s started in %s (%s, %d stages)\ncode word for stage %s (print once, never store): %s\n\n%s"
           % (rid, wd, card.get("skill", ""), len(card["stages"]), first, code, prompt))
@@ -1337,6 +1349,7 @@ def selftest():
         print(f" [{'PASS' if passed else 'FAIL'}] {label}{(' -- ' + detail) if detail else ''}")
 
     print("stage_runner --selftest (the no-AI finish check, plus failing-first proofs)")
+    os.environ["HOME"] = tempfile.mkdtemp(prefix="sr-selftest-home.")  # the run pointer never touches the real one
 
     import shutil
 
