@@ -19,7 +19,7 @@ trap 'lhb_journal_fire "$?" "observe_ups.sh" "UserPromptSubmit" "" 2>/dev/null |
 # SIGNPOST: design = brief 2.1 (build-skill-v2). The reviewer = system/tools/observe_review.sh; the Stop launcher =
 #      end_of_turn_checks.sh. Cap: 5 lines, ~1,200 characters on screen.
 # FAIL_POSTURE: degrade-safe — any error exits 0 with no output (a prompt hook's failure must never stop a prompt).
-# UPDATED: 2026-11-25 (2.2: modes of /skill-builder, no separate commands)
+# UPDATED: 2026-11-25 (2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
 # ─────────────────────────────────────────────────────────────────────────────
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
@@ -45,11 +45,16 @@ def flag(*args):
     r = subprocess.run(["bash", flagtool] + list(args), capture_output=True, text=True, timeout=20)
     return r.returncode, r.stdout.strip()
 
-m = re.match(r"^/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", prompt)   # a plain /skill-builder [skill] has no mode word: untouched
+# Anywhere in the prompt, when the command starts a word (start of message or after whitespace) and is not inside a
+# backtick span or fence (blanked to spaces, same length, so offsets still index the real prompt; same approach as
+# buried_command_hint.sh). First match wins: one mode per message. A plain /skill-builder [skill] has no mode word: untouched.
+scan = re.sub(r"```.*?```", lambda x: " " * len(x.group(0)), prompt, flags=re.S)
+scan = re.sub(r"`[^`\n]*`", lambda x: " " * len(x.group(0)), scan)
+m = re.search(r"(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", scan)
 if m:
-    verb = m.group(1); rest = prompt[m.end():]
+    verb = m.group(1); rest = prompt[m.end():]; before = prompt[:m.start()].rstrip()
     if verb == "observe":
-        arg = rest.strip()
+        arg = (rest.split() or [""])[0]
         if arg in ("off", "clear", "stop"):
             rc, out = flag("clear")
             ctx.append("OBSERVE OFF: no skill is being watched in this window now.")
@@ -71,7 +76,7 @@ if m:
             try:
                 os.makedirs(nd, exist_ok=True)
                 with open(os.path.join(nd, "notes.md"), "a", encoding="utf-8", newline="", errors="surrogatepass") as f:
-                    f.write("\n### %s\n%s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), rest))
+                    f.write("\n### %s\n%s%s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), ("(before the command) %s\n" % before) if before.strip() else "", rest))
                 ctx.append("OBSERVE NOTE FILED: the person's words went into %s word for word. The reviewer will weigh the note after this turn." % os.path.join(nd, "notes.md"))
             except OSError as e:
                 ctx.append("OBSERVE NOTE NOT FILED: could not write the notes file (%s)" % str(e)[:150])

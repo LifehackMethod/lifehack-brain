@@ -172,7 +172,9 @@ PY'
   chk "[N3] nothing observed: ONE line, nothing written" '[ "$(printf "%s" "$OUT" | python3 -c "import json,sys; print(json.load(sys.stdin)[\"hookSpecificOutput\"][\"additionalContext\"].count(\"\n\")+1)")" = 1 ] && printf "%s" "$OUT" | grep -q "NOTE NOT FILED: no skill is being observed" && [ ! -e "$HM/brain/drafts/builds/s5" ]'
   B4="$(wc -c < "$NB/notes.md")"; OUT="$(ups s3 "/skill-builder note   ")"
   chk "[N4] empty note: not filed" 'printf "%s" "$OUT" | grep -q "NOTE NOT FILED: the note was empty" && [ "$(wc -c < "$NB/notes.md")" = "$B4" ]'
-  chk "[N5] a prompt that only mentions the command in prose is not a note" 'B=$(wc -c < "$NB/notes.md"); [ -z "$(ups s3 "please explain what /skill-builder note does")" ] && [ "$(wc -c < "$NB/notes.md")" = "$B" ]'
+  chk "[N5] a prompt that mentions the command inside backticks is not a note" 'B=$(wc -c < "$NB/notes.md"); [ -z "$(ups s3 "please explain what \`/skill-builder note\` does")" ] && [ -z "$(ups s3 "see \`\`\`
+/skill-builder note x
+\`\`\` there")" ] && [ "$(wc -c < "$NB/notes.md")" = "$B" ]'
   OUT="$(ups s3 "/skill-builder wrap")"
   chk "[W1] wrap: names the skill, the notes file and the findings file" 'printf "%s" "$OUT" | grep -qF "skill audit; notes file $NB/notes.md; findings file $NB/findings.md"'
   chk "[W1] wrap with nothing observed says so" 'ups s6 "/skill-builder wrap" | grep -q "no skill is being observed in this window"'
@@ -192,6 +194,23 @@ for w in ("OBSERVE ARMED","SKILL TO START","OBSERVE NOTE FILED","Noted.","OBSERV
     assert w in m, w
 assert "skill-builder observe <skill>" in s.split("---")[1]
 PY'
+  echo "== MID-SENTENCE: the command works anywhere, outside backticks =="
+  chk "[S1] mid-sentence observe arms the skill named after it" 'ups s11 "Hey, I am launching it /skill-builder observe skill-builder" | grep -q "OBSERVE ARMED: Observing skill-builder" && grep -q "^skill_file=.*skill-builder/SKILL.md$" "$OD/observe-sess-s11.flag"'
+  chk "[S1] ... with words after the skill name, the skill is the next word only" 'ups s12 "go /skill-builder observe audit please and thanks" | grep -q "OBSERVE ARMED: Observing audit;" && ups s12 "ok /skill-builder observe off now" | grep -q "OBSERVE OFF" && [ ! -f "$OD/observe-sess-s12.flag" ]'
+  arm s13 audit >/dev/null; rm -f "$NB/notes.md"
+  SN=$'quick thought\nsecond $line `x`'
+  ups s13 "$SN /skill-builder note this moved on too early, \"q\" \$HOME" > "$HM/s2.out"
+  chk "[S2] mid-sentence note: the before-text and the note are filed byte for byte" 'python3 - "$NB/notes.md" "$SN" <<"PY"
+import re,sys
+t=open(sys.argv[1],encoding="utf-8",newline="").read()
+m=re.fullmatch(r"\n### \d{4}-\d\d-\d\d \d\d:\d\d:\d\d\n\(before the command\) (.*)\n(.*)\n", t, re.S)
+assert m and m.group(1)==sys.argv[2] and m.group(2)=="this moved on too early, \"q\" $HOME", repr(t)
+PY'
+  chk "[S2] ... and the model is told it was filed" 'grep -q "OBSERVE NOTE FILED" "$HM/s2.out"'
+  chk "[S3] a command inside backticks mid-sentence arms nothing" '[ -z "$(ups s14 "we said \`/skill-builder observe x\` earlier")" ] && [ -z "$(ups s14 "we said \`run /skill-builder observe x\` earlier")" ] && [ ! -f "$OD/observe-sess-s14.flag" ]'
+  chk "[S3] a command glued to a word (path-shaped) is not a command" '[ -z "$(ups s14 "see skills/skill-builder observe x")" ] && [ -z "$(ups s14 "see a/skill-builder observe x")" ] && [ ! -f "$OD/observe-sess-s14.flag" ]'
+  chk "[S4] mid-sentence /skill-builder monthly-budget: nothing" '[ -z "$(ups s14 "/skill-builder monthly-budget please")" ] && [ -z "$(ups s14 "try the /skill-builder monthly-budget thing")" ]'
+  chk "[S5] first match wins: one mode per message" 'ups s15 "a /skill-builder observe audit then /skill-builder wrap" | python3 -c "import json,sys; c=json.load(sys.stdin)[\"hookSpecificOutput\"][\"additionalContext\"]; assert \"OBSERVE ARMED\" in c and \"OBSERVE WRAP\" not in c, c"'
   echo "== NO MODE WORD: the normal job is untouched =="
   B4="$(wc -c < "$NB/notes.md")"
   chk "[M1] plain /skill-builder: no output, nothing armed" '[ -z "$(ups s8 "/skill-builder")" ] && [ ! -f "$OD/observe-sess-s8.flag" ]'
@@ -256,6 +275,11 @@ variant ups-mode-optional   system/hooks/observe_ups.sh 'skill-builder[ \t]+(obs
 variant ups-mode-no-boundary system/hooks/observe_ups.sh '(observe|note|wrap)(?:[ \t\r\n]+|$)"' '(observe|note|wrap)"' M2
 variant ups-old-form-kept   system/hooks/observe_ups.sh 'skill-builder[ \t]+(observe|note|wrap)(?:' 'skill-builder[ \t-]+(observe|note|wrap)(?:' M3
 variant ups-no-prefix       system/hooks/observe_ups.sh '^/(?:[A-Za-z0-9_-]+:)?skill-builder' '^/skill-builder' M4
+variant ups-start-only       system/hooks/observe_ups.sh 'm = re.search(r"(?:^|(?<=\s))/' 'm = re.match(r"^/' S1
+variant ups-ignores-backticks system/hooks/observe_ups.sh 'm = re.search(r"(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", scan)' 'm = re.search(r"(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", prompt)' S3
+variant ups-no-word-start    system/hooks/observe_ups.sh '(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", scan)' '/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", scan)' S3
+variant ups-drops-before     system/hooks/observe_ups.sh '("(before the command) %s\n" % before) if before.strip() else ""' '""' S2
+variant ups-observe-whole-rest system/hooks/observe_ups.sh 'arg = (rest.split() or [""])[0]' 'arg = rest.strip()' S1
 variant skill-no-modes      .claude/skills/skill-builder/SKILL.md '**Modes.**' '**Mode list.**' C6
 
 echo
