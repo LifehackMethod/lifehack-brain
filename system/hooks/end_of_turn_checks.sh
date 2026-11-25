@@ -44,7 +44,10 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 #          reported it lets that turn end, logs "UNREPORTED after 3 asks" to push-warnings.log and keeps the marker,
 #          so each later turn nudges once more until reported. Never silently dropped.
 #          Its text rides along with any other end-of-turn block in the same message.
-# UPDATED: 2026-11-02
+# UPDATED: 2026-11-25 (observe mode: one file test, then a detached reviewer when this session is watching a skill; see the step after the session id is read)
+#      observe mode (2026-11-25, brief 2.1): if ~/.claude/run/observe/observe-sess-<session>.flag exists, launch system/tools/observe_review.sh
+#          detached (one per session) and carry on; never waits, never blocks, never changes this hook's decision. Unarmed = one file test.
+# 2026-11-02
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
 DOOR=0; OWN=0; UNH=0; IKN=0; roundb_on inline_keep_nudge && IKN=1; roundb_on back_door && DOOR=1; roundb_on own_list && OWN=1; roundb_on own_list_unhomed && UNH=1
@@ -58,6 +61,24 @@ IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'; re_pid='"prompt_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
 [[ $P =~ $re_sid ]] || exit 0; SID="${BASH_REMATCH[1]}"
 PID=""; [[ $P =~ $re_pid ]] && PID="${BASH_REMATCH[1]}"
+# OBSERVE MODE (round 2, brief 2.1): if THIS session is watching a skill (system/tools/observe_flag.sh arm), launch the
+# detached reviewer and fall through at once. Not armed = ONE file test: no python, no model, no process, nothing written.
+# A review already running for this session (pid file, < 10 min old) means this turn is skipped; its text is still read
+# next time, because the reviewer reads the transcript from a saved offset.
+OBSD="$HOME/.claude/run/observe"
+if [ -f "$OBSD/observe-sess-$SID.flag" ]; then
+  _obs_run=""
+  [ -f "$OBSD/review-$SID.pid" ] && kill -0 "$(cat "$OBSD/review-$SID.pid" 2>/dev/null)" 2>/dev/null \
+    && [ -n "$(find "$OBSD/review-$SID.pid" -mmin -10 2>/dev/null)" ] && _obs_run=1
+  if [ -z "$_obs_run" ]; then
+    if printf '%s' "$P" > "$OBSD/stop-$SID.json"; then
+      nohup bash "$_lhb_dir/../tools/observe_review.sh" "$OBSD/stop-$SID.json" "$SID" </dev/null >/dev/null 2>&1 &
+      echo $! > "$OBSD/review-$SID.pid"; disown
+    else
+      echo "end_of_turn_checks: observe mode could not save the stop payload; no review this turn" >&2
+    fi
+  fi
+fi
 DIR="${LHB_TURN_WRITES_DIR:-$HOME/.claude/run/turn-writes}"; LIST="$DIR/$SID.list"
 # push warnings (fc_private_push_mode=warn): unreported findings of a push this session made -> PWMSG (empty = nothing owed)
 PWMSG=""; [ -s "$DIR/$SID.pushwarn" ] && PWMSG="$(printf '%s' "$P" | LHB_TURN_WRITES_DIR="$DIR" python3 "$_lhb_dir/lib/push_warn.py" eot)"

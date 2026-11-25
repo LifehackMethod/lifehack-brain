@@ -451,6 +451,11 @@
           },
           {
             "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/observe_ups.sh\"",
+            "statusMessage": "Checking for skill-observe commands and findings..."
+          },
+          {
+            "type": "command",
             "command": "bash \"${CLAUDE_PROJECT_DIR}/system/hooks/rating_capture.sh\"",
             "statusMessage": "Noting a rating, if you gave one..."
           },
