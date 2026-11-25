@@ -4,28 +4,28 @@ _lhb_src="${BASH_SOURCE[0]}"; case "$_lhb_src" in */*) _lhb_dir="${_lhb_src%/*}"
 trap 'lhb_journal_fire "$?" "observe_ups.sh" "UserPromptSubmit" "" 2>/dev/null || true' EXIT
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: OBSERVE MODE (round 2, brief 2.1): a person uses a skill while a background reviewer reads each turn. This is
-#      the person-facing half, run by code on the person's raw prompt (never by the model): (1) /skill-builder-observe
-#      <skill> arms the watch, /skill-builder-observe off clears it; (2) /skill-builder-note <text> files the words
+#      the person-facing half, run by code on the person's raw prompt (never by the model): (1) /skill-builder observe
+#      <skill> arms the watch, /skill-builder observe off clears it; (2) /skill-builder note <text> files the words
 #      BYTE FOR BYTE in the notes folder (a command's `!` bash line would put the text through the shell and break on
-#      quotes, $ and backticks; a hook reads the raw JSON, so nothing is re-interpreted); (3) /skill-builder-wrap tells
+#      quotes, $ and backticks; a hook reads the raw JSON, so nothing is re-interpreted); (3) /skill-builder wrap tells
 #      the model where the notes and findings are; (4) at the next prompt, any findings the reviewer left in the inbox
 #      appear on the PERSON'S screen under "🛠 Skill builder here:" and are handed to the model as context.
 #      It is its OWN register row, not a member of the pilot-map-ups group: the group dispatcher concatenates every
 #      member's stdout, and this hook's stdout is one JSON object, which plain text from a sibling would break.
 # GUARDS: UserPromptSubmit, every prompt. Never blocks. Quiet path: no python, no model, no process beyond this shell
-#      unless the prompt names a /skill-builder-* command OR this session's inbox file has content.
+#      unless the prompt names /skill-builder OR this session's inbox file has content.
 # REDIRECT: arm/clear = system/tools/observe_flag.sh; notes + findings = <notes folder>/notes.md, findings.md (the folder
 #      is stored in the switch). A person who never typed an observe command sees nothing from this hook.
 # SIGNPOST: design = brief 2.1 (build-skill-v2). The reviewer = system/tools/observe_review.sh; the Stop launcher =
 #      end_of_turn_checks.sh. Cap: 5 lines, ~1,200 characters on screen.
 # FAIL_POSTURE: degrade-safe — any error exits 0 with no output (a prompt hook's failure must never stop a prompt).
-# UPDATED: 2026-11-25 (new, 2.1)
+# UPDATED: 2026-11-25 (2.2: modes of /skill-builder, no separate commands)
 # ─────────────────────────────────────────────────────────────────────────────
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
 [[ $P =~ $re_sid ]] || exit 0; SID="${BASH_REMATCH[1]}"
 OD="$HOME/.claude/run/observe"; INBOX="$OD/inbox-$SID.txt"
-CMD=""; case "$P" in *skill-builder-observe*|*skill-builder-note*|*skill-builder-wrap*) CMD=1;; esac
+CMD=""; case "$P" in *skill-builder*) CMD=1;; esac
 [ -n "$CMD" ] || [ -s "$INBOX" ] || exit 0          # the quiet path: nothing typed, nothing waiting
 TOOLS="$(cd "${_lhb_dir}/../tools" 2>/dev/null && pwd -P)"
 [ -n "$TOOLS" ] || exit 0
@@ -45,7 +45,7 @@ def flag(*args):
     r = subprocess.run(["bash", flagtool] + list(args), capture_output=True, text=True, timeout=20)
     return r.returncode, r.stdout.strip()
 
-m = re.match(r"^/(?:[A-Za-z0-9_-]+:)?skill-builder-(observe|note|wrap)(?:[ \t\r\n]+|$)", prompt)
+m = re.match(r"^/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t\r\n]+|$)", prompt)   # a plain /skill-builder [skill] has no mode word: untouched
 if m:
     verb = m.group(1); rest = prompt[m.end():]
     if verb == "observe":
@@ -57,7 +57,7 @@ if m:
             rc, out = flag("arm", arg)
             if out.startswith("OBSERVE ARMED: "):
                 skill, nd = out[len("OBSERVE ARMED: "):].split("|", 1)
-                ctx.append("OBSERVE ARMED: Observing %s; notes go to %s; /skill-builder-note to jot, /skill-builder-wrap at the end" % (skill, nd))
+                ctx.append("OBSERVE ARMED: Observing %s; notes go to %s; /skill-builder note to jot, /skill-builder wrap at the end" % (skill, nd))
                 ctx.append("SKILL TO START: %s" % skill)
             else:
                 ctx.append(out or "OBSERVE NOT ARMED: the arming tool printed nothing")

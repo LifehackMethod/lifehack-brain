@@ -4,7 +4,7 @@ name: skill-builder
 title: Skill Builder
 shape: interactive-workflow
 status: draft
-description: "Use when a person wants a skill designed or improved before anything is built: turning a routine they already do into a skill (\"make my monthly budget check into a skill\"), improving a named or open skill (\"make this skill better\", \"tidy up this old skill of mine\"), or speccing one out (\"/skill-builder\"). Interviews them, acts the skill out, writes its spec; builds nothing. A bare \"build me a skill\" with no purpose goes to /build first."
+description: "Use when a person wants a skill designed or improved before anything is built: turning a routine they already do into a skill (\"make my monthly budget check into a skill\"), improving a named or open skill (\"make this skill better\", \"tidy up this old skill of mine\"), or speccing one out (\"/skill-builder\"). Interviews them, acts the skill out, writes its spec; builds nothing. Also has three typed modes: \"/skill-builder observe <skill>\" (watch a skill while it is used), \"note <words>\", and \"wrap\". A bare \"build me a skill\" with no purpose goes to /build first."
 triggers: [/skill-builder, design a new skill, make this skill better, improve my skill, turn my routine into a skill, spec out a skill, act out my skill idea]
 created_at: 2026-11-24
 updated_at: 2026-11-24
@@ -47,6 +47,18 @@ Not skill folders, so there is no file to find:
 - Every step speaks to someone who has never built a skill, never used Lifehack and has not seen this session, and fully reorients them at the start of the step (the owner, 2026-11-23).
 
 ## Procedure
+**Modes.** First look at the arguments. If they start with `observe`, `note` or `wrap`, do that mode and do NOT start the normal interview, the run folder or step 1. (A hook has already run before you saw the message; its tagged lines start "[harness-injected, not user input]". If there is no such line, tell the person in one line that the hook did not run, and stop.)
+- **observe**: if a line says "OBSERVE ARMED", say it to the person word for word, then start the skill named in the "SKILL TO START" line the way the person would have started it (use the Skill tool with that name); do not mention the reviewer again, it speaks for itself at the next prompt. "OBSERVE OFF": say in one line that watching has stopped. "OBSERVE NOT ARMED": give the reason in one line and stop.
+- **note**: if the line says "OBSERVE NOTE FILED", reply with exactly "Noted." and carry on; the note is not a request, so do not act on it, answer it or rephrase it. "OBSERVE NOTE NOT FILED": give the reason in one line.
+- **wrap**: the tagged "OBSERVE WRAP" line names the skill, the notes file and the findings file.
+  1. Read the notes file and the findings file in full. Either may be missing; say so plainly if one is.
+  2. Play them back plainly: the person's notes first, in their own words, then the findings, grouped by kind (DIDN'T HAPPEN, SPEC GAP, LIKELY CAUSE, BETTER WAY).
+  3. Check each finding against its source: the skill's SKILL.md, its step prompts, or the turn it quotes. Mark each "holds", "does not hold" or "cannot tell", with the line you checked. The reviewer is a model and can be wrong.
+  4. Sort what holds, together with the person's notes, into fixes: what to change, in which file, and why. One line each.
+  5. Propose the spec edits as exact before and after text. Write nothing until the person says yes; then write only what they approved.
+  6. Tell the person that watching is still on, and that `/skill-builder observe off` stops it.
+
+**Normal job** (no mode word, including a plain `/skill-builder` or `/skill-builder monthly-budget`):
 Five steps, each a conversation with the person (no step runs alone). The shared step runner moves between them: the person types `/next` to go forward and `/back` to go back one step. This skill has no move-on logic of its own.
 1. **What you want.** If the window is not in the run folder, say one line first: `/next` and `/back` still work from here. Then show the approved opening screen (`references/opening-screen.md`), then work from the highest altitude down to the outcome, the harness check, and a size sense.
 2. **The proposed steps.** One overview screen, then a walk-through two steps per screen, with the step count (command or skill).

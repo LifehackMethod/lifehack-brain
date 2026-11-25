@@ -8,7 +8,7 @@
 #      switch by the session id in their payload). TTL 8h (OBSERVE_TTL_HOURS).
 # REDIRECT: flag ~/.claude/run/observe/observe-sess-<id>.flag. Writers: the observe prompt hook (arm/clear) and the
 #      reviewer (set offset). Readers: end_of_turn_checks.sh (does the file exist), observe_review.sh, observe_ups.sh.
-#      Off: `clear`, `/skill-builder-observe off`, or the TTL. Notes live in the PERSON'S notes folder, never the plugin.
+#      Off: `clear`, `/skill-builder observe off`, or the TTL. Notes live in the PERSON'S notes folder, never the plugin.
 # SIGNPOST: key derivation, TTL and sweep live in system/hooks/lib/flag.sh. Design: brief 2.1 (build-skill-v2 project).
 # UPDATED: 2026-11-25 (new, 2.1)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ _live() { [ -f "$FLAG" ] && ! flag_ttl_expired $(( TTL_HOURS * 3600 )); }
 case "$1" in
   arm)
     sk="$2"
-    case "$sk" in ''|*[!A-Za-z0-9._-]*) echo "OBSERVE NOT ARMED: give one skill name (letters, digits, . _ -), like: /skill-builder-observe skill-builder"; exit 1;; esac
+    case "$sk" in ''|*[!A-Za-z0-9._-]*) echo "OBSERVE NOT ARMED: give one skill name (letters, digits, . _ -), like: /skill-builder observe skill-builder"; exit 1;; esac
     [ -n "$CLAUDE_CODE_SESSION_ID" ] || { echo "OBSERVE NOT ARMED: this window gave no session id, so the hooks could not find the switch"; exit 1; }
     sf=""
     PCR="$(python3 "$PLUG/shared/personal_code_root.py" --quiet 2>/dev/null | head -1)"

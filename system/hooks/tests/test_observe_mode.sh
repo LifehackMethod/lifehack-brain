@@ -145,14 +145,14 @@ assert len(h)==1 and h[0][\"group\"] is None and h[0][\"event\"]==\"UserPromptSu
 "'
 
   echo "== COMMANDS and NOTES =="
-  OUT="$(ups s3 "/skill-builder-observe audit")"
-  chk "[C1] observe: ARMED line names the skill and the notes folder; flag exists" 'printf "%s" "$OUT" | grep -qF "OBSERVE ARMED: Observing audit; notes go to $NB; /skill-builder-note to jot, /skill-builder-wrap at the end" && [ -f "$OD/observe-sess-s3.flag" ]'
-  OUT="$(ups s3 "/skill-builder-observe no-such-skill")"
+  OUT="$(ups s3 "/skill-builder observe audit")"
+  chk "[C1] observe: ARMED line names the skill and the notes folder; flag exists" 'printf "%s" "$OUT" | grep -qF "OBSERVE ARMED: Observing audit; notes go to $NB; /skill-builder note to jot, /skill-builder wrap at the end" && [ -f "$OD/observe-sess-s3.flag" ]'
+  OUT="$(ups s3 "/skill-builder observe no-such-skill")"
   chk "[C1] observe an unknown skill: NOT ARMED, says why" 'printf "%s" "$OUT" | grep -q "OBSERVE NOT ARMED: no skill named"'
-  chk "[C2] skill-builder's notes go to the packet folder" 'ups s4 "/skill-builder-observe skill-builder" | grep -qF "build-rebuild/16-skill-builder-packet"'
+  chk "[C2] skill-builder's notes go to the packet folder" 'ups s4 "/skill-builder observe skill-builder" | grep -qF "build-rebuild/16-skill-builder-packet"'
   rm -f "$NB/notes.md"
   N1='he said "hi" $HOME `ls` '"'"'q'"'"' 🎉 \n {braces} $(echo no) !bang'
-  ups s3 "/skill-builder-note $N1" > "$HM/note.out"
+  ups s3 "/skill-builder note $N1" > "$HM/note.out"
   chk "[N1] note: the text lands in notes.md byte for byte, after a timestamp heading" 'python3 - "$NB/notes.md" "$N1" <<"PY"
 import re,sys
 t=open(sys.argv[1],encoding="utf-8",newline="").read()
@@ -161,26 +161,45 @@ assert m and m.group(1)==sys.argv[2], repr(t)
 PY'
   chk "[N1] note: the model is told it was filed" 'grep -q "OBSERVE NOTE FILED" "$HM/note.out"'
   NL=$'line one "q"\n\tline two $x `y`'
-  ups s3 "/lifehack-brain:skill-builder-note $NL" >/dev/null
+  ups s3 "/lifehack-brain:skill-builder note $NL" >/dev/null
   chk "[N2] plugin-prefixed command, multi-line text, second note appended exactly" 'python3 - "$NB/notes.md" "$N1" "$NL" <<"PY"
 import re,sys
 t=open(sys.argv[1],encoding="utf-8",newline="").read()
 parts=re.split(r"\n### \d{4}-\d\d-\d\d \d\d:\d\d:\d\d\n", t)
 assert parts[0]=="" and parts[1]==sys.argv[2]+"\n" and parts[2]==sys.argv[3]+"\n", parts
 PY'
-  OUT="$(ups s5 "/skill-builder-note anything")"
+  OUT="$(ups s5 "/skill-builder note anything")"
   chk "[N3] nothing observed: ONE line, nothing written" '[ "$(printf "%s" "$OUT" | python3 -c "import json,sys; print(json.load(sys.stdin)[\"hookSpecificOutput\"][\"additionalContext\"].count(\"\n\")+1)")" = 1 ] && printf "%s" "$OUT" | grep -q "NOTE NOT FILED: no skill is being observed" && [ ! -e "$HM/brain/drafts/builds/s5" ]'
-  B4="$(wc -c < "$NB/notes.md")"; OUT="$(ups s3 "/skill-builder-note   ")"
+  B4="$(wc -c < "$NB/notes.md")"; OUT="$(ups s3 "/skill-builder note   ")"
   chk "[N4] empty note: not filed" 'printf "%s" "$OUT" | grep -q "NOTE NOT FILED: the note was empty" && [ "$(wc -c < "$NB/notes.md")" = "$B4" ]'
-  chk "[N5] a prompt that only mentions the command in prose is not a note" 'B=$(wc -c < "$NB/notes.md"); [ -z "$(ups s3 "please explain what /skill-builder-note does")" ] && [ "$(wc -c < "$NB/notes.md")" = "$B" ]'
-  OUT="$(ups s3 "/skill-builder-wrap")"
+  chk "[N5] a prompt that only mentions the command in prose is not a note" 'B=$(wc -c < "$NB/notes.md"); [ -z "$(ups s3 "please explain what /skill-builder note does")" ] && [ "$(wc -c < "$NB/notes.md")" = "$B" ]'
+  OUT="$(ups s3 "/skill-builder wrap")"
   chk "[W1] wrap: names the skill, the notes file and the findings file" 'printf "%s" "$OUT" | grep -qF "skill audit; notes file $NB/notes.md; findings file $NB/findings.md"'
-  chk "[W1] wrap with nothing observed says so" 'ups s6 "/skill-builder-wrap" | grep -q "no skill is being observed in this window"'
-  ups s3 "/skill-builder-observe off" >/dev/null
+  chk "[W1] wrap with nothing observed says so" 'ups s6 "/skill-builder wrap" | grep -q "no skill is being observed in this window"'
+  ups s3 "/skill-builder observe off" >/dev/null
   chk "[C3] observe off: switch cleared, status says not observing" '[ ! -f "$OD/observe-sess-s3.flag" ] && [ "$(CLAUDE_CODE_SESSION_ID=s3 bash "$FT" status)" = "not observing" ]'
   arm s7 audit >/dev/null; CLAUDE_CODE_SESSION_ID=s7 bash "$FT" set armed_at 1
   chk "[C4] an old switch has expired (TTL): status says not observing" '[ "$(CLAUDE_CODE_SESSION_ID=s7 bash "$FT" status)" = "not observing" ]'
-  chk "[C5] the three command files exist, are typed-only, and say what to do with the hook line" 'for c in observe note wrap; do f="$R/commands/skill-builder-$c.md"; grep -q "^disable-model-invocation: true" "$f" && grep -q "^description: " "$f" && grep -q "hook ran before you saw this" "$f" || exit 1; done'
+  chk "[C5] the three old command files are gone (one command to remember)" '[ ! -e "$R/commands/skill-builder-observe.md" ] && [ ! -e "$R/commands/skill-builder-note.md" ] && [ ! -e "$R/commands/skill-builder-wrap.md" ]'
+  SB="$R/.claude/skills/skill-builder/SKILL.md"
+  chk "[C6] SKILL.md has a Modes section before the normal job, naming observe, note, wrap and the hook line" 'python3 - "$SB" <<"PY"
+import sys
+s=open(sys.argv[1],encoding="utf-8").read()
+i=s.index("**Modes.**"); k=s.index("**Normal job**")
+m=s[i:k]
+assert s.index("## Procedure")<i<k
+for w in ("OBSERVE ARMED","SKILL TO START","OBSERVE NOTE FILED","Noted.","OBSERVE WRAP","hook did not run","do NOT start the normal interview"):
+    assert w in m, w
+assert "skill-builder observe <skill>" in s.split("---")[1]
+PY'
+  echo "== NO MODE WORD: the normal job is untouched =="
+  B4="$(wc -c < "$NB/notes.md")"
+  chk "[M1] plain /skill-builder: no output, nothing armed" '[ -z "$(ups s8 "/skill-builder")" ] && [ ! -f "$OD/observe-sess-s8.flag" ]'
+  chk "[M2] /skill-builder monthly-budget: no output, nothing armed, nothing filed" '[ -z "$(ups s8 "/skill-builder monthly-budget")" ] && [ -z "$(ups s8 "/lifehack-brain:skill-builder monthly-budget")" ] && [ ! -f "$OD/observe-sess-s8.flag" ] && [ "$(wc -c < "$NB/notes.md")" = "$B4" ]'
+  chk "[M2] near-miss words (noted-things, observer, wrapper) are not modes" '[ -z "$(ups s8 "/skill-builder noted-things")" ] && [ -z "$(ups s8 "/skill-builder observer")" ] && [ -z "$(ups s8 "/skill-builder wrapper my routine")" ]'
+  chk "[M3] the old hyphen forms do nothing now (observe, note, wrap)" 'arm s9 audit >/dev/null; B=$(wc -c < "$NB/notes.md"); [ -z "$(ups s9 "/skill-builder-observe audit")" ] && [ -z "$(ups s9 "/skill-builder-note hello")" ] && [ -z "$(ups s9 "/skill-builder-wrap")" ] && [ "$(wc -c < "$NB/notes.md")" = "$B" ]'
+  chk "[M4] the plugin-prefixed forms work: observe arms, wrap answers" 'ups s10 "/lifehack-brain:skill-builder observe audit" | grep -q "OBSERVE ARMED: Observing audit" && [ -f "$OD/observe-sess-s10.flag" ] && ups s10 "/lifehack-brain:skill-builder wrap" | grep -qF "findings file $NB/findings.md"'
+  chk "[M4] ... and observe off with the prefix clears it" 'ups s10 "/lifehack-brain:skill-builder observe off" >/dev/null; [ ! -f "$OD/observe-sess-s10.flag" ]'
 }
 
 echo "######## the real tree ########"
@@ -194,6 +213,19 @@ variant() {   # variant <label> <path-under-plugin> <old> <new> <check-id that m
   for f in "$PLUG"/system/hooks/* "$PLUG"/system/tools/*; do ln -s "$f" "$M/system/${f#$PLUG/system/}"; done
   ln -s "$PLUG/shared" "$M/shared"; ln -s "$PLUG/.claude" "$M/.claude"; ln -s "$PLUG/system/parts" "$M/system/parts"; ln -s "$PLUG/system/register" "$M/system/register"
   for f in "$PLUG"/commands/*; do ln -s "$f" "$M/commands/"; done
+  case "$rel" in .claude/skills/*) python3 - "$PLUG" "$M" "$rel" <<'PYM'
+import os, sys
+plug, m, rel = sys.argv[1:4]
+sk = rel.split("/")[2]
+os.remove(m + "/.claude")
+chain = [".claude", ".claude/skills", ".claude/skills/" + sk]
+for n, d in enumerate(chain):
+    os.makedirs(m + "/" + d, exist_ok=True)
+    for e in os.listdir(plug + "/" + d):
+        if n + 1 < len(chain) and d + "/" + e == chain[n + 1]: continue
+        os.symlink(plug + "/" + d + "/" + e, m + "/" + d + "/" + e)
+PYM
+  ;; esac
   rm -f "$M/$rel"; python3 - "$PLUG/$rel" "$M/$rel" "$old" "$new" <<'PY'
 import sys
 s = open(sys.argv[1], encoding="utf-8").read()
@@ -219,6 +251,12 @@ variant ups-no-sysmsg       system/hooks/observe_ups.sh 'out["systemMessage"] = 
 variant ups-no-cap          system/hooks/observe_ups.sh 'for i, l in enumerate(lines[:5], 1):' 'for i, l in enumerate(lines, 1):' I3
 variant ups-mangles-note    system/hooks/observe_ups.sh '(time.strftime("%Y-%m-%d %H:%M:%S"), rest))' '(time.strftime("%Y-%m-%d %H:%M:%S"), rest.replace(chr(96), "").replace("$", "")))' N1
 variant ups-quiet-path-slow system/hooks/observe_ups.sh '[ -n "$CMD" ] || [ -s "$INBOX" ] || exit 0' 'python3 -c pass; mkdir -p "$OD"' U3
+
+variant ups-mode-optional   system/hooks/observe_ups.sh 'skill-builder[ \t]+(observe|note|wrap)(?:' 'skill-builder(?:[ \t]+(observe|note|wrap))?(?:' M1
+variant ups-mode-no-boundary system/hooks/observe_ups.sh '(observe|note|wrap)(?:[ \t\r\n]+|$)"' '(observe|note|wrap)"' M2
+variant ups-old-form-kept   system/hooks/observe_ups.sh 'skill-builder[ \t]+(observe|note|wrap)(?:' 'skill-builder[ \t-]+(observe|note|wrap)(?:' M3
+variant ups-no-prefix       system/hooks/observe_ups.sh '^/(?:[A-Za-z0-9_-]+:)?skill-builder' '^/skill-builder' M4
+variant skill-no-modes      .claude/skills/skill-builder/SKILL.md '**Modes.**' '**Mode list.**' C6
 
 echo
 echo "passed=$pass failed=$fail"
