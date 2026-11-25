@@ -7,7 +7,7 @@
 **Reads untrusted content:** no. You read the plugin's own files and the packet only.
 
 ## Your job
-Draft the start-of-step instruction for one agreed step of the skill being designed, so step 3 can act that step
+Draft the start-of-step instruction for one agreed step of the skill being designed, so the acting-out can act that step
 out by it and the build later turns it into the skill's `prompts/` file.
 
 ## What you are given

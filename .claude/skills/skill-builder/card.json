@@ -1,5 +1,5 @@
 {
-  "_readme": "The stage card for the skill builder, run by the shared step runner (system/parts/stage_runner.py). Five steps, all conversations with the person: what you want, the proposed steps, role-play it, shake the tree, the hand-off. The runner owns the order, the record, /next and /back and the status line. Steps 3 and 4 are optional: the person skips one by typing /next, and the runner records that it was skipped by the person. Steps 4 and 5 read the step 2 output so a skipped step never strands them. Each step checks only that its output has the named headings, enough words and the code word; the checks come from the runner's closed list. Never edit this card or a prompt while a run is open.",
+  "_readme": "The stage card for the skill builder, run by the shared step runner (system/parts/stage_runner.py). Six steps, all conversations with the person: what you want, the proposed steps (the overview), the walk-through (two steps per page), role-play it, shake the tree, the hand-off. The runner owns the order, the record, /next and /back and the status line. Steps 4 and 5 are optional: the person skips one by typing /next, and the runner records that it was skipped by the person. Steps 5 and 6 read the step 3 output (the agreed steps and the step count) so a skipped step never strands them. Each step checks only that its output has the named headings, enough words and the code word; the checks come from the runner's closed list. Never edit this card or a prompt while a run is open.",
   "skill": "skill-builder",
   "stop_limit": 3,
   "stages": [
@@ -35,16 +35,34 @@
         "min_words": 80,
         "code_word": true
       },
-      "_note": "The steps draft and the step count (command or skill)."
+      "_note": "The steps draft and the step count (command or skill), shown as one overview screen. The walk-through is its own step, the next one (SB-9)."
     },
     {
       "id": "step-3",
       "mode": "talk",
-      "optional": true,
-      "prompt": "prompts/step-3-role-play-it.md",
+      "prompt": "prompts/step-3-the-walk-through.md",
       "out": "out/step-3.md",
       "inputs": [
         "out/step-2.md"
+      ],
+      "checks": {
+        "headings": [
+          "## Walked steps",
+          "## Step count"
+        ],
+        "min_words": 60,
+        "code_word": true
+      },
+      "_note": "The walk-through, two of the person's steps per page, with the page bar. Holds each step walked and whether the person agreed it, and the final step count (a merge or cut here changes it). Not optional: the person may type /next before every step is walked, and the unwalked ones stay marked [inferred]. Steps 4, 5 and 6 read THIS file for the step count."
+    },
+    {
+      "id": "step-4",
+      "mode": "talk",
+      "optional": true,
+      "prompt": "prompts/step-4-role-play-it.md",
+      "out": "out/step-4.md",
+      "inputs": [
+        "out/step-3.md"
       ],
       "checks": {
         "headings": [
@@ -57,13 +75,13 @@
       "_note": "Optional. Notes on what was done by hand and the person's answers. A skip is the person's own /next: the checks then fail and the runner records the step as skipped by the person."
     },
     {
-      "id": "step-4",
+      "id": "step-5",
       "mode": "talk",
       "optional": true,
-      "prompt": "prompts/step-4-shake-the-tree.md",
-      "out": "out/step-4.md",
+      "prompt": "prompts/step-5-shake-the-tree.md",
+      "out": "out/step-5.md",
       "inputs": [
-        "out/step-2.md"
+        "out/step-3.md"
       ],
       "checks": {
         "headings": [
@@ -73,15 +91,15 @@
         "min_words": 40,
         "code_word": true
       },
-      "_note": "Optional (a one-step command skips it). The person's rulings on the findings and the validation result. Skipped the same way as step 3."
+      "_note": "Optional (a one-step command skips it). The person's rulings on the findings and the validation result. Skipped the same way as step 4."
     },
     {
-      "id": "step-5",
+      "id": "step-6",
       "mode": "talk",
-      "prompt": "prompts/step-5-the-hand-off.md",
-      "out": "out/step-5.md",
+      "prompt": "prompts/step-6-the-hand-off.md",
+      "out": "out/step-6.md",
       "inputs": [
-        "out/step-2.md"
+        "out/step-3.md"
       ],
       "checks": {
         "headings": [

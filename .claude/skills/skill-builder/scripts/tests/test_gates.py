@@ -45,6 +45,12 @@ class GatesGood(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out.splitlines()[0], "fill-gaps")
 
+    def test_overview_set_has_no_skip_walk_through_member(self):
+        rc, out, _ = run_script(SCRIPT, "--set-id", "overview", "--answer", "move-on")
+        self.assertEqual((rc, out.splitlines()[0]), (0, "move-on"))
+        rc, out, _ = run_script(SCRIPT, "--set-id", "overview", "--answer", "skip-role-play")
+        self.assertEqual(rc, 1)  # step 2 no longer offers a skip: the overview never promises one
+
     def test_none_of_these_passes_but_does_not_move(self):
         rc, out, _ = run_script(SCRIPT, "--set-id", "roleplay", "--answer", "none-of-these")
         self.assertEqual(rc, 0)

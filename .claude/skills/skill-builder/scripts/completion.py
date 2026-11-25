@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""completion.py — Caller: step prompt 4 (step-4-shake-the-tree.md, the prep report 4.0 and the
-validation moment 4.6) and step 5 (step-5-the-hand-off.md, 5.3's Screen B): wherever the house
+"""completion.py — Caller: step prompt 5 (step-5-shake-the-tree.md, the prep report 4.0 and the
+validation moment 4.6) and step 6 (step-6-the-hand-off.md, 5.3's Screen B): wherever the house
 style's figure line `<the bar from code> <the figure from code>% · *<the footer phrase from code>*`
 is rendered for the draft spec.
 Sub-step: computes the draft spec's completion figure BY CODE, never by the AI (form's "READY FOR

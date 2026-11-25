@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""gates.py — Caller: every TALK sub-step's step prompt (step-1…step-5-*.md), at each
+"""gates.py — Caller: every TALK sub-step's step prompt (step-1…step-6-*.md), at each
 `→ CODE (...)` question: the instant the person answers a fixed question, the sub-step runs this
 to read the typed answer against ONE closed answer set and print the chosen member.
 Usage:
@@ -19,18 +19,19 @@ Exit codes (distinct, documented):
              empty answer, or the timeout fired.
 
 The named sets (--set-id ids), from the skill's spec §4 ladder (documented ids):
-    destination    autoplan | project-window | none-of-these          (step 5, where it goes)
-    prep-report    decide-now | let-reviewers-guess | none-of-these    (step 4, the prep report)
-    validation     fill-gaps | move-on | none-of-these                 (step 4, the validation)
-    audience       for-me | for-everyone | none-of-these               (step 5, who it is for)
-    findings       more | redesign | move-on | none-of-these           (step 4, the findings)
-    roleplay       refine | move-on | none-of-these                    (step 3, each round)
-    roleplay-skip  refine | move-on | skip-role-play | none-of-these   (step 2, each round)
+    destination    autoplan | project-window | none-of-these          (step 6, where it goes)
+    prep-report    decide-now | let-reviewers-guess | none-of-these    (step 5, the prep report)
+    validation     fill-gaps | move-on | none-of-these                 (step 5, the validation)
+    audience       for-me | for-everyone | none-of-these               (step 6, who it is for)
+    findings       more | redesign | move-on | none-of-these           (step 5, the findings)
+    roleplay       refine | move-on | none-of-these                    (step 4, each round)
+    roleplay-skip  refine | move-on | skip-role-play | none-of-these   (step 3, each walk-through round)
+    overview       refine | move-on | none-of-these                    (step 2, each round)
     rounds-step1   refine | points-at-skill | move-on | none-of-these  (step 1, each round)
-    send           send | not-yet | none-of-these                      (step 5, send it)
+    send           send | not-yet | none-of-these                      (step 6, send it)
     existing       start-from-existing | build-new | none-of-these     (step 1, lifehack already does it)
     hand-to-build  take-it | carry-on | none-of-these                  (steps 1 & 2, too big for a skill)
-    parts-round    refine | move-on | none-of-these                    (step 5, the parts round)
+    parts-round    refine | move-on | none-of-these                    (step 6, the parts round)
 
 Writes NOTHING anywhere (stdout only) — the caller owns the scratchpad.
 """
@@ -47,6 +48,7 @@ ANSWER_SETS = {
     "findings": ["more", "redesign", "move-on", "none-of-these"],
     "roleplay": ["refine", "move-on", "none-of-these"],
     "roleplay-skip": ["refine", "move-on", "skip-role-play", "none-of-these"],
+    "overview": ["refine", "move-on", "none-of-these"],
     "rounds-step1": ["refine", "points-at-skill", "move-on", "none-of-these"],
     "send": ["send", "not-yet", "none-of-these"],
     "existing": ["start-from-existing", "build-new", "none-of-these"],

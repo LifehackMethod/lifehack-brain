@@ -1,1 +1,1 @@
-The five step prompts (one per step, handed over by the shared runner at the start of that step only).
+The six step prompts (one per step, handed over by the shared runner at the start of that step only). Spec sub-step numbers inside them (2.1, 3.1, 4.0a, 5.0 ...) are the spec's own and did not move when the walk-through became its own step.

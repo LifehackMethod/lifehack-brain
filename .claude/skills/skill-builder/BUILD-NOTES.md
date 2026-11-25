@@ -19,8 +19,8 @@ that closes it. Status is one of: open · closed (receipt) · deferred (reason, 
 | G1 | Scaffold | Folder made from `system/templates/skill-template/`; no `{…}` or guidance comments left; every folder has a one-line purpose | P2 | closed: scaffold committed |
 | G2 | Frontmatter | `skill`, `shape: interactive-workflow`, `status`, `triggers`, third-person "Use when…" description with keywords in the first 250 characters | P2 | closed: frontmatter committed |
 | G3 | Routing eval ×3 | Each case run 3 times in a cold window; 3/3 holds, 0/3 fails, 1–2 of 3 re-run; k/3 and the commit SHA recorded | P2 (re-run at P6 and on the final commit) | see the routing eval below |
-| G4 | Card | `card.json` has five `talk` stages, steps 3–4 `optional`, checks only from the runner's closed list | P2 | closed: card committed, runner starts it |
-| G5 | One prompt per step | `prompts/step-1…5` exist, each from the step-prompt template; acceptance checks A–G recorded | P3 | closed: 5 prompts, section check PASS, quiz 6/6 each |
+| G4 | Card | `card.json` has six `talk` stages (the walk-through is its own step 3, SB-9), steps 4–5 `optional`, checks only from the runner's closed list | P2 | closed: card committed, runner starts it |
+| G5 | One prompt per step | `prompts/step-1…6` exist, each from the step-prompt template; acceptance checks A–G recorded | P3 | closed: 6 prompts, section check PASS, quiz 6/6 each (round 2: all six re-quizzed after the six-step change and SB-13; see the round-2 result) |
 | G6 | Helper briefs | Every helper brief is a file under `prompts/subagents/`, names its tier, and is re-quizzed if changed | P4 | closed: 26 briefs, changed ones re-quizzed |
 | G7 | Inputs-line code + pause | Code checks each step's inputs and pauses; every code-read choice ends in `none-of-these`, which never moves the run | P5 | closed: gates.py + inputs_check.py, tests |
 | G8 | Output checks | Each check tested on a good, an edge and a padded case, and seen failing on a broken copy first | P5 | closed: 62 tests incl. broken copies |
@@ -74,7 +74,7 @@ The full comparison is kept with the build's records; the finish (L.2) re-checks
 
 ## Records block (P2)
 
-- **Size and signs:** five talk steps, no step runs alone; a manual command (`/skill-builder`).
+- **Size and signs:** six talk steps, no step runs alone; a manual command (`/skill-builder`).
 - **Input channels:** typed text goes through the sanitizer only; files the person supplies go through the ingest-reader; research only via `/research`.
 - **No hook, anchor, injector or scheduled job of its own.** The shared runner's hooks are already registered.
 - **G13 status writer: DEFERRED.** Reason: an interactive manual skill with no scheduled run. Change condition: if it ever gains a scheduled or unattended step.
@@ -223,3 +223,9 @@ member; a grep for private text in every shipped file. 19 of 19 pass (the privat
 local, gitignored Python cache folder that never ships; re-run without it: clean). Every file under
 `prompts/subagents/`, `scripts/` and `references/` is named by a step prompt, the card, SKILL.md or a brief.
 No component page exists yet in the plugin's canon (filing is the canon window's, after the push).
+
+## Round 2, phase 3 (2026-11-25): the first-run notes (SB-9, SB-11, SB-12, SB-13)
+
+- **SB-9:** the walk-through is its own step 3 (six steps). `card.json` has a new `step-3` (headings `## Walked steps`, `## Step count`, 60 words, code word); the old steps 3-5 are 4-6 and read `out/step-3.md` for the step count. The overview (step 2) no longer promises a walk-through and offers no skip. Spec sub-step numbers (2.1, 3.1, 4.0a ...) are the spec's own and did not move.
+- **SB-11 + SB-12:** house-style Screen A has the 👉 line at the top, a `# QUESTIONS` heading at the bottom, and a page bar on pages (`scripts/page_bar.py`, tests in `scripts/tests/test_page_bar.py`; the page file is `pages.json` in the packet folder, never the runner's record).
+- **SB-13:** the six step prompts and SKILL.md keep the detective and add the unreliable-not-dishonest witness and the detective's strengths (his ruling, 2026-11-25).

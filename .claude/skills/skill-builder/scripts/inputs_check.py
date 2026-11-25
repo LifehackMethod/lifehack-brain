@@ -2,7 +2,7 @@
 """inputs_check.py — the inputs line and the pause, per sub-step.
 
 CALLER: run at the start of each skill-builder sub-step, by that sub-step's step
-prompt's "what you read and write" routine (prompts/step-1…5-*.md; the runner's
+prompt's "what you read and write" routine (prompts/step-1…6-*.md; the runner's
 step code may also call it before launching a helper). Usage:
 
     inputs_check.py --workdir <packet folder> --substep <e.g. 1.6> [--timeout 20]

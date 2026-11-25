@@ -1,6 +1,6 @@
 # Checker use file — the step-prompt drafts (step 2; read with checker-base.md)
 
-**What to check:** each step-prompt draft from the drafter against the **steps-draft**, so step 3 acts out a
+**What to check:** each step-prompt draft from the drafter against the **steps-draft**, so the acting-out acts out a
 step by an instruction that matches what the person agreed.
 
 > Read together with `checker-base.md`, which carries how you check, the rules and the finish signal. This file
@@ -53,7 +53,7 @@ You inform; you never block. A missing source never stops the check:
 
 ## What you return, and where
 The checked drafts, in the base's shape, as the scratchpad section **step-prompts-checked** (§5). Only checked
-drafts are what step 3 acts by and what 4.0a writes into §11.
+drafts are what the acting-out acts by and what 4.0a writes into §11.
 
 ## How you finish
 `done` (including any `not checked` lines) · `nothing to add` (no draft was handed over) · `failed (<reason>)` only

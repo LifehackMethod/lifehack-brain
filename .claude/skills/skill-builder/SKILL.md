@@ -7,7 +7,7 @@ status: draft
 description: "Use when a person wants a skill designed or improved before anything is built: turning a routine they already do into a skill (\"make my monthly budget check into a skill\"), improving a named or open skill (\"make this skill better\", \"tidy up this old skill of mine\"), or speccing one out (\"/skill-builder\"). Interviews them, acts the skill out, writes its spec; builds nothing. Also has three typed modes: \"/skill-builder observe <skill>\" (watch a skill while it is used), \"note <words>\", and \"wrap\". A bare \"build me a skill\" with no purpose goes to /build first."
 triggers: [/skill-builder, design a new skill, make this skill better, improve my skill, turn my routine into a skill, spec out a skill, act out my skill idea]
 created_at: 2026-11-24
-updated_at: 2026-11-24
+updated_at: 2026-11-25
 ---
 
 # Skill Builder
@@ -40,8 +40,8 @@ Not skill folders, so there is no file to find:
 - Never block the person over non-conformance: warn plainly, the person decides (the owner, 2026-11-23).
 - Look for what Lifehack already solves before designing anything new (the owner, 2026-11-23).
 - One form: the spec is the only list, and how thorough to be is the person's call (the owner, 2026-11-23).
-- Count the steps: one step makes a command, two or more make a skill; a one-step command skips step 4 (the owner, 2026-11-23).
-- The standing role is an earnest detective interviewing an honest witness (lead, go slow, frame big first, play it back); it is delivered at the start of each step and the person never sees the role text (the owner, 2026-11-23).
+- Count the steps: one step makes a command, two or more make a skill; a one-step command skips step 5 (the owner, 2026-11-23).
+- The standing role is an earnest detective interviewing an honest witness (lead, go slow, frame big first, play it back); it is delivered at the start of each step and the person never sees the role text (the owner, 2026-11-23). The witness is honest but unreliable, like someone whose first language isn't English, someone older, or someone with no technical knowledge. The detective holds far more facts than the witness, builds the world model, reads imperfect speech for its direction and the feeling behind it, and in every round plays back where they are heading, puts it together, then sharpens, extends, builds on and improves that thinking before asking (the owner, 2026-11-25).
 - Only the person typing `/next` or `/back` moves a step; `/back` moves exactly one; plain-speech "next" never moves it (the owner, 2026-11-23).
 - Honest acting: real work by hand, never claim the machinery exists, never invent results; made-up data only on the person's yes (the owner, 2026-11-23).
 - Every step speaks to someone who has never built a skill, never used Lifehack and has not seen this session, and fully reorients them at the start of the step (the owner, 2026-11-23).
@@ -59,16 +59,19 @@ Not skill folders, so there is no file to find:
   6. Tell the person that watching is still on, and that `/skill-builder observe off` stops it.
 
 **Normal job** (no mode word, including a plain `/skill-builder` or `/skill-builder monthly-budget`):
-Five steps, each a conversation with the person (no step runs alone). The shared step runner moves between them: the person types `/next` to go forward and `/back` to go back one step. This skill has no move-on logic of its own.
+Six steps, each a conversation with the person (no step runs alone). The shared step runner moves between them: the person types `/next` to go forward and `/back` to go back one step. This skill has no move-on logic of its own.
 1. **What you want.** If the window is not in the run folder, say one line first: `/next` and `/back` still work from here. Then show the approved opening screen (`references/opening-screen.md`), then work from the highest altitude down to the outcome, the harness check, and a size sense.
-2. **The proposed steps.** One overview screen, then a walk-through two steps per screen, with the step count (command or skill).
-3. **Role-play it.** Optional. Act the skill out by hand, screen by screen, in the person's chair.
-4. **Shake the tree.** Optional. A five-angle review of the spec, findings six at a time, then a validation moment.
-5. **The hand-off.** Compile one clean draft spec, read it back, ask who the skill is for, and hand it on with a link to the packet folder (never a copy).
+2. **The proposed steps.** One overview screen of the steps, with the step count (command or skill). Nothing is walked here; the walk-through is the next step.
+3. **The walk-through.** Each step of the skill walked two to a page, with a page bar drawn by code. A page gets its `✅` only on the person's played-back yes. Pages move by plain words ("show me page 1", "next page", "where am I?"); steps still move only by a typed `/next` or `/back`.
+4. **Role-play it.** Optional. Act the skill out by hand, screen by screen, in the person's chair.
+5. **Shake the tree.** Optional. A five-angle review of the spec, findings six at a time (as pages), then a validation moment.
+6. **The hand-off.** Compile one clean draft spec, read it back, ask who the skill is for, and hand it on with a link to the packet folder (never a copy).
 
-Steps 3 and 4 may be skipped: the person types `/next`. Steps 4 and 5 read the step 2 output, so a skip never strands them.
+Steps 4 and 5 may be skipped: the person types `/next`. Steps 5 and 6 read the step 3 output, so a skip never strands them.
 
-**Writes:** one folder per skill being designed, and nothing outside it. That folder holds the packet files (every finding saved as it happens, the draft spec and its step-prompt drafts) and the runner's run folder (`out/step-1.md` to `out/step-5.md`), so the runner's workdir is that folder. It is always a folder: `<project>/packet/` when the person names a project or `/build` created one, otherwise `<brain>/drafts/builds/<skill-name>/`. The packet stays there as the record. It writes nothing into `records/` and adds no journal row.
+Every screen follows the house style's Screen A: the step line, the page bar on a step that comes in pages, and "👉 Read this section and answer the questions at the bottom." at the top; a large `# QUESTIONS` heading, the bar from code and the questions at the bottom.
+
+**Writes:** one folder per skill being designed, and nothing outside it. That folder holds the packet files (every finding saved as it happens, the draft spec and its step-prompt drafts, and `pages.json`, the page bar's own file, written only by `scripts/page_bar.py`) and the runner's run folder (`out/step-1.md` to `out/step-6.md`), so the runner's workdir is that folder. It is always a folder: `<project>/packet/` when the person names a project or `/build` created one, otherwise `<brain>/drafts/builds/<skill-name>/`. The packet stays there as the record. It writes nothing into `records/` and adds no journal row.
 
 **If it stops early:** the packet is saved every turn, so nothing is lost. The runner's pickup resumes the run at the step it was on (continue, snooze or start over).
 

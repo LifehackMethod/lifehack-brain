@@ -77,7 +77,7 @@ Your final message has three parts, each starting with its section name on its o
 The section names are the §5 ones, and code reads them. You never ask the person anything.
 
 ## Your work is checked
-no checker: internal output, not shown to the person here; the person sees the packet again at step 5 (nothing
+no checker: internal output, not shown to the person here; the person sees the packet again at the hand-off (nothing
 reaches the person unchecked). Because nobody checks you, write only what you were handed and copy the person's
 words exactly.
 
