@@ -76,13 +76,20 @@ suite() {   # suite <plugin-root-under-test>
 
   echo "== REVIEWER (stub replies) =="
   local NR="$HM/reply.txt"
-  printf '%s\n' "preamble the parser must ignore" "SHOW: SPEC GAP: first (evidence: \"a\")" "LOG: BETTER WAY: second" "SHOW: DIDN'T HAPPEN: third" "LOG: LIKELY CAUSE: fourth" "LOG: SPEC GAP: fifth" > "$NR"
+  printf '%s\n' "preamble the parser must ignore" "HIGH: SPEC GAP: first (evidence: \"a\")" "LOW: BETTER WAY: second" "HIGH: DIDN'T HAPPEN: third" "LOW: LIKELY CAUSE: fourth" "LOW: SPEC GAP: fifth" > "$NR"
   export STUB_REPLY_FILE="$NR"; rm -f "$NB/findings.md" "$OD/inbox-s1.txt"; arm s1 audit >/dev/null; stopj s1; bash "$REV" "$HM/stop-s1.json" s1
-  chk "[R1] findings.md gets every line, timestamped, with its tag" '[ "$(grep -cE "^- \[20[0-9-]+ [0-9:]+\] (SHOW|LOG) " "$NB/findings.md")" = 5 ] && grep -q "LOG LIKELY CAUSE: fourth" "$NB/findings.md"'
-  chk "[R1] inbox gets exactly the 2 SHOW lines, kind first, no tag" '[ "$(grep -c . "$OD/inbox-s1.txt")" = 2 ] && head -1 "$OD/inbox-s1.txt" | grep -q "^SPEC GAP: first" && ! grep -q "SHOW" "$OD/inbox-s1.txt"'
-  printf 'SHOW: SPEC GAP: s%s\n' 1 2 3 4 5 6 7 > "$NR"; rm -f "$OD/inbox-s1.txt"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
-  chk "[R2] seven SHOW lines: inbox holds at most 5" '[ "$(grep -c . "$OD/inbox-s1.txt")" = 5 ]'
-  chk "[R2] ... and findings.md still keeps all seven" '[ "$(grep -c "SHOW SPEC GAP: s" "$NB/findings.md")" = 7 ]'
+  chk "[R1] findings.md gets every line, timestamped, with its tag" '[ "$(grep -cE "^- \[20[0-9-]+ [0-9:]+\] (HIGH|LOW) " "$NB/findings.md")" = 5 ] && grep -q "LOW LIKELY CAUSE: fourth" "$NB/findings.md"'
+  chk "[R1] inbox gets exactly ONE line (2d): the first HIGH one, kind first, no tag; the second HIGH stays in findings.md only" '[ "$(grep -c . "$OD/inbox-s1.txt")" = 1 ] && head -1 "$OD/inbox-s1.txt" | grep -q "^SPEC GAP: first" && ! grep -qE "HIGH|SHOW|third" "$OD/inbox-s1.txt" && grep -q "HIGH DIDN.T HAPPEN: third" "$NB/findings.md"'
+  printf 'HIGH: SPEC GAP: s%s\n' 1 2 3 4 5 6 7 > "$NR"; rm -f "$OD/inbox-s1.txt"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
+  chk "[R2] seven HIGH lines: inbox holds at most 1" '[ "$(grep -c . "$OD/inbox-s1.txt")" = 1 ]'
+  chk "[R2] ... and findings.md still keeps all seven" '[ "$(grep -c "HIGH SPEC GAP: s" "$NB/findings.md")" = 7 ]'
+  printf '%s\n' "LOW: SPEC GAP: l1" "LOW: BETTER WAY: l2" "HIGH: DIDN'T HAPPEN: the one" "LOW: LIKELY CAUSE: l3" > "$NR"; rm -f "$OD/inbox-s1.txt"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
+  chk "[R2b] 3 LOW + 1 HIGH: exactly one line reaches the inbox, the HIGH one" '[ "$(grep -c . "$OD/inbox-s1.txt")" = 1 ] && grep -q "^DIDN.T HAPPEN: the one" "$OD/inbox-s1.txt"'
+  printf '%s\n' "LOW: SPEC GAP: l1" "LOW: BETTER WAY: l2" "LOW: LIKELY CAUSE: l3" > "$NR"; rm -f "$OD/inbox-s1.txt"; B4="$(grep -c . "$NB/findings.md")"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
+  chk "[R2c] 0 HIGH (three LOW): no inbox line at all, all three kept in findings.md" '[ ! -s "$OD/inbox-s1.txt" ] && [ "$(grep -c . "$NB/findings.md")" = $((B4+3)) ]'
+  printf '%s\n' "SHOW: SPEC GAP: old-mark" "LOG: BETTER WAY: old-low" > "$NR"; rm -f "$OD/inbox-s1.txt"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
+  chk "[R2d] the old SHOW/LOG marks still read: SHOW as HIGH (shown), LOG as LOW" '[ "$(grep -c . "$OD/inbox-s1.txt")" = 1 ] && grep -q "^SPEC GAP: old-mark" "$OD/inbox-s1.txt"'
+  chk "[R2e] the reviewer prompt asks for HIGH:/LOW: marks" 'grep -q "Start every line with \"HIGH: \" or \"LOW: \"" "$STUB_PROMPT_COPY"'
   echo NOTHING > "$NR"; rm -f "$OD/inbox-s1.txt"; B4="$(grep -c . "$NB/findings.md")"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
   chk "[R3] reply NOTHING: no new finding, no inbox" '[ "$(grep -c . "$NB/findings.md")" = "$B4" ] && [ ! -s "$OD/inbox-s1.txt" ]'
   export STUB_FAIL=1; rm -f "$OD/inbox-s1.txt" "$OD/failnotified-s1"; B4="$(grep -c "REVIEWER FAILED" "$NB/findings.md")"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
@@ -90,7 +97,7 @@ suite() {   # suite <plugin-root-under-test>
   bash "$REV" "$HM/stop-s1.json" s1
   chk "[R4] a second failure in a row does not repeat it; findings.md records both" '[ "$(grep -c . "$OD/inbox-s1.txt")" = 1 ] && [ "$(grep -c "REVIEWER FAILED" "$NB/findings.md")" = $((B4+2)) ]'
   unset STUB_FAIL
-  printf 'LOG: SPEC GAP: ok\n' > "$NR"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
+  printf 'LOW: SPEC GAP: ok\n' > "$NR"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1
   chk "[R4] after a success the failure line can be sent again" '[ ! -f "$OD/failnotified-s1" ]'
   # offset: first review reads from the last person message; the next reads only what is new
   rm -f "$OD/inbox-s1.txt"; arm s1 audit >/dev/null; bash "$REV" "$HM/stop-s1.json" s1; SZ="$(wc -c < "$HM/t.jsonl" | tr -d ' ')"
@@ -130,13 +137,13 @@ assert h[\"hookEventName\"]==\"UserPromptSubmit\" and h[\"additionalContext\"].s
   chk "[I1] ... then the inbox is cleared (moved aside)" '[ ! -e "$OD/inbox-s2.txt" ]'
   chk "[I2] no inbox: no output" '[ -z "$(ups s2 "and another")" ]'
   python3 -c 'print("\n".join("BETTER WAY: " + ("long finding %d " % i) * 20 for i in range(8)))' > "$OD/inbox-s2.txt"; OUT="$(ups s2 "x")"
-  chk "[I3] 8 long lines: at most 5 lines shown, about 1,200 characters" 'printf "%s" "$OUT" | python3 -c "
+  chk "[I3] 8 long lines: exactly 1 line shown, within 1,200 characters" 'printf "%s" "$OUT" | python3 -c "
 import json,sys
 m=json.load(sys.stdin)[\"systemMessage\"].split(\"\n\")[1:]
-assert 1<=len(m)<=5 and sum(len(x)+1 for x in m)<=1250, (len(m), sum(len(x)+1 for x in m))
+assert len(m)==1 and sum(len(x)+1 for x in m)<=1250, (len(m), sum(len(x)+1 for x in m))
 "'
   python3 -c 'print("\n".join("SPEC GAP: short %d" % i for i in range(8)))' > "$OD/inbox-s2.txt"; OUT="$(ups s2 "x")"
-  chk "[I3] 8 short lines: exactly 5 shown" '[ "$(printf "%s" "$OUT" | python3 -c "import json,sys; print(len(json.load(sys.stdin)[\"systemMessage\"].split(\"\n\"))-1)")" = 5 ]'
+  chk "[I3] 8 short lines: exactly 1 shown (2d)" '[ "$(printf "%s" "$OUT" | python3 -c "import json,sys; print(len(json.load(sys.stdin)[\"systemMessage\"].split(\"\n\"))-1)")" = 1 ]'
   chk "[I4] it is its own hook, never a member of the pilot-map-ups group (the dispatcher concatenates stdout)" '! grep -q "observe_ups" "$R/system/hooks/group_dispatch_pilot-map-ups.sh" && python3 -c "
 import json
 r=[json.loads(l) for l in open(\"$R/system/register/register.jsonl\")]
@@ -279,8 +286,10 @@ variant ups-old-file        system/hooks/observe_ups.sh 'with open(os.path.join(
 variant eot-always-launch   system/hooks/end_of_turn_checks.sh 'if [ -f "$OBSD/observe-sess-$SID.flag" ]; then' 'if mkdir -p "$OBSD"; then' U1
 variant eot-no-skip         system/hooks/end_of_turn_checks.sh 'if [ -z "$_obs_run" ]; then' 'if true; then' A2
 variant eot-waits           system/hooks/end_of_turn_checks.sh '"$SID" </dev/null >/dev/null 2>&1 &' '"$SID" </dev/null >/dev/null 2>&1' A1
-variant rev-no-cap          system/tools/observe_review.sh '[ "$SHOWN" -lt 5 ]' '[ "$SHOWN" -lt 500 ]' R2
+variant rev-no-cap          system/tools/observe_review.sh '[ "$SHOWN" -lt 1 ]' '[ "$SHOWN" -lt 500 ]' R2
 variant rev-no-findings     system/tools/observe_review.sh "printf -- '- [%s] %s %s\\n' \"\$(TS)\" \"\$tag\" \"\$rest\" >> \"\$FINDINGS\"" ':' R1
+variant rev-shows-low       system/tools/observe_review.sh 'if [ "$tag" = HIGH ] && [ "$SHOWN" -lt 1 ]' 'if [ "$SHOWN" -lt 1 ]' R2c
+variant rev-no-high-mark    system/tools/observe_review.sh '"HIGH:"*) tag=HIGH;' '"HIGH:"*) tag=LOW;' R2b
 variant rev-no-failline     system/tools/observe_review.sh "printf 'reviewer did not run: %s\\n' \"\$1\" >> \"\$INBOX\"" ':' R4
 variant rev-failline-repeats system/tools/observe_review.sh 'if [ ! -f "$FAILMARK" ]; then' 'if true; then' R4
 variant rev-no-offset       system/tools/observe_review.sh '[ -n "$NEW_OFF" ] && bash "$FLAGTOOL" set offset "$NEW_OFF"' ':' R5
@@ -288,7 +297,7 @@ variant rev-no-step         system/tools/observe_review.sh 'if j.get("skill") ==
 variant rev-no-notes        system/tools/observe_review.sh 'notes = "".join(rd(notes_f).splitlines(True)[-30:]) or "(no notes yet)"' 'notes = "(no notes yet)"' R6
 variant ups-no-clear        system/hooks/observe_ups.sh 'os.replace(inbox, os.path.join(od, "inbox-%s.shown" % sid))' 'pass' I1
 variant ups-no-sysmsg       system/hooks/observe_ups.sh 'out["systemMessage"] = ' 'out["note"] = ' I1
-variant ups-no-cap          system/hooks/observe_ups.sh 'for i, l in enumerate(lines[:5], 1):' 'for i, l in enumerate(lines, 1):' I3
+variant ups-no-cap          system/hooks/observe_ups.sh 'for i, l in enumerate(lines[:1], 1):' 'for i, l in enumerate(lines, 1):' I3
 variant ups-mangles-note    system/hooks/observe_ups.sh '(time.strftime("%Y-%m-%d %H:%M:%S"), rest))' '(time.strftime("%Y-%m-%d %H:%M:%S"), rest.replace(chr(96), "").replace("$", "")))' N1
 variant ups-quiet-path-slow system/hooks/observe_ups.sh '[ -n "$CMD" ] || [ -s "$INBOX" ] || [ -f "$OD/spec-sess-$SID.flag" ] || exit 0' 'python3 -c pass; mkdir -p "$OD"' U3
 

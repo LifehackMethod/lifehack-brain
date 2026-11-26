@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# ⛔ SWITCHED OFF (2026-11-25, Enver's "just enough" ruling): end_of_turn_checks.sh no longer launches this
+# background writer; the skill-builder itself writes <run folder>/draft-spec.md at the end of every round. The file
+# is kept, not wired: removing the launch was the switch, and nothing in this script changed.
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────
 # WHY: SPEC WRITER (round 2b, brief Y/B3). While a skill-builder run is live, after each turn ONE medium-tier model call reads
 #      that turn plus the current draft spec and fills ONLY the blanks the turn gives evidence for. Before this, the draft spec

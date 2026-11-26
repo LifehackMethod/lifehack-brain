@@ -74,12 +74,13 @@ no question is asked twice. No `handoff-in` means a direct start: begin from emp
 `status` "stopped: packet not opened: <reason>", and say so on screen.
 
 ## 5. What you read and write (scratchpad sections, spec §5; read and write only these)
-- **Read:** `handoff-in` (optional), `packet-path`, `known`, `skill-checked` (optional), `harness-checked`
+- **Read:** `handoff-in` (optional), `packet-path`, `known`, `draft-spec` (the design folder's, to write the round's decisions into), `skill-checked` (optional), `harness-checked`
   (optional), `research-mark` (optional), `size-sense` (optional), `status`
-- **Write:** `packet-path`, `known`, `which-skill` (only when launched inside another skill), `pointed-skill`,
+- **Write:** `packet-path`, `known`, `draft-spec` (end-of-round rule below), `which-skill` (only when launched inside another skill), `pointed-skill`,
   `outcome`, `stale` (only after a `/back` lands here), `status`
 - **Your helpers write:** `skill-reading`, `skill-checked`, `harness-findings`, `harness-checked`, `research-mark`,
   `size-sense`, `status`
+- **End of every round (Enver, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
 - No `outcome` yet: ask for it, in the words of the opening screen below.
 - **The step's output file, `{{OUT}}`.** The runner checks it the moment the person types `/next`, before you can
   act, so keep it current every turn once the person has given a first answer. It holds EXACTLY these headings, each at the very start of its own line, in

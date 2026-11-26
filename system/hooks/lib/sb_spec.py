@@ -11,7 +11,8 @@ says on screen and to the model after every turn whether it moved, hands over th
 State (all under ~/.claude/run/observe/, per session; never in the plugin or the person's notes):
   spec-sess-<sid>.flag   wd=<run folder>      present = a skill-builder run is live in this session (the only file test
                                               the Stop and prompt hooks make; removed when the run is complete/abandoned)
-  spec-state-<sid>.json  hash/filled/confirmed/total at the last report (the baseline for "+K this turn")
+  spec-state-<sid>.json  hash and size of draft-spec.md at the last report (the baseline for "changed / not changed this turn"),
+                       plus "decided": did the person's prompt at that report look like a decision (DECISION_RE)
   spec-given-<sid>.json  the bar lines handed to the model this turn (the Stop check compares the reply with them)
   spec-offset-<sid>      transcript byte offset the writer has read to; spec-write-<sid>.pid  one writer at a time
   spec-mismatch-<sid>.txt / spec-read-<sid>.txt / spec-fail-<sid>.txt   one-shot notes for the next turn's line
@@ -29,16 +30,22 @@ import time
 SKILL = "skill-builder"
 FORM_REL = os.path.join("system", "templates", "skill-spec-form", "skill-spec-form-v2.md")
 HEADER = (
-    "> **Written only by the spec writer.** During a skill-builder run this file is written by the background spec writer "
-    "(system/hooks/lib/spec_write.sh) and by nothing else. It fills only the lines the conversation gives evidence for, "
-    "ends each new line with the inferred mark unless the person said or approved it, and never deletes a confirmed line. "
-    "Its evidence, quoted, is in spec-evidence.md beside this file. Do not edit it by hand during a run.\n\n"
+    "> **Written by the skill-builder itself, at the end of every round** (what the person just decided), and "
+    "brought fully up to date by step 5's spec updater. The background spec writer (system/hooks/lib/spec_write.sh) "
+    "is SWITCHED OFF (2026-11-25, Enver's 'just enough' ruling). Only lines the conversation gives evidence for are "
+    "filled; each new line ends with the inferred mark unless the person said or approved it; a confirmed line is "
+    "never deleted. Evidence, quoted, is in spec-evidence.md beside this file.\n\n"
 )
 MAX_EDITS = 12
 BLANK_SPAN = re.compile(r"<\[(?:ask|builder|after build)\][^<>]*>")
 MARK_RE = re.compile(r"\s*(\[inferred\]|\[hypothesis\]|\[stale\]|\[builder's choice\]|\(D\d+\))")
 PAGE_RE = re.compile(r"·\s*(?:page \d+ of \d+|all \d+ pages done)")
 FIG_RE = re.compile(r"[▰▱]{10} \d+% ·")
+# Decision words in the PERSON'S prompt (2c task 4): one place, cheap detection only -- the ⚠ spec-line check
+# fires only when the person's words look like a decision AND the spec did not change this turn.
+DECISION_RE = re.compile(r"(?i)\b(lock|locked|locks|locking|approve|approved|approves|approving|"
+    r"agree|agreed|agrees|yes|go with|going with|decided|decide|decides|rule|ruled|ruling|"
+    r"that'?s it|keep that|keep it|settled)\b")
 
 
 # ------------------------------------------------------------------ paths and small helpers
@@ -182,8 +189,9 @@ def ensure_spec(plug, wd):
 
 def _state_of(plug, wd):
     text = _read(os.path.join(wd, "draft-spec.md"))
-    t, f, c = _load(plug, "completion").counts(text)
-    return {"hash": hashlib.sha1(text.encode("utf-8", "replace")).hexdigest(), "total": t, "filled": f, "confirmed": c}
+    # 2d: the line says only "changed this turn / not changed this turn" by hash; the slot counting is dropped
+    # (it misread a merged layout: 21 slots in 222 lines). The counts are not kept.
+    return {"hash": hashlib.sha1(text.encode("utf-8", "replace")).hexdigest(), "size": len(text)}
 
 
 def activate(plug, wd, sid):
@@ -217,8 +225,10 @@ def run_active(hooks, wd, sid):
 
 # ------------------------------------------------------------------ B2: the reporter line
 
-def report(hooks, sid, pid=""):
-    """The ONE line for the next prompt, or None (no live run). Compares the draft spec with the baseline of the last report."""
+def report(hooks, sid, pid="", prompt=""):
+    """The ONE line for the next prompt, or None (no live run). Compares the draft spec with the baseline of the
+    last report. 2c task 4: a prompt that looks like a decision (DECISION_RE) is stored in the state; if the NEXT
+    report still finds the spec unchanged, the line warns loudly -- the person decided and nothing was written."""
     try:
         if not claim("report", sid, pid):
             return None   # the twin copy of this hook (same prompt) already reported
@@ -230,8 +240,10 @@ def report(hooks, sid, pid=""):
         ensure_spec(plug, wd)
         now = _state_of(plug, wd)
         prev = _json(_p("state", sid, ".json"))
+        state = dict(now)
+        state["decided"] = bool(DECISION_RE.search(prompt)) if prompt else False
         try:
-            _write_atomic(_p("state", sid, ".json"), json.dumps(now))
+            _write_atomic(_p("state", sid, ".json"), json.dumps(state))
         except OSError:
             pass
         extra = ""
@@ -242,10 +254,11 @@ def report(hooks, sid, pid=""):
         elif _pid_alive(_p("write", sid, ".pid")):
             extra = " (the writer is still working on the last turn)"
         if not prev or prev.get("hash") == now["hash"]:
-            return "📋 Spec: NOT updated this turn" + extra
-        k = now["filled"] - int(prev.get("filled", 0))
-        return "📋 Spec: %d of %d filled · %d confirmed · %s this turn%s" % (
-            now["filled"], now["total"], now["confirmed"], ("+%d" % k) if k >= 0 else str(k), extra)
+            line = "📋 Spec: not changed this turn" + extra
+            if prev and prev.get("decided"):
+                line = "⚠ You decided something this turn; the spec did not change. " + line
+            return line
+        return "📋 Spec: changed this turn" + extra
     except Exception as e:
         return "📋 Spec line unavailable: %s" % _log("spec report", e)[:160]
 

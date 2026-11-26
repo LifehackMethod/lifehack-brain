@@ -80,20 +80,11 @@ if [ -f "$OBSD/observe-sess-$SID.flag" ]; then
     fi
   fi
 fi
-# SPEC WRITER + BAR CHECK (round 2b-Y): if a skill-builder run is live in THIS session (flag set by the run starter), launch the
-# detached spec writer (one at a time, same pattern as above) and run the cheap bar/read-list check. No flag = ONE file test.
+# BAR CHECK (round 2b-Y; 2c switched the background spec writer OFF): if a skill-builder run is live in THIS session
+# (flag set by the run starter), run the cheap bar/read-list check. The writer (lib/spec_write.sh) is no longer
+# launched: the skill-builder itself writes the spec at the end of every round (2026-11-25, Enver: just enough).
+# No flag = ONE file test.
 if [ -f "$OBSD/spec-sess-$SID.flag" ]; then
-  _spec_run=""
-  [ -f "$OBSD/spec-write-$SID.pid" ] && kill -0 "$(cat "$OBSD/spec-write-$SID.pid" 2>/dev/null)" 2>/dev/null \
-    && [ -n "$(find "$OBSD/spec-write-$SID.pid" -mmin -10 2>/dev/null)" ] && _spec_run=1
-  if [ -z "$_spec_run" ]; then
-    if printf '%s' "$P" > "$OBSD/spec-stop-$SID.json"; then
-      nohup bash "$_lhb_dir/lib/spec_write.sh" "$OBSD/spec-stop-$SID.json" "$SID" </dev/null >>"$OBSD/spec-writer.log" 2>&1 &
-      echo $! > "$OBSD/spec-write-$SID.pid"; disown
-    else
-      echo "end_of_turn_checks: spec writer could not save the stop payload; no spec update this turn" >&2
-    fi
-  fi
   printf '%s' "$P" | python3 "$_lhb_dir/lib/sb_spec.py" stop "$SID" >/dev/null || echo "end_of_turn_checks: the bar check failed (see ~/.claude/run/observe/spec-errors.log)" >&2
 fi
 DIR="${LHB_TURN_WRITES_DIR:-$HOME/.claude/run/turn-writes}"; LIST="$DIR/$SID.list"

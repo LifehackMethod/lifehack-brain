@@ -17,9 +17,9 @@ trap 'lhb_journal_fire "$?" "observe_ups.sh" "UserPromptSubmit" "" 2>/dev/null |
 # REDIRECT: arm/clear = system/tools/observe_flag.sh; notes + findings = <notes folder>/observe-notes.md, findings.md (the folder
 #      is stored in the switch). A person who never typed an observe command sees nothing from this hook.
 # SIGNPOST: design = brief 2.1 (build-skill-v2). The reviewer = system/tools/observe_review.sh; the Stop launcher =
-#      end_of_turn_checks.sh. Cap: 5 lines, ~1,200 characters on screen.
+#      end_of_turn_checks.sh. Cap (2d): the spec line plus at most ONE reviewer line, ~1,200 characters on screen.
 # FAIL_POSTURE: degrade-safe — any error exits 0 with no output (a prompt hook's failure must never stop a prompt).
-# UPDATED: 2026-11-25 (2b-Y: while a skill-builder run is live (flag spec-sess-<sid>.flag) the ONE spec line comes first in the merged systemMessage, reviewer lines capped at 4; 2.4: optional : - — after the mode word; notes go to observe-notes.md; 2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
+# UPDATED: 2026-11-25 (2d: one reviewer line at most, spec line = changed/not changed; 2c: the spec line checks decision words in the person's prompt -- the unchanged-spec warning; 2b-Y: while a skill-builder run is live (flag spec-sess-<sid>.flag) the ONE spec line comes first in the merged systemMessage, reviewer lines capped at 4; 2.4: optional : - — after the mode word; notes go to observe-notes.md; 2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
 # ─────────────────────────────────────────────────────────────────────────────
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
@@ -96,7 +96,7 @@ if os.path.isfile(os.path.join(od, "spec-sess-%s.flag" % sid)):
         hooks = os.environ["HOOKS"]
         sys.path.insert(0, os.path.join(hooks, "lib"))
         import sb_spec
-        spec_line = sb_spec.report(hooks, sid, j.get("prompt_id") if isinstance(j.get("prompt_id"), str) else "")
+        spec_line = sb_spec.report(hooks, sid, j.get("prompt_id") if isinstance(j.get("prompt_id"), str) else "", prompt) # prompt too (2c task 4): decision words feed the unchanged-spec warning
     except Exception as e:
         spec_line = "📋 Spec line unavailable: %s" % type(e).__name__
         print("observe_ups.sh: spec report failed: %s: %s" % (type(e).__name__, str(e)[:200]), file=sys.stderr)
@@ -109,7 +109,7 @@ if os.path.isfile(inbox) and os.path.getsize(inbox) > 0:
     except OSError:
         lines = []
     budget = 1200; kept = []
-    for i, l in enumerate(lines[:(4 if spec_line else 5)], 1):
+    for i, l in enumerate(lines[:1], 1):
         item = "%d. %s" % (i, l)
         if len(item) > budget:
             item = item[:max(budget - 1, 20)].rstrip() + "…"
@@ -122,8 +122,8 @@ if not ctx and not show and not spec_line:
     sys.exit(0)
 out = {}
 head = "🛠 Skill builder here:"
-if spec_line:   # ONE merged message, five lines at most: the spec line first, then up to four reviewer lines
-    out["systemMessage"] = "\n".join([spec_line] + ["🛠 " + x for x in show[:4]])
+if spec_line:   # ONE merged message, two lines at most (2d): the spec line first, then at most one reviewer line (HIGH only)
+    out["systemMessage"] = "\n".join([spec_line] + ["🛠 " + x for x in show[:1]])
 elif show:
     out["systemMessage"] = head + "\n" + "\n".join(show)
 parts = []

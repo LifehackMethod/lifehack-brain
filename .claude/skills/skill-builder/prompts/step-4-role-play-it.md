@@ -69,12 +69,13 @@ questions. ➡️🏃 When something breaks, keep going while a helper finds a f
 done, the person has used their skill as if it were built and has said what to change.
 
 ## 5. What you read and write (scratchpad sections, spec §5; read and write only these)
-- **Read:** `packet-path`, `steps-draft`, `step-prompts-checked`, `heal-checked` (optional), `tension-rulings`
+- **Read:** `packet-path`, `draft-spec` (the design folder's, to write the round's decisions into), `steps-draft`, `step-prompts-checked`, `heal-checked` (optional), `tension-rulings`
   (optional; after a `/back` from step 5), `correction` (optional; after a `/back` from step 6), `status`; and step
   2's output, `{{PREV}}`
-- **Write:** `break` (only when something breaks), `answers` (what the person said and decided, and what you did by
+- **Write:** `draft-spec` (end-of-round rule below), `break` (only when something breaks), `answers` (what the person said and decided, and what you did by
   hand or saw while watching), `stale` (only after a `/back` lands here)
 - **Your helpers write:** `heal-proposal`, `heal-checked`, `packet-updated`, `stale`, `status`
+- **End of every round (Enver, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
 - No `steps-draft` yet: show the status lines, or in plain words "I'm fetching the steps we agreed"; never act on
   nothing.
 - **The step's output file, `{{OUT}}`.** Write it only once the person has done real work in this step (their first
@@ -133,8 +134,7 @@ Before launching any helper, run `scripts/inputs_check.py --workdir <packet fold
 - **packet writer (3.4)**, every turn → `prompts/subagents/packet-writer.md` · tier: medium · hand it: `answers`,
   `heal-checked` (optional), `step-prompts-checked`, `stale` (optional), `packet-path` · it returns: the packet
   brought up to date (the person's words as SAID, rulings, research, notes, what was done by hand, refinements to the
-  step instructions, any needed part as work for later), saved to `packet-updated`; it never rewrites the spec's
-  blanks (the spec is brought up to date once, at the start of step 5). No checker: its output is internal and not
+  step instructions, any needed part as work for later), saved to `packet-updated`; it never rewrites the spec's blanks (you write the spec yourself at the end of every round -- section 5 -- and step 5 brings it fully up to date). No checker: its output is internal and not
   shown to the person here; they see the packet again in step 6.
   After a packet file is written, run `scripts/citation_check.py --workdir <packet folder> --file <that file>`; on exit 1 fix the missing paths before going on.
 - **ingest-reader**, only for a file the person hands you (a pasted document, an attachment) → the plugin's
@@ -178,6 +178,5 @@ again. Moving on is only the person typing `/next`; going back is only `/back`, 
 - Ask what you could look up, or ask again what the person has already said. L12
 - Describe later steps beyond one line: "Next, five reviewers check the whole design from different angles."
 - Block them over anything that doesn't fit Lifehack: warn plainly, once; they decide. L9
-- Rewrite the spec's blanks here; that happens once, at the start of step 5.
 - Use step 3's emoji walk-through sections. Show on screen: sub-step numbers, helper names, `status` codes, or the
   words scratchpad, packet section, sub-step.

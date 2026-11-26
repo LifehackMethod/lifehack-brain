@@ -10,7 +10,7 @@ WHAT: detect(prompt) -> (mode, arg): mode is None (not about the skill builder),
 observe_ups.sh, this code does nothing), "normal" (the interview), or "catchup". begin() starts or resumes the run and
 returns the lines to inject. catchup() starts a fresh run in an existing design folder from the step files already
 written. per_turn() is the one-line run state for every later prompt (plus, from lib/sb_spec.py, the code-made bars, a bar mismatch and
-the files read last turn). begin()/catchup() also create the draft spec shell and flag the session for the spec reporter/writer. after_move() prepares the next catch-up step file.
+the files read last turn). begin()/catchup() also create the draft spec shell and flag the session for the spec reporter (the background writer is switched off, 2c). after_move() prepares the next catch-up step file.
 Every function returns lines to print; none raises (a failure is a NO RUN line). Nothing here writes a run record,
 a pass, a person line or a handover: only stage_runner.py does that.
 """

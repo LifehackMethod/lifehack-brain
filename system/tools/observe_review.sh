@@ -6,12 +6,12 @@
 # GUARDS: none — a background worker. Never blocks, never edits the skill. SOLE WRITER of findings.md. One job per
 #      session at a time (the launcher's pid file). Read-only model call (run_model gives it Read only).
 # REDIRECT: output goes to <notes folder>/findings.md (everything, timestamped) and to the inbox
-#      ~/.claude/run/observe/inbox-<session>.txt (up to 5 SHOW lines, shown at the person's next prompt by
+#      ~/.claude/run/observe/inbox-<session>.txt (at most ONE line, the first HIGH one,, shown at the person's next prompt by
 #      observe_ups.sh). On any failure the inbox gets ONE line "reviewer did not run: <reason>".
 # SIGNPOST: model tier = `medium` via system/tools/model.lib.sh (never a model id). Switch = observe_flag.sh.
 #      Run folder = run_pointer.sh / parts/stage_runner.py. Reviewer prompt: the 1.0 rerun template (build-skill-v2).
 # FAIL_POSTURE: degrade-safe — every failure is reported through the inbox and findings.md, never as a crash.
-# UPDATED: 2026-11-25 (new, 2.1)
+# UPDATED: 2026-11-25 (2d: HIGH/LOW marks, at most one HIGH line to the inbox; new, 2.1)
 # ─────────────────────────────────────────────────────────────────────────────
 #   observe_review.sh <stop-payload-file> <session-id>
 # Env: OBSERVE_WAIT (seconds before reading, default 2), OBSERVE_MODEL_TIMEOUT (default 240),
@@ -146,8 +146,9 @@ Quiet rule: only findings a skill designer would act on. Never praise. Never res
 Rank your findings, most important first. Give at most 5, each one line:
 "<KIND>: <finding> (evidence: <short quote from the turn>)", where <KIND> is exactly one of
 DIDN'T HAPPEN, SPEC GAP, LIKELY CAUSE, BETTER WAY.
-Start a line with "SHOW: " (then the kind) if a skill designer would want to be interrupted for it right now, and with
-"LOG: " otherwise. Most findings are LOG. Use SHOW only for the few that matter now.
+Start every line with "HIGH: " or "LOW: " (then the kind). HIGH means a skill designer would want to be interrupted for
+it right now; it is shown on screen (only one HIGH is ever shown, so use HIGH sparingly and rank the best first).
+LOW is kept in the findings file only. Most findings are LOW.
 If nothing is worth saying at all, reply exactly NOTHING.
 End your reply with the line END-REVIEW on its own line.
 
@@ -185,18 +186,20 @@ KINDRE="^(DIDN'T HAPPEN|SPEC GAP|LIKELY CAUSE|BETTER WAY):[[:space:]]*"
 while IFS= read -r line; do
   line="${line%$'\r'}"
   case "$line" in
-    "SHOW:"*) tag=SHOW; rest="${line#SHOW:}";;
-    "LOG:"*)  tag=LOG;  rest="${line#LOG:}";;
+    "HIGH:"*) tag=HIGH; rest="${line#HIGH:}";;
+    "SHOW:"*) tag=HIGH; rest="${line#SHOW:}";;   # the old mark, read as HIGH
+    "LOW:"*)  tag=LOW;  rest="${line#LOW:}";;
+    "LOG:"*)  tag=LOW;  rest="${line#LOG:}";;   # the old mark, read as LOW
     *) continue;;
   esac
   rest="${rest#"${rest%%[![:space:]]*}"}"
   [ -n "$rest" ] || continue
   ANY=1
   printf -- '- [%s] %s %s\n' "$(TS)" "$tag" "$rest" >> "$FINDINGS"
-  if [ "$tag" = SHOW ] && [ "$SHOWN" -lt 5 ]; then printf '%s\n' "$rest" >> "$TMPIN"; SHOWN=$((SHOWN+1)); fi
+  if [ "$tag" = HIGH ] && [ "$SHOWN" -lt 1 ]; then printf '%s\n' "$rest" >> "$TMPIN"; SHOWN=$((SHOWN+1)); fi   # 2d: at most ONE line on screen, HIGH only
 done < "$REPLY"
 if [ "$ANY" = 0 ] && ! grep -qx 'NOTHING' <(sed 's/END-REVIEW//; s/^[[:space:]]*//; s/[[:space:]]*$//' "$REPLY"); then
-  printf -- '- [%s] UNPARSED reviewer reply (no SHOW:/LOG: lines): %s\n' "$(TS)" "$(tr '\n' ' ' < "$REPLY" | cut -c1-300)" >> "$FINDINGS"
+  printf -- '- [%s] UNPARSED reviewer reply (no HIGH:/LOW: lines): %s\n' "$(TS)" "$(tr '\n' ' ' < "$REPLY" | cut -c1-300)" >> "$FINDINGS"
 fi
 if [ -s "$TMPIN" ]; then mv "$TMPIN" "$INBOX"; else rm -f "$TMPIN"; fi
 rm -f "$FAILMARK"
