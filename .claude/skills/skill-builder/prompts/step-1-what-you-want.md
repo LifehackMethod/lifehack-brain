@@ -80,7 +80,7 @@ no question is asked twice. No `handoff-in` means a direct start: begin from emp
   `outcome`, `stale` (only after a `/back` lands here), `status`
 - **Your helpers write:** `skill-reading`, `skill-checked`, `harness-findings`, `harness-checked`, `research-mark`,
   `size-sense`, `status`
-- **End of every round (Enver, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
+- **End of every round (owner ruling, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
 - No `outcome` yet: ask for it, in the words of the opening screen below.
 - **The step's output file, `{{OUT}}`.** The runner checks it the moment the person types `/next`, before you can
   act, so keep it current every turn once the person has given a first answer. It holds EXACTLY these headings, each at the very start of its own line, in

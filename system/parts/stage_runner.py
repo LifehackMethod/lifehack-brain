@@ -621,12 +621,19 @@ _OLD_BODIES = {
 def record_pointer(wd):
     """SB-10: tell the mover, per session, where this run folder is, so /next and /back work from a
     window whose cwd is elsewhere (system/tools/run_pointer.sh, over hooks/lib/flag.sh).
-    Best effort: a failure here never stops a start."""
+    Best effort: a failure here never stops a start; it returns a short reason (empty on success)."""
     sh = os.path.join(HERE, "..", "tools", "run_pointer.sh")
     try:
-        subprocess.run(["bash", sh, "set", wd], capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.SubprocessError):
-        pass
+        r = subprocess.run(["bash", sh, "set", wd], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError) as e:
+        print("stage_runner: pointer update failed: %s" % e, file=sys.stderr)
+        return "pointer script failed: %s" % (e,)
+    if r.returncode != 0:
+        out = (r.stderr.strip() or r.stdout.strip()).splitlines()
+        reason = out[-1] if out else ("exit %d" % r.returncode)
+        print("stage_runner: pointer update failed: %s" % reason, file=sys.stderr)
+        return reason
+    return ""
 
 
 def ensure_commands(wd):
@@ -949,10 +956,11 @@ def cmd_start(a):
     json.dump({"run_dir": run_dir, "run_id": rid, "card": os.path.abspath(a.card)},
               open(os.path.join(wd, MARKER), "w", encoding="utf-8"))
     ensure_commands(wd)
-    record_pointer(wd)
+    ptr_err = record_pointer(wd)
     prompt = render_prompt(card, run_dir, 0, code)
-    print("run %s started in %s (%s, %d stages)\ncode word for stage %s (print once, never store): %s\n\n%s"
-          % (rid, wd, card.get("skill", ""), len(card["stages"]), first, code, prompt))
+    warn = "\nrun started, but /next from other windows may not work: %s" % ptr_err if ptr_err else ""
+    print("run %s started in %s (%s, %d stages)%s\ncode word for stage %s (print once, never store): %s\n\n%s"
+          % (rid, wd, card.get("skill", ""), len(card["stages"]), warn, first, code, prompt))
     return OK
 
 
@@ -1352,6 +1360,20 @@ def selftest():
     os.environ["HOME"] = tempfile.mkdtemp(prefix="sr-selftest-home.")  # the run pointer never touches the real one
 
     import shutil
+
+    # -- the pointer failure is reported, never swallowed (a stand-in run_pointer.sh that fails) --
+    _here = globals()["HERE"]
+    with tempfile.TemporaryDirectory() as fake:
+        os.makedirs(os.path.join(fake, "parts"))
+        os.makedirs(os.path.join(fake, "tools"))
+        with open(os.path.join(fake, "tools", "run_pointer.sh"), "w", encoding="utf-8") as fh:
+            fh.write("echo 'no writable flag folder' >&2\nexit 3\n")
+        globals()["HERE"] = os.path.join(fake, "parts")
+        try:
+            why = record_pointer(fake)
+        finally:
+            globals()["HERE"] = _here
+    report("a failing pointer script is reported with its reason", "no writable flag folder" in why, repr(why))
 
     with tempfile.TemporaryDirectory() as td:
         card = os.path.join(td, "card.json")

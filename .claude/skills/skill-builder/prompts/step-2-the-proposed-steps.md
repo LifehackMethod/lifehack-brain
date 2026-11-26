@@ -70,7 +70,7 @@ done, the person has seen the whole proposed shape on one screen and agrees it, 
 - **Write:** `draft-spec` (end-of-round rule below), `steps-draft` (the steps, each with its outcome, inner moves and proof, and the step count), `stale`
   (only after a `/back` lands here)
 - **Your helpers write:** `research-mark`, `status`
-- **End of every round (Enver, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
+- **End of every round (owner ruling, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
 - No `harness-checked` yet: show the status lines, or in plain words "I'm still checking what Lifehack already has,
   so the steps don't repeat it"; never show the overview on nothing.
 - **The step's output file, `{{OUT}}`.** The runner checks it the moment the person types `/next`, before you can

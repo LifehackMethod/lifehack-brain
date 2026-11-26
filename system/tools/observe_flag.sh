@@ -45,8 +45,7 @@ case "$1" in
     [ -n "$sf" ] || { echo "OBSERVE NOT ARMED: no skill named '$sk' found (looked in the plugin's skills, ~/.claude/skills and your code folder)"; exit 1; }
     BRAIN="$(python3 "$PLUG/shared/brain_root.py" --quiet 2>/dev/null | head -1)"
     [ -n "$BRAIN" ] && [ -d "$BRAIN" ] || { echo "OBSERVE NOT ARMED: your notes folder is not set, so there is nowhere to keep the notes"; exit 1; }
-    if [ "$sk" = "skill-builder" ]; then nd="$BRAIN/state/projects/v2/drafts/build-rebuild/16-skill-builder-packet"
-    else nd="$BRAIN/drafts/builds/$sk"; fi
+    nd="$BRAIN/drafts/builds/$sk"   # generic: every skill's observe notes go to its own build folder
     mkdir -p "$nd" 2>/dev/null && [ -d "$nd" ] || { echo "OBSERVE NOT ARMED: could not create the notes folder $nd"; exit 1; }
     flag_write "skill=$sk" "skill_file=$sf" "notes_dir=$nd" "offset=" "transcript=" "armed_at=$NOW" "cwd=$PWD" "session=$CLAUDE_CODE_SESSION_ID"
     echo "OBSERVE ARMED: $sk|$nd";;

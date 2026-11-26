@@ -14,6 +14,28 @@ the files read last turn). begin()/catchup() also create the draft spec shell an
 Every function returns lines to print; none raises (a failure is a NO RUN line). Nothing here writes a run record,
 a pass, a person line or a handover: only stage_runner.py does that.
 """
+# ── LLM CONTEXT ──────────────────────────────────────────────────────────────
+# WHY: in the first live run (2026-11-24) nothing told the model to start the step runner, so the
+#      run never happened: no per-step prompts, no back-room work, bars drawn by hand. This module
+#      is the CODE path that starts the run from the person's own /skill-builder prompt, before
+#      the model sees the message — the model never starts, moves or records a run of its own.
+# GUARDS: Not a gate — never blocks a turn. Every function returns lines to inject or a single
+#      "NO RUN" line; none raises. It starts stage_runner.py, which alone writes run records;
+#      this code writes none. Observe/note/wrap words are handed off untouched to
+#      observe_ups.sh. The SPEC_WRITER_RUNNING env check keeps the background writer's model
+#      call from re-triggering a run.
+# REDIRECT: Run mechanics live in system/parts/stage_runner.py (records, order, status); the
+#      per-turn spec lines come from system/hooks/lib/sb_spec.py; the mover that calls this is
+#      system/hooks/run_step_hook.sh. Prompt text for each step lives in
+#      .claude/skills/skill-builder/prompts/.
+# SIGNPOST: The rule that the runner is started by CODE and only the person's /next or /back
+#      moves it is stated in the step prompts (step-1 §0) and SKILL.md — change the rule THERE;
+#      this file only detects the command and relays stage_runner's output. Hook registration
+#      goes through system/register/register.jsonl, never by hand.
+# FAIL_POSTURE: degrade-safe — any failure becomes a one-line "NO RUN: (reason). Stop." the
+#      model must relay and stop on; the turn is never wedged and no partial run state is left
+#      for the model to clean up.
+# ─────────────────────────────────────────────────────────────────────────────
 import json
 import os
 import re

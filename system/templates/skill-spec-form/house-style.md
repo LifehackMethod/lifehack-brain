@@ -43,7 +43,7 @@ Not skill folders, so there is no file to find:
 
 ## Screen A — the normal screen (the person is doing the work)
 
-The top says what to read; the bottom, under a large heading, is where the answers go (Enver, 2026-11-24: "it should
+The top says what to read; the bottom, under a large heading, is where the answers go (owner ruling, 2026-11-24: "it should
 be clear at the very top that we like read this and the questions are at the bottom").
 
 ````

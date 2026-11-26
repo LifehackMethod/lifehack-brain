@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ⛔ SWITCHED OFF (2026-11-25, Enver's "just enough" ruling): end_of_turn_checks.sh no longer launches this
+# ⛔ SWITCHED OFF (2026-11-25, the owner's "just enough" ruling): end_of_turn_checks.sh no longer launches this
 # background writer; the skill-builder itself writes <run folder>/draft-spec.md at the end of every round. The file
 # is kept, not wired: removing the launch was the switch, and nothing in this script changed.
 # ── LLM CONTEXT ──────────────────────────────────────────────────────────────

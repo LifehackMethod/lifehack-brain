@@ -35,7 +35,7 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 #          stripped); state per session in $DIR/$SID.inlinekeep. Silent when no personal code folder resolves.
 #          2026-11-02: the offer carries the session's last message and asks for it back in full plus the one line, because the
 #          message written after a block replaces it as the final message.
-#      push warnings (fc_private_push_mode=warn, Enver's ruling 2026-11-02): when guard_git_push_signpost.sh ALLOWED a push the
+#      push warnings (fc_private_push_mode=warn, the owner's ruling 2026-11-02): when guard_git_push_signpost.sh ALLOWED a push the
 #          leakage scan flagged, it left <turn-writes>/<session>.pushwarn (one JSON line per finding, also in
 #          <notes>/state/push-warnings.log). While any of them is not yet reported -- its id absent from the final assistant
 #          message -- this BLOCKS at end of turn, listing one line per finding to report (lib/push_warn.py eot). Reported ids
@@ -82,7 +82,7 @@ if [ -f "$OBSD/observe-sess-$SID.flag" ]; then
 fi
 # BAR CHECK (round 2b-Y; 2c switched the background spec writer OFF): if a skill-builder run is live in THIS session
 # (flag set by the run starter), run the cheap bar/read-list check. The writer (lib/spec_write.sh) is no longer
-# launched: the skill-builder itself writes the spec at the end of every round (2026-11-25, Enver: just enough).
+# launched: the skill-builder itself writes the spec at the end of every round (2026-11-25, owner ruling: just enough).
 # No flag = ONE file test.
 if [ -f "$OBSD/spec-sess-$SID.flag" ]; then
   printf '%s' "$P" | python3 "$_lhb_dir/lib/sb_spec.py" stop "$SID" >/dev/null || echo "end_of_turn_checks: the bar check failed (see ~/.claude/run/observe/spec-errors.log)" >&2

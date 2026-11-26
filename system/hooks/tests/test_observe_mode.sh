@@ -156,7 +156,7 @@ assert len(h)==1 and h[0][\"group\"] is None and h[0][\"event\"]==\"UserPromptSu
   chk "[C1] observe: ARMED line names the skill and the notes folder; flag exists" 'printf "%s" "$OUT" | grep -qF "OBSERVE ARMED: Observing audit; notes go to $NB; /skill-builder note to jot, /skill-builder wrap at the end" && [ -f "$OD/observe-sess-s3.flag" ]'
   OUT="$(ups s3 "/skill-builder observe no-such-skill")"
   chk "[C1] observe an unknown skill: NOT ARMED, says why" 'printf "%s" "$OUT" | grep -q "OBSERVE NOT ARMED: no skill named"'
-  chk "[C2] skill-builder's notes go to the packet folder" 'ups s4 "/skill-builder observe skill-builder" | grep -qF "build-rebuild/16-skill-builder-packet"'
+  chk "[C2] skill-builder's notes go to the generic build folder (no per-skill special case)" 'ups s4 "/skill-builder observe skill-builder" | grep -qF "drafts/builds/skill-builder"'
   rm -f "$NB/observe-notes.md"
   N1='he said "hi" $HOME `ls` '"'"'q'"'"' 🎉 \n {braces} $(echo no) !bang'
   ups s3 "/skill-builder note $N1" > "$HM/note.out"

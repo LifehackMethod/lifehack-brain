@@ -199,7 +199,7 @@ chk "[W8] the person never lost a line: every old line is still there except the
   CLAUDE_CODE_SESSION_ID="$SID" bash "$R/system/hooks/lib/spec_write.sh" "$HM/stop4.json" "$SID"; unset STUB_FAIL
   chk "[W11] a failed model call leaves the spec as it was, says why in the evidence file and on the next spec line" 'grep -q "WRITER FAILED" "$WD/spec-evidence.md" && ups "$SID" "x" 12 "$WD" | jq_ "d[\"systemMessage\"]" | grep -q "the writer did not run"'
 
-  # the marker (found live in Enver's window: "model output missing marker" on the NOTHING reply)
+  # the marker (found live in a real window: "model output missing marker" on the NOTHING reply)
   rm -f "$OD/spec-offset-$SID" "$OD/spec-fail-$SID.txt"; printf 'NOTHING\n' > "$HM/reply3.txt"
   export STUB_REPLY_FILE="$HM/reply3.txt" STUB_NO_MARKER=1; stopj "$SID" ok "$HM/t2.jsonl" > "$HM/stop6.json"
   NF0="$(grep -c "WRITER FAILED" "$WD/spec-evidence.md")"

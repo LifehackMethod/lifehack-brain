@@ -229,3 +229,10 @@ No component page exists yet in the plugin's canon (filing is the canon window's
 - **SB-9:** the walk-through is its own step 3 (six steps). `card.json` has a new `step-3` (headings `## Walked steps`, `## Step count`, 60 words, code word); the old steps 3-5 are 4-6 and read `out/step-3.md` for the step count. The overview (step 2) no longer promises a walk-through and offers no skip. Spec sub-step numbers (2.1, 3.1, 4.0a ...) are the spec's own and did not move.
 - **SB-11 + SB-12:** house-style Screen A has the 👉 line at the top, a `# QUESTIONS` heading at the bottom, and a page bar on pages (`scripts/page_bar.py`, tests in `scripts/tests/test_page_bar.py`; the page file is `pages.json` in the packet folder, never the runner's record).
 - **SB-13:** the six step prompts and SKILL.md keep the detective and add the unreliable-not-dishonest witness and the detective's strengths (his ruling, 2026-11-25).
+
+## Routing eval re-run (2026-11-25, after the description gained the three typed modes)
+
+Headless cold sessions (plugin from the V2 working tree, 4 turns each, 3 runs per case). Should fire: S1 (typed command
+loads the skill) 3/3; S2 to S8 3/3 each (S2 now 3/3, was 1/3). Must not fire: N1 to N7 all 0/3 (N1 and N5 to build, N2 to
+brainstorming, N3 to planning-weekly, N4 to autoplan, N6 to professor, N7 bare "build me a skill" to build). No wrong
+fire; no weak case. Run on the working tree before the commit that carries this line.

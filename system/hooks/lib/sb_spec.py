@@ -32,7 +32,7 @@ FORM_REL = os.path.join("system", "templates", "skill-spec-form", "skill-spec-fo
 HEADER = (
     "> **Written by the skill-builder itself, at the end of every round** (what the person just decided), and "
     "brought fully up to date by step 5's spec updater. The background spec writer (system/hooks/lib/spec_write.sh) "
-    "is SWITCHED OFF (2026-11-25, Enver's 'just enough' ruling). Only lines the conversation gives evidence for are "
+    "is SWITCHED OFF (2026-11-25, the owner's 'just enough' ruling). Only lines the conversation gives evidence for are "
     "filled; each new line ends with the inferred mark unless the person said or approved it; a confirmed line is "
     "never deleted. Evidence, quoted, is in spec-evidence.md beside this file.\n\n"
 )

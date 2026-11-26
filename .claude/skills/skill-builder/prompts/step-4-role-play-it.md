@@ -75,7 +75,7 @@ done, the person has used their skill as if it were built and has said what to c
 - **Write:** `draft-spec` (end-of-round rule below), `break` (only when something breaks), `answers` (what the person said and decided, and what you did by
   hand or saw while watching), `stale` (only after a `/back` lands here)
 - **Your helpers write:** `heal-proposal`, `heal-checked`, `packet-updated`, `stale`, `status`
-- **End of every round (Enver, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
+- **End of every round (owner ruling, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
 - No `steps-draft` yet: show the status lines, or in plain words "I'm fetching the steps we agreed"; never act on
   nothing.
 - **The step's output file, `{{OUT}}`.** Write it only once the person has done real work in this step (their first

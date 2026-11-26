@@ -35,7 +35,7 @@ Note: S2 gives a concrete purpose and should fire; N7 gives none and must not. I
 | id | run 1 | run 2 | run 3 | k/3 | commit SHA | date |
 |---|---|---|---|---|---|---|
 | S1 | 1/1 (typed command loads the skill directly) | | | | | |
-| S2 | 1/3 (WEAK: "build" trips the build-mode hook first; the coming /build front door hands it over) | | | | | |
+| S2 | 3/3 (re-run 2026-11-25) | | | | | |
 | S3 | 3/3 | | | | | |
 | S4 | 3/3 | | | | | |
 | S5 | 3/3 | | | | | |
