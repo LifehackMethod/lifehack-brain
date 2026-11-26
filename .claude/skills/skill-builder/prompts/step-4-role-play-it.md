@@ -72,8 +72,7 @@ done, the person has used their skill as if it were built and has said what to c
 - **Read:** `packet-path`, `draft-spec` (the design folder's, to write the round's decisions into), `steps-draft`, `step-prompts-checked`, `heal-checked` (optional), `tension-rulings`
   (optional; after a `/back` from step 5), `correction` (optional; after a `/back` from step 6), `status`; and step
   2's output, `{{PREV}}`
-- **Write:** `draft-spec` (end-of-round rule below), `break` (only when something breaks), `answers` (what the person said and decided, and what you did by
-  hand or saw while watching), `stale` (only after a `/back` lands here)
+- **Write:** `break` (only when something breaks), `stale` (only after a `/back` lands here). You no longer write `draft-spec` or `answers`: the code-launched writer reads the round's turns itself (end-of-round rule below).
 - **Your helpers write:** `heal-proposal`, `heal-checked`, `packet-updated`, `stale`, `status`
 - **End of every round (owner ruling, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
 - No `steps-draft` yet: show the status lines, or in plain words "I'm fetching the steps we agreed"; never act on
@@ -131,11 +130,7 @@ Before launching any helper, run `scripts/inputs_check.py --workdir <packet fold
   edits Lifehack or the skill), saved to `heal-proposal`. Then **heal checker (3.3)**, a different model →
   `prompts/subagents/checker-base.md` + `prompts/subagents/checker-heal.md`, saved to `heal-checked` (a clear fix,
   or one flagged as changing how it works).
-- **packet writer (3.4)**, every turn → `prompts/subagents/packet-writer.md` · tier: medium · hand it: `answers`,
-  `heal-checked` (optional), `step-prompts-checked`, `stale` (optional), `packet-path` · it returns: the packet
-  brought up to date (the person's words as SAID, rulings, research, notes, what was done by hand, refinements to the
-  step instructions, any needed part as work for later), saved to `packet-updated`; it never rewrites the spec's blanks (you write the spec yourself at the end of every round -- section 5 -- and step 5 brings it fully up to date). No checker: its output is internal and not
-  shown to the person here; they see the packet again in step 6.
+- **packet and spec writer (3.4)**, every round, launched BY CODE (the Stop hook; brief 2f) — you never spawn it and never write the packet or the spec yourself · tier: small (model.lib.sh) · its brief: `prompts/subagents/spec-writer.md` · it reads the round's turns and returns the packet brought up to date and the spec's blanks filled, reported in the per-turn SAVED line (`packet-updated` and `status` land in the scratchpad as before). No checker: its output is internal; the person sees the packet again in step 6, and the spec's evidence file records every line it wrote.
   After a packet file is written, run `scripts/citation_check.py --workdir <packet folder> --file <that file>`; on exit 1 fix the missing paths before going on.
 - **ingest-reader**, only for a file the person hands you (a pasted document, an attachment) → the plugin's
   `ingest-reader` agent · tier: small · hand it: that file · it returns: the file's content with any embedded

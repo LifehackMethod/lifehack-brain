@@ -75,7 +75,7 @@ question uses the house style's question block and carries all three: *Recommend
 First read the step count in step 3's output. **A one-step command:** send no helpers, write nothing, and show only:
 "Your skill is a single step, so it doesn't need the five-angle check; nothing is lost by skipping it. You can skip
 this: type `/next`." Otherwise, in this order, never reordered:
-1. ➡️🏃 Bring the spec up to date before anything is shown (4.0a): every ruling made so far is written in and checked.
+1. ➡️🏃 Bring the spec up to date before anything is shown (4.0a): every ruling made so far is written in and checked. The four reviewers wait for it: launch none until `scripts/inputs_check.py --workdir <packet folder> --substep 4.1a --requires spec-update-checked` exits 0 (code-held gate, brief 2f).
 2. 🤖 The prep report (4.0): what is still undecided; the person decides now or lets the reviewers guess first.
 3. ➡️🏃 The four reviewers, one angle each, at the same time where possible (4.1a) → the research pass, one small
    helper per open item that looking can answer (4.1b) → the rulebook proposer, always last, with those facts (4.1c)
@@ -93,7 +93,7 @@ are filled and which are still open.
   step's output, `{{PREV}}`, only if it exists (step 4 may have been skipped)
 - **Write:** `prep-decisions`, `tension-rulings` (the person's rulings, for step 4 after a `/back`)
 - **Your helpers write:** `tensions`, `open-facts`, `facts`, `proposals`, `tensions-checked`, `validation`,
-  `status`
+  `spec-update-checked`, `status`
 - No `steps-draft` or no packet: show the status lines, or in plain words "I'm waiting on the steps we agreed"; send
   no helpers on nothing.
 - **The step's output file, `{{OUT}}`.** Write it only once the person has done real work in this step (their first
@@ -133,7 +133,7 @@ are filled and which are still open.
    "**<short name> · Optional**", one or two conversational lines on what the problem is and why it matters, then the
    *Recommendation:* (the fix), *Confidence:* and *Load-bearing:*. "Needs you" means their answer changes the design;
    "Optional" means a fix exists and the design works either way. Nothing is applied without their yes. Then the next
-   page (their "next page", or after they rule), until all are shown or they move on. Nothing found: "The five readers found nothing that changes the work. I
+   page (their "next page", or after they rule), until all are shown or they move on. GATED (2f): after they rule on a page, the writer saves those rulings first; show the next page only after the per-turn line says SAVED, and take its questions only from the QUESTIONS (from code) file. Nothing found: "The five readers found nothing that changes the work. I
    checked the screens, the logic, what gets saved, the order and Lifehack's rulebook."
 5. **A redesign that needs acting out again:** "That changes how the skill works. Type `/back` once and we'll act out
    the change." A small fix that needs no acting is made right here.
@@ -154,7 +154,7 @@ Before launching any helper, run `scripts/inputs_check.py --workdir <packet fold
   (`system/templates/skill-spec-form/skill-spec-form-v2.md`) · it returns: the packet's draft spec with every ruling
   since it was last written, reported in `status`. Then **spec-update checker (4.0a)**, a different model →
   `prompts/subagents/checker-base.md` + `prompts/subagents/checker-spec-update.md`, which confirms every ruling landed
-  and nothing old contradicts it.
+  and nothing old contradicts it. Its checker's done result is the gate the reviewers wait on (`--requires spec-update-checked`, brief 2f).
 - **four reviewers (4.1a)**, each blind → `prompts/subagents/reviewer-base.md` + one angle file each:
   `prompts/subagents/reviewer-screens.md`, `prompts/subagents/reviewer-logic.md`,
   `prompts/subagents/reviewer-saving.md`, `prompts/subagents/reviewer-order.md` · tier: medium · hand each: the draft
