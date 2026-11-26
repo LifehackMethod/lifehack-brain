@@ -5,7 +5,7 @@ CALLER: run at the start of each skill-builder sub-step, by that sub-step's step
 prompt's "what you read and write" routine (prompts/step-1…6-*.md; the runner's
 step code may also call it before launching a helper). Usage:
 
-    inputs_check.py --workdir <packet folder> --substep <e.g. 1.6> [--timeout 20]
+    inputs_check.py --workdir <packet folder> --substep <e.g. 1.6> [--requires <section>] [--timeout 20]
 
 WHY NO SHARED TOOL COVERS IT: the shared tools in system/register/toolbox.md are
 generic file readers/writers and repo guards; none of them knows this skill's
@@ -205,6 +205,9 @@ def main(argv=None):
         description="Check a sub-step's required scratchpad sections (skill-builder).")
     parser.add_argument("--workdir", required=True, help="the packet folder")
     parser.add_argument("--substep", required=True, help="e.g. 1.6")
+    parser.add_argument("--requires", default="",
+                        help="an extra scratchpad section the caller waits on (2f), e.g. spec-update-checked: "
+                             "the same exit codes; its waiting line names the check that is still finishing")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     args = parser.parse_args(argv)
 
@@ -229,6 +232,8 @@ def main(argv=None):
     try:
         required = [s for s, req in INCOMING[args.substep] if req]
         optional = [s for s, req in INCOMING[args.substep] if not req]
+        if args.requires:
+            required = required + [args.requires]   # 2f: the code-held gate, an extra section the caller waits on
         missing = [s for s in required if not section_present(args.workdir, s)]
         present_optional = [s for s in optional if section_present(args.workdir, s)]
     except TimeUp:
@@ -243,6 +248,10 @@ def main(argv=None):
             phrase = EXPLICIT_PAUSE.get(args.substep, {}).get(section)
             if not phrase:
                 phrase = f"waiting: {section} from {WRITER.get(section, 'an earlier sub-step')}"
+            if section == args.requires:
+                # 2f: the caller's own gate names the check that is still finishing, not a writer
+                phrase = "waiting: the spec update check (4.0a)" if section == "spec-update-checked" \
+                    else f"waiting: {section}"
             print(phrase)
         print(f"RECEIPT {script_name()} FAIL missing {len(missing)} of {len(required)} required "
               f"({', '.join(missing)}) | untested: content of the sections that were present")
