@@ -16,8 +16,6 @@ State (all under ~/.claude/run/observe/, per session; never in the plugin or the
   spec-given-<sid>.json  the bar lines handed to the model this turn (the Stop check compares the reply with them)
   spec-offset-<sid>      transcript byte offset the writer has read to; spec-write-<sid>.pid  one writer at a time
   spec-mismatch-<sid>.txt / spec-read-<sid>.txt / spec-fail-<sid>.txt   one-shot notes for the next turn's line
-  spec-saved-<sid>.txt   the writer's done-marker (2f), consumed to .shown after the SAVED line shows once
-  spec-questions-<sid>.pid / .txt   the fresh questioner (2f): its pid, then its questions file
 In the run folder: draft-spec.md (WRITTEN ONLY BY THE WRITER during a run) and spec-evidence.md (its quoted evidence).
 """
 import hashlib
@@ -32,11 +30,11 @@ import time
 SKILL = "skill-builder"
 FORM_REL = os.path.join("system", "templates", "skill-spec-form", "skill-spec-form-v2.md")
 HEADER = (
-    "> **Saved by code's gated writer** (system/hooks/lib/spec_write.sh, brief 2f, 2026-11-25) after every round, from "
-    "what the person just decided, and brought fully up to date by step 5's spec updater; the main window never writes "
-    "this file. Only lines the round gives evidence for are filled; each new line ends with the inferred mark unless "
-    "the person said or approved it; a confirmed line is never deleted, and a replaced line is kept beneath marked "
-    "(superseded <date>). Evidence, quoted, is in spec-evidence.md beside this file.\n\n"
+    "> **Written by the skill-builder itself, at the end of every round** (what the person just decided), and "
+    "brought fully up to date by step 5's spec updater. The background spec writer (system/hooks/lib/spec_write.sh) "
+    "is SWITCHED OFF (2026-11-25, the owner's 'just enough' ruling). Only lines the conversation gives evidence for are "
+    "filled; each new line ends with the inferred mark unless the person said or approved it; a confirmed line is "
+    "never deleted. Evidence, quoted, is in spec-evidence.md beside this file.\n\n"
 )
 MAX_EDITS = 12
 BLANK_SPAN = re.compile(r"<\[(?:ask|builder|after build)\][^<>]*>")
@@ -211,8 +209,7 @@ def activate(plug, wd, sid):
 
 def deactivate(sid):
     for kind, ext in (("sess", ".flag"), ("state", ".json"), ("given", ".json"), ("offset", ""), ("mismatch", ".txt"),
-                      ("read", ".txt"), ("fail", ".txt"), ("turn", ".json"), ("write", ".pid"), ("saved", ".txt"),
-                      ("saved", ".txt.shown"), ("questions", ".pid"), ("questions", ".txt"), ("questions", ".txt.shown")):
+                      ("read", ".txt"), ("fail", ".txt"), ("turn", ".json")):
         _rm(_p(kind, sid, ext))
 
 
@@ -249,14 +246,13 @@ def report(hooks, sid, pid="", prompt=""):
             _write_atomic(_p("state", sid, ".json"), json.dumps(state))
         except OSError:
             pass
-        g = gate(sid, window=20)
-        if g and g[0]:
-            return g[0]   # 2f: WAIT or SAVED replaces the changed/not-changed line while the gate holds
         extra = ""
         fail = _read(_p("fail", sid, ".txt")).strip()
         if fail:
             extra = " · the writer did not run: %s" % fail[:160]
             _rm(_p("fail", sid, ".txt"))
+        elif _pid_alive(_p("write", sid, ".pid")):
+            extra = " (the writer is still working on the last turn)"
         if not prev or prev.get("hash") == now["hash"]:
             line = "📋 Spec: not changed this turn" + extra
             if prev and prev.get("decided"):
@@ -265,65 +261,6 @@ def report(hooks, sid, pid="", prompt=""):
         return "📋 Spec: changed this turn" + extra
     except Exception as e:
         return "📋 Spec line unavailable: %s" % _log("spec report", e)[:160]
-
-
-# ------------------------------------------------------------------ 2f: the gate
-
-GATE_WAIT_SCREEN = "📋 Spec: WAIT — saving your answers from the last round; nothing lost."
-GATE_WAIT_MODEL = ("GATE: WAIT — saving your answers from the last round. Ask no new questions, findings or reviewers, "
-                   "and launch no helper that reads the spec, until the SAVED line appears.")
-GATE_Q_FAILED = ("QUESTIONS: the fresh read failed — say so in one line and ask no new numbered questions this round.")
-
-
-def gate(sid, consume=True, window=0):
-    """(screen line, model line) from the gate markers (2f), or (None, None) when neither applies — the caller then
-    shows today's changed/not-changed line. Writer or questioner pid alive -> WAIT. Done-marker present -> SAVED, with
-    the questioner's file turned into the QUESTIONS line; the marker (and the questions file) is renamed .shown after
-    the SAVED line has been produced once, so the line shows exactly once."""
-    try:
-        if _pid_alive(_p("write", sid, ".pid")) or _pid_alive(_p("questions", sid, ".pid")):
-            return GATE_WAIT_SCREEN, GATE_WAIT_MODEL
-        mk = _p("saved", sid, ".txt")
-        marker = _read(mk).strip()
-        cache = _p("gate-seen", sid, ".json")
-        if not marker:
-            # the screen hook and the model hook are two processes in one prompt: the second one replays the first's
-            # SAVED pair (within `window` seconds) so the two lines never disagree
-            if window:
-                try:
-                    c = json.loads(_read(cache) or "{}")
-                    if c.get("pair") and time.time() - c.get("t", 0) <= window:
-                        return tuple(c["pair"])
-                except Exception:  # allow-silence: no usable replay cache just means no SAVED line is replayed
-                    pass
-            return None, None
-        screen = "📋 Spec: SAVED — %s" % marker
-        qf = _p("questions", sid, ".txt")
-        q = _read(qf).strip()
-        if q and not q.startswith("NONE (the fresh read failed)"):
-            model = ("GATE: SAVED — %s. QUESTIONS (from code): read %s and show its questions under # QUESTIONS. "
-                     "Never invent questions from this conversation." % (marker, qf))
-        else:
-            model = "GATE: SAVED — %s. %s" % (marker, GATE_Q_FAILED)
-        if consume:
-            try:
-                os.replace(mk, mk + ".shown")
-            except OSError:
-                pass
-            if q:
-                try:
-                    os.replace(qf, qf + ".shown")
-                except OSError:
-                    pass
-        if consume and window:
-            try:
-                _write_atomic(cache, json.dumps({"t": time.time(), "pair": [screen, model]}))
-            except OSError:
-                pass
-        return screen, model
-    except Exception as e:
-        _log("spec gate", e)
-        return None, None
 
 
 # ------------------------------------------------------------------ B4: bars from code, read list, mismatch
@@ -364,12 +301,6 @@ def _bar_values(lines):
 def turn_lines(hooks, wd, sid):
     """Lines appended to the per-turn RUN line (sb_start.per_turn): the bars, a bar mismatch, the files read last turn."""
     out = []
-    try:
-        g = gate(sid, window=20)
-        if g and g[1]:
-            out.append(g[1])   # 2f: WAIT / SAVED + QUESTIONS, the same lines the screen shows
-    except Exception as e:
-        out.append("spec gate unavailable: %s" % _log("spec gate", e)[:160])
     try:
         plug = _plug(hooks)
         bl = bar_lines(plug, wd)
@@ -518,44 +449,40 @@ def _turns(tp, offset):
     return turns, new_off
 
 
-_WRITER_BRIEF_RELS = (".claude/skills/skill-builder/prompts/subagents/spec-writer.md",
-                      "skills/skill-builder/prompts/subagents/spec-writer.md")
+PROMPT = """You are the SPEC WRITER of a skill builder. A person is designing a skill in conversation; you keep the DRAFT SPEC
+(a form) up to date in the background, after each turn. You write only what the turn gives evidence for.
 
+The draft spec has blanks that look like <[ask] ...>, <[builder] ...> or <[after build] ...>. Fill a blank only when the
+turn below says enough to fill it. Never guess, never fill from general knowledge, never fill a blank the turn does not
+speak to. If the turn speaks to no blank, reply NOTHING.
+ALWAYS end your reply with the line END-WRITE on its own last line, whether you wrote records or NOTHING.
 
-def _writer_brief(plug):
-    for rel in _WRITER_BRIEF_RELS:
-        p = os.path.join(plug, rel)
-        if os.path.isfile(p):
-            return p
-    return ""
-PACKET_CAP = 20000
+For each blank you fill, write one record:
+SLOT: <the first 60 characters of the blank, copied exactly from the draft, starting at its "<[">
+VALUE: <what goes there, plain words on ONE line, no angle brackets, no marks; the person's own words where they said it best>
+BY: PERSON or INFERRED
+EVIDENCE: <a short quote, copied exactly from the turn, that supports it>
+---
+BY is PERSON only if the PERSON's own words in the turn state it, or the person said yes to a play-back of exactly it
+(then EVIDENCE must quote the person). Everything else is INFERRED.
 
+To record that the person confirmed a line that is already filled and ends with [inferred] or [hypothesis], write:
+CONFIRM: <the first 60 characters of that line, copied exactly>
+EVIDENCE: <the person's yes or words, quoted exactly from the turn>
+---
+At most %d records. Never touch a line that carries a (D<n>) citation. After the last record write END-WRITE on its own line.
 
-def _packet_brief(wd):
-    """The packet files the writer appends to, capped (the writer never sees the conversation)."""
-    parts, total = [], 0
-    for name in ("notes.md", "rulings.md", "research.md"):
-        t = _read(os.path.join(wd, name))
-        if not t:
-            parts.append("=== %s (absent or empty) ===" % name)
-            continue
-        if total + len(t) > PACKET_CAP:
-            t = t[:max(0, PACKET_CAP - total)] + "\n(packet cut for length)"
-        total += len(t)
-        parts.append("=== %s (current) ===\n%s" % (name, t))
-    return "\n\n".join(parts)
+=== THE DRAFT SPEC (current) ===
+%s
+
+=== THE TURN(S) ===
+%s
+"""
 
 
 def build_prompt(plug, payload_file, prompt_file, wd, sid):
-    """Writes the writer's launch prompt: the brief file (prompts/subagents/spec-writer.md, everything above its test
-    card) plus the draft spec, the packet and the round's turns. Returns 'OK <new offset>' or 'FAIL <reason>'."""
+    """Writes the prompt; returns 'OK <new offset>' or 'FAIL <reason>'."""
     try:
-        bp = _writer_brief(plug)
-        brief = _read(bp) if bp else ""
-        if "— TEST CARD —" in brief:
-            brief = brief.split("— TEST CARD —")[0].rstrip()
-        if not brief:
-            return "FAIL the writer brief is missing (prompts/subagents/spec-writer.md)"
         p = json.loads(_read(payload_file))
     except ValueError as e:
         return "FAIL payload not JSON: %s" % e
@@ -574,12 +501,8 @@ def build_prompt(plug, payload_file, prompt_file, wd, sid):
         return "FAIL the draft spec is missing or empty (%s)" % os.path.join(wd, "draft-spec.md")
     if len(spec) > 90000:
         spec = spec[:90000] + "\n(spec cut for length)"
-    packet = _packet_brief(wd)
-    prompt = ("At most %d records in your reply, `---` between records, and END-WRITE on its own last line.\n\n%s"
-              "\n\n=== THE DRAFT SPEC (current) ===\n%s\n\n%s\n\n=== THE ROUND\u2019S TURNS (the only evidence) ===\n%s\n"
-              % (MAX_EDITS, brief, spec, packet, body))
     # the nested model session runs the same hooks: no literal slash-command may appear in its prompt
-    _write_atomic(prompt_file, prompt.replace("/skill-builder", "skill-builder"))
+    _write_atomic(prompt_file, (PROMPT % (MAX_EDITS, spec, body)).replace("/skill-builder", "skill-builder"))
     try:
         _write_atomic(_p("turn", sid, ".json"), json.dumps({"person": [t for w, t in turns if w == "PERSON"], "all": body}))
     except OSError:
@@ -591,22 +514,14 @@ def _norm(s):
     return " ".join(s.split()).lower()
 
 
-REC_KEYS = ("SLOT", "VALUE", "BY", "EVIDENCE", "CONFIRM", "REPLACE", "NEW",
-            "SAID", "RULED", "RESEARCH", "BY-HAND", "REFINEMENT", "DEFERRED", "STALE", "UNSTALE")
-_HEAD_KEYS = ("SLOT", "CONFIRM", "REPLACE", "SAID", "RULED", "RESEARCH", "BY-HAND",
-              "REFINEMENT", "DEFERRED", "STALE", "UNSTALE")
-_KEY_RE = re.compile(r"^(%s):\s*(.*)$" % "|".join(REC_KEYS))
-
-
 def _parse(reply):
-    """The writer's records (brief 2f): spec records (SLOT/CONFIRM/REPLACE) and packet records (SAID...UNSTALE)."""
     recs, cur = [], {}
     for raw in reply.splitlines():
         line = raw.strip()
         if line.endswith("END-WRITE"):   # the marker on its own line or glued to the end of a line: both end the reply
             line = line[:-len("END-WRITE")].strip()
             if line and line != "---":
-                m0 = _KEY_RE.match(line)
+                m0 = re.match(r"^(SLOT|VALUE|BY|EVIDENCE|CONFIRM):\s*(.*)$", line)
                 if m0:
                     cur[m0.group(1)] = m0.group(2).strip()
             if cur:
@@ -618,9 +533,9 @@ def _parse(reply):
                 recs.append(cur)
             cur = {}
             continue
-        m = _KEY_RE.match(line)
+        m = re.match(r"^(SLOT|VALUE|BY|EVIDENCE|CONFIRM):\s*(.*)$", line)
         if m:
-            if m.group(1) in _HEAD_KEYS and any(k in cur for k in _HEAD_KEYS):
+            if m.group(1) in ("SLOT", "CONFIRM") and ("SLOT" in cur or "CONFIRM" in cur):
                 recs.append(cur)
                 cur = {}
             cur[m.group(1)] = m.group(2).strip()
@@ -635,100 +550,9 @@ def _clean_value(v):
     return " ".join(v.split())
 
 
-PACKET_HOME = {
-    "SAID": ("notes.md", "SAID"),
-    "BY-HAND": ("notes.md", "BY HAND"),
-    "REFINEMENT": ("notes.md", "STEP-PROMPT REFINEMENTS"),
-    "DEFERRED": ("notes.md", "DEFERRED WORK"),
-    "STALE": ("notes.md", "STALE"),
-    "UNSTALE": ("notes.md", "STALE"),
-    "RULED": ("rulings.md", "RULED"),
-    "RESEARCH": ("research.md", "RESEARCH"),
-}
-_STALE_TS = re.compile(r"^\s*-\s*\[[^\]]+\]\s*")
-
-
-def _append_under(text, heading, line):
-    """`line` added at the END of `heading`'s section (a heading matched at any # level, name equal); a heading the
-    packet does not use yet is created at the end of the file. Returns the new text."""
-    lines = text.split("\n")
-    hi = None
-    for k, l in enumerate(lines):
-        m = re.match(r"^#{1,6}\s+(.+?)\s*$", l.strip())
-        if m and m.group(1).strip() == heading:
-            hi = k
-            break
-    if hi is None:
-        head = (text.rstrip("\n") + "\n\n") if text.strip() else ""
-        return head + "## %s\n%s\n" % (heading, line)
-    j = len(lines)
-    for k in range(hi + 1, len(lines)):
-        if re.match(r"^#{1,6}\s+", lines[k].strip()):
-            j = k
-            break
-    lines.insert(j, line)
-    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
-
-
-def _drop_stale(text, section):
-    """One line in the STALE section dropped (the person re-confirmed it); a non-empty section keeps its heading."""
-    lines = text.split("\n")
-    hi, out, insec = None, [], False
-    for k, l in enumerate(lines):
-        m = re.match(r"^#{1,6}\s+(.+?)\s*$", l.strip())
-        if m:
-            name = m.group(1).strip()
-            if name == "STALE":
-                hi, insec = k, True
-                out.append(l)
-                continue
-            insec = False
-        if insec and not m and _norm(_STALE_TS.sub("", l).lstrip("-* ")).startswith(_norm(section)):
-            continue   # the dropped line
-        out.append(l)
-    if hi is None:
-        return text
-    return "\n".join(out)
-
-
-def _apply_packet(wd, recs, ts):
-    """Append-only packet writes (2f). Returns (applied, skipped, {file: new text}) — nothing written here; the caller
-    writes after every guard has passed, so a spec abort leaves the packet untouched too."""
-    applied, skipped, files = 0, 0, {}
-    for r in recs:
-        kind = next((k for k in PACKET_HOME if k in r), None)
-        if not kind:
-            continue
-        fname, heading = PACKET_HOME[kind]
-        text = files.get(fname)
-        if text is None:
-            text = _read(os.path.join(wd, fname))
-        val = " ".join((r.get(kind) or "").split())
-        if not val:
-            skipped += 1
-            continue
-        if kind == "UNSTALE":
-            new = _drop_stale(text, val)
-            if new != text:
-                files[fname] = new
-                applied += 1
-            else:
-                skipped += 1
-            continue
-        line = "- [%s] %s" % (ts, val)
-        have = {_norm(_STALE_TS.sub("", l)) for l in text.splitlines()}
-        if _norm(val) in have or _norm(line) in have:
-            skipped += 1
-            continue
-        files[fname] = _append_under(text, heading, line)
-        applied += 1
-    return applied, skipped, files
-
-
 def apply_reply(plug, reply_file, wd, sid, new_off):
-    """Apply the writer's records (brief 2f) to draft-spec.md AND the packet: only blank spans and unconfirmed lines
-    change; the packet is append-only; the result is checked against every confirmed line before the writes (one
-    atomic rename for the spec; the packet is touched only after every guard has passed). Returns a one-line summary."""
+    """Apply the writer's records to draft-spec.md: only blank spans and unconfirmed lines change; the result is checked
+    against every confirmed line before the one atomic rename. Returns a one-line summary."""
     comp = _load(plug, "completion")
     path = os.path.join(wd, "draft-spec.md")
     text = _read(path)
@@ -749,47 +573,11 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
     next_d = 1 + max([int(m.group(1)) for m in re.finditer(r"(?m)^D(\d+) · ", text)] + cited or [0])
     used = set()
     applied = 0
-    abort = None   # a REPLACE aimed at a confirmed line aborts the WHOLE write (spec and packet)
     if not recs and not re.search(r"(?m)^\s*NOTHING\s*$", reply.replace("END-WRITE", "\n")):
         ev.append("- [%s] UNPARSED writer reply (no records, not NOTHING): %s" % (ts, " ".join(reply.split())[:300]))
-    packet_applied, packet_skipped, packet_files = _apply_packet(wd, recs, ts)
     for r in recs[:MAX_EDITS]:
-        if abort:
-            break
         quote = r.get("EVIDENCE", "").strip().strip("\"'“”")
         qn = _norm(quote)
-        if "REPLACE" in r:
-            key = _norm(r["REPLACE"]).lstrip("-* ")
-            newv = _clean_value(r.get("NEW", ""))
-            allhits = [(o, l) for o, (l, s) in elig.items() if s == "count" and len(key) >= 12
-                       and _norm(l).lstrip("-* ").startswith(key)]
-            confirmed_hits = [(o, l) for o, l in allhits
-                              if re.search(r"\(D\d+\)", comp.CODE_SPAN_RE.sub(" ", l)) or comp._classify(l) == "done"]
-            hits = [(o, l) for o, l in allhits if (o, l) not in confirmed_hits]
-            if confirmed_hits:
-                abort = "a REPLACE aimed at a confirmed line: %s" % confirmed_hits[0][1][:100]
-                ev.append("- [%s] ABORTED (whole write): %s · evidence: \"%s\"" % (ts, abort, quote[:120]))
-                break
-            if len(hits) != 1 or not newv or not quote or not qn:
-                ev.append("- [%s] REJECTED replace (%s): %s" % (
-                    ts, "no unique unconfirmed line" if len(hits) != 1 else "empty new text or no evidence quote",
-                    r["REPLACE"][:80]))
-                continue
-            o, l = hits[0]
-            if o in used:
-                continue
-            used.add(o)
-            pre = re.match(r"^\s*(?:[-*+]|\d+[.)])\s+", l)
-            nl = (pre.group(0) if pre else "") + newv
-            if qn not in persons:
-                nl += " [inferred]"   # code adds the mark; the writer never types it
-            keep = l.rstrip() + " (superseded %s)" % time.strftime("%Y-%m-%d")
-            edits.append((o, o + len(l), nl + "\n" + keep))
-            ev.append("- [%s] REPLACED: %s -> \"%s\" (old line kept, superseded %s) · evidence: \"%s\"%s" % (
-                ts, r["REPLACE"][:70], newv[:120], time.strftime("%Y-%m-%d"), quote[:200],
-                "" if qn in persons else " [inferred]"))
-            applied += 1
-            continue
         if "CONFIRM" in r:
             key = _norm(r["CONFIRM"]).lstrip("-* ")
             hits = [(o, l) for o, (l, s) in elig.items() if s == "count" and len(key) >= 12
@@ -839,28 +627,23 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
         edits.append((m.start(), m.end(), rep))
         applied += 1
     new = text
-    for s_, e_, rep in sorted(edits, key=lambda x: -x[0]):
-        new = new[:s_] + rep + new[e_:]
+    for s, e, rep in sorted(edits, key=lambda x: -x[0]):
+        new = new[:s] + rep + new[e:]
     if dlines:
         add = "\n".join(dlines) + "\n"
-        i2 = new.find("\n## ROUTED NOTES")
-        new = (new[:i2 + 1] + add + "\n" + new[i2 + 1:]) if i2 >= 0 else (new.rstrip("\n") + "\n" + add)
+        i = new.find("\n## ROUTED NOTES")
+        new = (new[:i + 1] + add + "\n" + new[i + 1:]) if i >= 0 else (new.rstrip("\n") + "\n" + add)
     if new != text:
         left = set(new.splitlines())
         lost = [l for l in old_confirmed if l not in left]
         if lost:   # refuse the whole write: a confirmed line would change
             ev.append("- [%s] ABORTED: the edit would have changed a confirmed line: %s" % (ts, lost[0][:100]))
             new, applied = text, 0
-    if abort:   # the whole write is one write: the packet goes back too
-        new, applied, packet_applied, packet_files = text, 0, 0, {}
     if new != text:
         _write_atomic(path, new)
-    for fname, ptext in sorted(packet_files.items()):
-        if ptext != _read(os.path.join(wd, fname)):
-            _write_atomic(os.path.join(wd, fname), ptext)
     if ev:
         evp = os.path.join(wd, "spec-evidence.md")
-        head = "" if os.path.isfile(evp) else "# Spec evidence\n\nWritten by the spec writer: every line it added to draft-spec.md and the packet, with the quote that supports it.\n\n"
+        head = "" if os.path.isfile(evp) else "# Spec evidence\n\nWritten by the spec writer: every line it added to draft-spec.md, with the quote that supports it.\n\n"
         with open(evp, "a", encoding="utf-8") as f:
             f.write(head + "\n".join(ev) + "\n")
     if new_off:
@@ -868,46 +651,7 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
             _write_atomic(_p("offset", sid), str(new_off))
         except OSError:
             pass
-    return "APPLIED spec=%d packet=%d (skipped %d)" % (applied, packet_applied, packet_skipped)
-
-
-# ------------------------------------------------------------------ 2f: the fresh questioner
-
-Q_END = "QUESTIONS-END"
-Q_FAILED = "NONE (the fresh read failed)"
-
-
-def build_questions(plug, wd, out_file, findings=""):
-    """The questioner's prompt: the SAVED draft spec (whole, capped) and, at 4.3, the checked findings. Never the
-    conversation. Returns 'OK' or 'FAIL <reason>'."""
-    spec = _read(os.path.join(wd, "draft-spec.md"))
-    if not spec:
-        return "FAIL the draft spec is missing or empty (%s)" % os.path.join(wd, "draft-spec.md")
-    if len(spec) > 90000:
-        spec = spec[:90000] + "\n(spec cut for length)"
-    extra = ""
-    if findings:
-        t = _read(findings)
-        if t:
-            extra = "\n\n=== THE CHECKED FINDINGS (4.3) ===\n%s" % t[:20000]
-    prompt = ("From the draft spec's open blanks and unconfirmed lines only, return the next up to six leveraged "
-              "questions, most load-bearing first, each with RECOMMENDATION / CONFIDENCE / LOAD-BEARING in the house "
-              "style's shape — or the single line NOTHING. Never use any conversation; the only sources are below. "
-              "End your reply with the line %s on its own last line.\n\n=== THE SAVED DRAFT SPEC ===\n%s%s\n"
-              % (Q_END, spec, extra))
-    _write_atomic(out_file, prompt.replace("/skill-builder", "skill-builder"))
-    return "OK"
-
-
-def questions_out(reply_file, out_file):
-    """The questioner's reply -> the questions file the gate reads: the reply without its QUESTIONS-END marker, or
-    the failure line when the marker is missing or the reply is empty."""
-    reply = _read(reply_file)
-    body = reply.split(Q_END)[0].strip()
-    if not body or Q_END not in reply:
-        body = Q_FAILED
-    _write_atomic(out_file, body + "\n")
-    return "FAILED" if body == Q_FAILED else "OK"
+    return "APPLIED %d" % applied
 
 
 def main(argv):
@@ -931,16 +675,8 @@ def main(argv):
             print(apply_reply(plug, argv[2], flag_wd(argv[3]), argv[3], argv[4] if len(argv) > 4 else ""))
         elif cmd == "report":
             print(report(hooks, argv[2]) or "")
-        elif cmd == "gate":   # gate <sid>: line 1 = the screen line, line 2 = the model line ("-" = none)
-            sc, ml = gate(argv[2])
-            print(sc or "-")
-            print(ml or "-")
-        elif cmd == "build-questions":   # build-questions <sid> <prompt out> [findings file]
-            print(build_questions(plug, flag_wd(argv[2]), argv[3], argv[4] if len(argv) > 4 else ""))
-        elif cmd == "questions-out":     # questions-out <reply file> <questions out>
-            print(questions_out(argv[2], argv[3]))
         else:
-            print("usage: sb_spec.py stop|flag-wd|active|build-prompt|apply|report|gate|build-questions|questions-out ...", file=sys.stderr)
+            print("usage: sb_spec.py stop|flag-wd|active|build-prompt|apply|report ...", file=sys.stderr)
             return 2
     except Exception as e:
         print("sb_spec.py: %s: %s" % (type(e).__name__, str(e)[:200]), file=sys.stderr)

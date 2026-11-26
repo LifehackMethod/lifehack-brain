@@ -80,12 +80,12 @@ bar over: run `init ... --reset`, say so in one line, and show each page again f
 step is done, the person has seen every step of their skill walked through and agrees the shape.
 
 ## 5. What you read and write (scratchpad sections, spec §5; read and write only these)
-- **Read:** `packet-path`, `outcome`, `draft-spec` (the design folder's; read-only for you — the code-launched writer writes it), `steps-draft`, `harness-checked`, `skill-checked` (optional), `research-mark`
+- **Read:** `packet-path`, `outcome`, `draft-spec` (the design folder's, to write the round's decisions into), `steps-draft`, `harness-checked`, `skill-checked` (optional), `research-mark`
   (optional), `status`; and step 2's output, `{{PREV}}`
 - **Write:** `draft-spec` (end-of-round rule below), `steps-draft` (kept current: each step's outcome, inner moves, proof, and whether the person agreed it),
   `stale` (only after a `/back` lands here)
 - **Your helpers write:** `step-prompts`, `step-prompts-checked`, `research-mark`, `status`
-- **End of every round (owner ruling, 2026-11-25; 2f 2026-11-25):** the person decided something this round -> CODE's writer saves their answers into the design folder's `draft-spec.md` and the packet; you never write either yourself. The per-turn line says WAIT while it saves and SAVED when it is done: ask no new questions until SAVED, and then take the next questions only from the QUESTIONS (from code) file — never from this conversation. "Lock that in" is saved by the same writer at any point in the round.
+- **End of every round (owner ruling, 2026-11-25):** the person decided something this round -> before asking anything else, write what they just decided into the design folder's `draft-spec.md` (fill blanks and unconfirmed lines only; mark lines they did not say `[inferred]`; never delete a confirmed line), and say in one line what you wrote and where. "Lock that in" writes to the spec at any point in the round.
 - **The page file:** `pages.json` in the packet folder, written only by `scripts/page_bar.py`.
 - No `steps-draft` yet: show the status lines, or in plain words "I'm fetching the steps we agreed"; never start the
   walk-through on nothing. No `harness-checked` yet: say "I'm still checking what Lifehack already has, so the steps

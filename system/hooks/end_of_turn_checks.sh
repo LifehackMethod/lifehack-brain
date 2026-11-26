@@ -47,7 +47,7 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 # UPDATED: 2026-11-25 (observe mode: one file test, then a detached reviewer when this session is watching a skill; see the step after the session id is read)
 #      observe mode (2026-11-25, brief 2.1): if ~/.claude/run/observe/observe-sess-<session>.flag exists, launch system/tools/observe_review.sh
 #          detached (one per session) and carry on; never waits, never blocks, never changes this hook's decision. Unarmed = one file test.
-#      spec writer + bar check (2026-11-25, 2b-Y; 2f: the gated writer relaunches here every turn): spec-sess-<session>.flag present -> lib/sb_spec.py stop + detached lib/spec_write.sh (one at a time; stale done-marker removed first); absent = one file test.
+#      spec writer + bar check (2026-11-25, 2b-Y): spec-sess-<session>.flag present -> detached lib/spec_write.sh (one at a time) and lib/sb_spec.py stop; absent = one file test.
 # 2026-11-02
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
@@ -80,23 +80,12 @@ if [ -f "$OBSD/observe-sess-$SID.flag" ]; then
     fi
   fi
 fi
-# BAR CHECK + THE GATED WRITER (brief 2f, 2026-11-25; the writer is relaunched by code at the end of every turn): if a
-# skill-builder run is live in THIS session (flag set by the run starter), run the cheap bar/read-list check, then
-# launch the detached writer (lib/spec_write.sh) — one at a time (its pid file); the stale done-marker goes first, so
-# the gate never shows a round's SAVED line twice. No flag = ONE file test.
+# BAR CHECK (round 2b-Y; 2c switched the background spec writer OFF): if a skill-builder run is live in THIS session
+# (flag set by the run starter), run the cheap bar/read-list check. The writer (lib/spec_write.sh) is no longer
+# launched: the skill-builder itself writes the spec at the end of every round (2026-11-25, owner ruling: just enough).
+# No flag = ONE file test.
 if [ -f "$OBSD/spec-sess-$SID.flag" ]; then
   printf '%s' "$P" | python3 "$_lhb_dir/lib/sb_spec.py" stop "$SID" >/dev/null || echo "end_of_turn_checks: the bar check failed (see ~/.claude/run/observe/spec-errors.log)" >&2
-  _sp_run=""
-  [ -f "$OBSD/spec-write-$SID.pid" ] && kill -0 "$(cat "$OBSD/spec-write-$SID.pid" 2>/dev/null)" 2>/dev/null && _sp_run=1
-  if [ -z "$_sp_run" ]; then
-    rm -f "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"
-    if printf '%s' "$P" > "$OBSD/spec-stop-$SID.json"; then
-      nohup bash "$_lhb_dir/lib/spec_write.sh" "$OBSD/spec-stop-$SID.json" "$SID" </dev/null >/dev/null 2>&1 & # allow-silence: detached writer; its own failures are logged to its fail file and spec-evidence.md
-      echo $! > "$OBSD/spec-write-$SID.pid"; disown
-    else
-      echo "end_of_turn_checks: the spec writer could not save the stop payload; no write this turn" >&2
-    fi
-  fi
 fi
 DIR="${LHB_TURN_WRITES_DIR:-$HOME/.claude/run/turn-writes}"; LIST="$DIR/$SID.list"
 # push warnings (fc_private_push_mode=warn): unreported findings of a push this session made -> PWMSG (empty = nothing owed)
