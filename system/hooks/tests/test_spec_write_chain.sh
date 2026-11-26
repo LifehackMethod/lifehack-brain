@@ -101,6 +101,25 @@ chk "[C12] S2: a stale questioner writes no questions and leaves the newer pid f
 rm -f "$OD/spec-questions-$SID.pid"
 rm -f "$OD/spec-sess-$SID.flag"
 
+echo "== 2g audit B2: a changed decision replaces a confirmed line END TO END (writer -> apply -> draft-spec.md) =="
+python3 - "$WD/draft-spec.md" <<'PYC'
+import sys
+p = sys.argv[1]
+t = open(p).read()
+h = "## 1. WHAT THIS SKILL IS FOR\n"
+assert h in t
+open(p, "w").write(t.replace(h, h + "\n- every receipt gets a category before filing (D4)\n", 1))
+PYC
+rm -f "$OD/spec-saved-$SID.txt" "$OD/spec-offset-$SID" "$OD/spec-questions-$SID.pid" "$OD/spec-questions-$SID.txt"
+printf 'REPLACE: - every receipt gets a category before filing (D4)\nNEW: categories come after filing\nEVIDENCE: no, categories come after\n---\nEND-WRITE\n' > "$T/reply-conf.txt"
+printf '{"type":"user","message":{"role":"user","content":"no, categories come after filing"}}\n' > "$T/t.jsonl"
+printf 'wd=%s\n' "$WD" > "$OD/spec-sess-$SID.flag"
+STUB_REPLY="$T/reply-conf.txt" HOME="$HM" bash "$H/lib/spec_write.sh" "$T/stop.json" "$SID" "$WD"
+chk "[C13] B2: a stub writer reply that replaces a confirmed line lands: new line in, old line kept (superseded)" 'grep -q "categories come after filing" "$WD/draft-spec.md" && grep -q "every receipt gets a category before filing.*(superseded" "$WD/draft-spec.md" && grep -q "^saved 1 spec lines" "$OD/spec-saved-'$SID'.txt"'
+chk "[C13b] B2: the writer brief lets a changed decision replace a confirmed line, and no longer says the write aborts" 'grep -q "REPLACE may target" "$PLUG/.claude/skills/skill-builder/prompts/subagents/spec-writer.md" && ! grep -q "WHOLE write aborts" "$PLUG/.claude/skills/skill-builder/prompts/subagents/spec-writer.md"'
+rm -f "$OD/spec-questions-$SID.pid" "$OD/spec-saved-$SID.txt"; sleep 1
+rm -f "$OD/spec-sess-$SID.flag"
+
 echo "passed=$pass failed=$fail"
 REAL_FAIL=$fail
 if [ -n "${SPEC_PLUG:-}" ]; then echo "passed=$pass failed=$fail"; [ "$REAL_FAIL" = 0 ]; exit; fi  # a broken copy never recurses

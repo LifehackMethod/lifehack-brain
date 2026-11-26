@@ -38,14 +38,16 @@ not say it, and dates every line). Never a silent delete: a replaced line is kep
 - `REFINEMENT: <which step — what changed in a step-prompt draft — the person's words that led to it>` (you never edit the drafts)
 - `DEFERRED: <what to build or change> — <why> — <evidence>`
 - `STALE: <a section the person's /back made stale>` or `UNSTALE: <a section the person re-confirmed>`
-**Spec records** (blanks and unconfirmed lines only; never a confirmed line — one that carries `(D<n>)`):
+**Spec records** (blanks and unconfirmed lines; a confirmed line — one that carries `(D<n>)` — is touched only by REPLACE, below):
 - `SLOT:` (first 60 characters of the blank, copied exactly, starting at its `<[`) / `VALUE:` (one plain line, no angle
   brackets, no marks) / `BY:` PERSON or INFERRED / `EVIDENCE:` (a short quote copied exactly from the turns). BY is
   PERSON only if the person's own words state it or they said yes to a play-back of exactly it.
 - `CONFIRM:` (first 60 characters of an unconfirmed line, copied exactly) / `EVIDENCE:` (the person's yes, quoted)
-- `REPLACE:` (first 60 characters of an unconfirmed line the person's ruling replaces, copied exactly) / `NEW:` (the
-  new text, one line, no angle brackets, no marks) / `EVIDENCE:` (the person's words, quoted). The old line stands
-  again beneath, kept verbatim by code, ending `(superseded <date>)`.
+- `REPLACE:` (first 60 characters of the line the person's ruling replaces, copied exactly) / `NEW:` (the
+  new text, one line, no angle brackets, no marks) / `EVIDENCE:` (the person's words, quoted). A REPLACE may target a
+  confirmed line when the person's NEW words contradict it (they changed their mind); the quote is required, and
+  newest wins. Never SLOT or CONFIRM a confirmed line. The old line stands again beneath, kept verbatim by code,
+  ending `(superseded <date>)`.
 End every reply with the line `END-WRITE` on its own last line. When the round gives no evidence for anything, the
 reply is the single line `NOTHING` followed by `END-WRITE`.
 
@@ -63,7 +65,7 @@ End with exactly one signal, on its own line, after the records:
 — TEST CARD — (everything below this line is for the tester and the grader; the launcher sends the writer only the text above it)
 - **Desired result:** the person's sentence saved as SAID verbatim; one ruling only for the play-back yes; a blank
   filled with BY: PERSON and the person's quote; a replaced line recorded with REPLACE/NEW and the person's words; a
-  stale section named; no marks typed, no confirmed line touched; END-WRITE on the last line.
+  stale section named; no marks typed, no confirmed line touched except by a quoted REPLACE; END-WRITE on the last line.
 - **One realistic situation:** role-playing a receipt-sorting skill, round three. The turns: the person said "it
   should also tell me when a receipt has no date"; they said "yes, that's right" to the play-back "every receipt gets
   a category before it is filed"; they ruled the filing section should sort by date first (replacing an unconfirmed
@@ -71,8 +73,9 @@ End with exactly one signal, on its own line, after the records:
 - **Known traps:**
   - Writing "tell me when a receipt has no date" into RULED; right: SAID only — no play-back yes.
   - Typing `[inferred]` or a `(D<n>)` mark; right: never — code adds every mark.
-  - A REPLACE aimed at the confirmed line "every receipt gets a category (D4)"; right: confirmed lines are never
-    replaced — the record is skipped, and if code sees a confirmed line targeted the WHOLE write aborts.
+  - A REPLACE aimed at the confirmed line "every receipt gets a category (D4)" with no quote of the person changing
+    their mind; right: a confirmed line is replaced only when the person's new words contradict it, quoted in
+    EVIDENCE; code keeps the old line beneath, marked superseded.
   - Rewriting or deleting a packet line; right: append-only, code skips what is already there.
   - Filling the blank from general knowledge instead of the person's words; right: BY: INFERRED with the turn as
     evidence, or leave it and end `nothing to add`.
