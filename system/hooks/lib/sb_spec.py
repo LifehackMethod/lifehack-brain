@@ -2,7 +2,7 @@
 """sb_spec.py -- the skill builder's back room in code (round 2b, Y): the spec REPORTER (B2), the spec WRITER's mechanics
 (B3) and the BARS from code (B4). Imported by observe_ups.sh (the one-line report) and sb_start.py (the per-turn bars);
 run as `python3 sb_spec.py stop <sid>` by end_of_turn_checks.sh (the cheap Stop check), and as `build-prompt` / `apply` by
-spec_write.sh (the detached writer). No AI in this file: the model call itself is spec_write.sh's `run_model medium`.
+spec_write.sh (the detached writer). No AI in this file: the model call itself is spec_write.sh's `run_model small`.
 
 WHY: in the first live run the draft spec never existed, the person saw no sign of it, and the page and completion bars
 were typed by hand. Now code creates the draft spec at run start, counts it with scripts/completion.py (ONE counter),
@@ -249,7 +249,7 @@ def report(hooks, sid, pid="", prompt=""):
             _write_atomic(_p("state", sid, ".json"), json.dumps(state))
         except OSError:
             pass
-        g = gate(sid, window=20)
+        g = gate(sid, window=20, who="screen")
         if g and g[0]:
             return g[0]   # 2f: WAIT or SAVED replaces the changed/not-changed line while the gate holds
         extra = ""
@@ -275,11 +275,17 @@ GATE_WAIT_MODEL = ("GATE: WAIT — saving your answers from the last round. Ask 
 GATE_Q_FAILED = ("QUESTIONS: the fresh read failed — say so in one line and ask no new numbered questions this round.")
 
 
-def gate(sid, consume=True, window=0):
+GATE_QTEXT_CAP = 6000
+
+
+def gate(sid, consume=True, window=0, who=""):
     """(screen line, model line) from the gate markers (2f), or (None, None) when neither applies — the caller then
     shows today's changed/not-changed line. Writer or questioner pid alive -> WAIT. Done-marker present -> SAVED, with
-    the questioner's file turned into the QUESTIONS line; the marker (and the questions file) is renamed .shown after
-    the SAVED line has been produced once, so the line shows exactly once."""
+    the questioner's text carried IN the model line (B1: the model never has to open a file that is about to be renamed);
+    the marker (and the questions file) is renamed .shown after the line has been produced once. A marker that starts
+    with FAILED is the loud 'could not save' line and releases no questions. `who` ('screen' or 'model') names the
+    caller when `window` is set: the second hook of one prompt replays the first's pair ONCE, and each caller sees it at
+    most once (S3: a later prompt never replays an old SAVED line)."""
     try:
         if _pid_alive(_p("write", sid, ".pid")) or _pid_alive(_p("questions", sid, ".pid")):
             return GATE_WAIT_SCREEN, GATE_WAIT_MODEL
@@ -287,24 +293,34 @@ def gate(sid, consume=True, window=0):
         marker = _read(mk).strip()
         cache = _p("gate-seen", sid, ".json")
         if not marker:
-            # the screen hook and the model hook are two processes in one prompt: the second one replays the first's
-            # SAVED pair (within `window` seconds) so the two lines never disagree
-            if window:
+            if window and who:
                 try:
                     c = json.loads(_read(cache) or "{}")
-                    if c.get("pair") and time.time() - c.get("t", 0) <= window:
+                    if c.get("pair") and who not in (c.get("seen") or []) and time.time() - c.get("t", 0) <= window:
+                        c["seen"] = list(c.get("seen") or []) + [who]
+                        _write_atomic(cache, json.dumps(c))
                         return tuple(c["pair"])
                 except Exception:  # allow-silence: no usable replay cache just means no SAVED line is replayed
                     pass
             return None, None
-        screen = "📋 Spec: SAVED — %s" % marker
         qf = _p("questions", sid, ".txt")
         q = _read(qf).strip()
-        if q and not q.startswith("NONE (the fresh read failed)"):
-            model = ("GATE: SAVED — %s. QUESTIONS (from code): read %s and show its questions under # QUESTIONS. "
-                     "Never invent questions from this conversation." % (marker, qf))
+        if marker.startswith("FAILED"):
+            reason = marker[len("FAILED"):].lstrip(": ").strip()
+            screen = "📋 Spec: ⚠ COULD NOT SAVE — %s. Your answers are kept; the next turn tries again." % reason
+            model = ("GATE: COULD NOT SAVE — %s. Say so to the person in one line, with the reason. Ask no new numbered "
+                     "questions, findings or reviewers this round; the answers are kept and the next turn retries." % reason)
+            q = ""
+            if consume:
+                _rm(_p("fail", sid, ".txt"))
         else:
-            model = "GATE: SAVED — %s. %s" % (marker, GATE_Q_FAILED)
+            screen = "📋 Spec: SAVED — %s" % marker
+            if q and not q.startswith("NONE (the fresh read failed)"):
+                model = ("GATE: SAVED — %s. QUESTIONS (from code): show these under # QUESTIONS exactly as written, in "
+                         "order. Never invent questions from this conversation.\n%s"
+                         % (marker, q[:GATE_QTEXT_CAP]))
+            else:
+                model = "GATE: SAVED — %s. %s" % (marker, GATE_Q_FAILED)
         if consume:
             try:
                 os.replace(mk, mk + ".shown")
@@ -317,7 +333,7 @@ def gate(sid, consume=True, window=0):
                     pass
         if consume and window:
             try:
-                _write_atomic(cache, json.dumps({"t": time.time(), "pair": [screen, model]}))
+                _write_atomic(cache, json.dumps({"t": time.time(), "pair": [screen, model], "seen": [who] if who else []}))
             except OSError:
                 pass
         return screen, model
@@ -365,7 +381,7 @@ def turn_lines(hooks, wd, sid):
     """Lines appended to the per-turn RUN line (sb_start.per_turn): the bars, a bar mismatch, the files read last turn."""
     out = []
     try:
-        g = gate(sid, window=20)
+        g = gate(sid, window=20, who="model")
         if g and g[1]:
             out.append(g[1])   # 2f: WAIT / SAVED + QUESTIONS, the same lines the screen shows
     except Exception as e:
@@ -549,6 +565,8 @@ def _packet_brief(wd):
 def build_prompt(plug, payload_file, prompt_file, wd, sid):
     """Writes the writer's launch prompt: the brief file (prompts/subagents/spec-writer.md, everything above its test
     card) plus the draft spec, the packet and the round's turns. Returns 'OK <new offset>' or 'FAIL <reason>'."""
+    if not wd or not os.path.isabs(wd) or not os.path.isdir(wd):
+        return "FAIL no run folder (%r)" % (wd,)
     try:
         bp = _writer_brief(plug)
         brief = _read(bp) if bp else ""
@@ -729,11 +747,16 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
     """Apply the writer's records (brief 2f) to draft-spec.md AND the packet: only blank spans and unconfirmed lines
     change; the packet is append-only; the result is checked against every confirmed line before the writes (one
     atomic rename for the spec; the packet is touched only after every guard has passed). Returns a one-line summary."""
+    if not wd or not os.path.isabs(wd) or not os.path.isdir(wd):   # B2: never write relative to the cwd
+        return "FAILED: no run folder to write into (%r); nothing written, the answers are kept for the next try" % (wd,)
     comp = _load(plug, "completion")
     path = os.path.join(wd, "draft-spec.md")
     text = _read(path)
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     ev = []
+    unparsed = False
+    guard_lost = False
+    replaced_conf = set()   # confirmed lines deliberately superseded this write (B3)
     reply = _read(reply_file)
     recs = _parse(reply)
     turn = _json(_p("turn", sid, ".json")) or {}
@@ -749,13 +772,13 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
     next_d = 1 + max([int(m.group(1)) for m in re.finditer(r"(?m)^D(\d+) · ", text)] + cited or [0])
     used = set()
     applied = 0
-    abort = None   # a REPLACE aimed at a confirmed line aborts the WHOLE write (spec and packet)
     if not recs and not re.search(r"(?m)^\s*NOTHING\s*$", reply.replace("END-WRITE", "\n")):
+        unparsed = True
         ev.append("- [%s] UNPARSED writer reply (no records, not NOTHING): %s" % (ts, " ".join(reply.split())[:300]))
     packet_applied, packet_skipped, packet_files = _apply_packet(wd, recs, ts)
     for r in recs[:MAX_EDITS]:
-        if abort:
-            break
+        if any(k in r for k in PACKET_HOME) and not any(k in r for k in ("REPLACE", "CONFIRM", "SLOT")):
+            continue   # a packet record: handled by _apply_packet above, never a "rejected" spec record
         quote = r.get("EVIDENCE", "").strip().strip("\"'“”")
         qn = _norm(quote)
         if "REPLACE" in r:
@@ -763,13 +786,8 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
             newv = _clean_value(r.get("NEW", ""))
             allhits = [(o, l) for o, (l, s) in elig.items() if s == "count" and len(key) >= 12
                        and _norm(l).lstrip("-* ").startswith(key)]
-            confirmed_hits = [(o, l) for o, l in allhits
-                              if re.search(r"\(D\d+\)", comp.CODE_SPAN_RE.sub(" ", l)) or comp._classify(l) == "done"]
-            hits = [(o, l) for o, l in allhits if (o, l) not in confirmed_hits]
-            if confirmed_hits:
-                abort = "a REPLACE aimed at a confirmed line: %s" % confirmed_hits[0][1][:100]
-                ev.append("- [%s] ABORTED (whole write): %s · evidence: \"%s\"" % (ts, abort, quote[:120]))
-                break
+            # B3: newest wins on confirmed lines too; a kept "(superseded ...)" line is never a target (N2)
+            hits = [(o, l) for o, l in allhits if "(superseded " not in l]
             if len(hits) != 1 or not newv or not quote or not qn:
                 ev.append("- [%s] REJECTED replace (%s): %s" % (
                     ts, "no unique unconfirmed line" if len(hits) != 1 else "empty new text or no evidence quote",
@@ -780,10 +798,19 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
                 continue
             used.add(o)
             pre = re.match(r"^\s*(?:[-*+]|\d+[.)])\s+", l)
+            was_conf = bool(re.search(r"\(D\d+\)", comp.CODE_SPAN_RE.sub(" ", l))) or comp._classify(l) == "done"
             nl = (pre.group(0) if pre else "") + newv
             if qn not in persons:
                 nl += " [inferred]"   # code adds the mark; the writer never types it
-            keep = l.rstrip() + " (superseded %s)" % time.strftime("%Y-%m-%d")
+            elif was_conf:
+                nl += " (D%d)" % next_d
+                dlines.append("D%d · %s · %s · the person's words (replaces an earlier decision)" % (
+                    next_d, time.strftime("%Y-%m-%d"), newv[:200]))
+                next_d += 1
+            kept = re.sub(r"\s*\(D\d+\)", "", l) if was_conf else l   # the old cite goes so it is not counted as a slot
+            if was_conf:
+                replaced_conf.add(l)
+            keep = kept.rstrip() + " (superseded %s)" % time.strftime("%Y-%m-%d")
             edits.append((o, o + len(l), nl + "\n" + keep))
             ev.append("- [%s] REPLACED: %s -> \"%s\" (old line kept, superseded %s) · evidence: \"%s\"%s" % (
                 ts, r["REPLACE"][:70], newv[:120], time.strftime("%Y-%m-%d"), quote[:200],
@@ -847,12 +874,11 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
         new = (new[:i2 + 1] + add + "\n" + new[i2 + 1:]) if i2 >= 0 else (new.rstrip("\n") + "\n" + add)
     if new != text:
         left = set(new.splitlines())
-        lost = [l for l in old_confirmed if l not in left]
+        lost = [l for l in old_confirmed if l not in left and l not in replaced_conf]
         if lost:   # refuse the whole write: a confirmed line would change
             ev.append("- [%s] ABORTED: the edit would have changed a confirmed line: %s" % (ts, lost[0][:100]))
-            new, applied = text, 0
-    if abort:   # the whole write is one write: the packet goes back too
-        new, applied, packet_applied, packet_files = text, 0, 0, {}
+            new, applied, packet_applied, packet_files = text, 0, 0, {}   # guard tripped: nothing at all is written
+            guard_lost = True
     if new != text:
         _write_atomic(path, new)
     for fname, ptext in sorted(packet_files.items()):
@@ -863,12 +889,21 @@ def apply_reply(plug, reply_file, wd, sid, new_off):
         head = "" if os.path.isfile(evp) else "# Spec evidence\n\nWritten by the spec writer: every line it added to draft-spec.md and the packet, with the quote that supports it.\n\n"
         with open(evp, "a", encoding="utf-8") as f:
             f.write(head + "\n".join(ev) + "\n")
+    rejected = sum(1 for e in ev if "REJECTED" in e or "ABORTED" in e)
+    saved = applied + packet_applied
+    # B4: three states. A write that saved nothing because of rejects, a tripped guard or an unreadable reply is a FAILURE,
+    # and the transcript offset stays where it was so the next run reads those turns again.
+    if saved == 0 and (rejected or unparsed or guard_lost):
+        why = ("the reply could not be read" if unparsed else
+               "a confirmed line would have changed" if guard_lost else
+               "%d record(s) rejected, none could be applied" % rejected)
+        return "FAILED: %s (see spec-evidence.md); the answers are kept for the next try" % why
     if new_off:
         try:
             _write_atomic(_p("offset", sid), str(new_off))
         except OSError:
             pass
-    return "APPLIED spec=%d packet=%d (skipped %d)" % (applied, packet_applied, packet_skipped)
+    return "APPLIED spec=%d packet=%d (skipped %d) rejected=%d" % (applied, packet_applied, packet_skipped, rejected)
 
 
 # ------------------------------------------------------------------ 2f: the fresh questioner
@@ -880,6 +915,8 @@ Q_FAILED = "NONE (the fresh read failed)"
 def build_questions(plug, wd, out_file, findings=""):
     """The questioner's prompt: the SAVED draft spec (whole, capped) and, at 4.3, the checked findings. Never the
     conversation. Returns 'OK' or 'FAIL <reason>'."""
+    if not wd or not os.path.isabs(wd) or not os.path.isdir(wd):
+        return "FAIL no run folder to read the spec from (%r)" % (wd,)
     spec = _read(os.path.join(wd, "draft-spec.md"))
     if not spec:
         return "FAIL the draft spec is missing or empty (%s)" % os.path.join(wd, "draft-spec.md")
@@ -926,9 +963,9 @@ def main(argv):
             deactivate(argv[2])
             return 1
         elif cmd == "build-prompt":     # build-prompt <payload> <prompt out> <sid>
-            print(build_prompt(plug, argv[2], argv[3], flag_wd(argv[4]), argv[4]))
-        elif cmd == "apply":            # apply <reply> <sid> [new offset]
-            print(apply_reply(plug, argv[2], flag_wd(argv[3]), argv[3], argv[4] if len(argv) > 4 else ""))
+            print(build_prompt(plug, argv[2], argv[3], argv[5] if len(argv) > 5 else flag_wd(argv[4]), argv[4]))
+        elif cmd == "apply":            # apply <reply> <sid> [new offset] [run folder: spec_write.sh passes the one captured at launch]
+            print(apply_reply(plug, argv[2], argv[5] if len(argv) > 5 else flag_wd(argv[3]), argv[3], argv[4] if len(argv) > 4 else ""))
         elif cmd == "report":
             print(report(hooks, argv[2]) or "")
         elif cmd == "gate":   # gate <sid>: line 1 = the screen line, line 2 = the model line ("-" = none)

@@ -48,10 +48,12 @@ class GateTest(unittest.TestCase):
         # the screen hook and the model hook are separate processes: the second must replay the first's SAVED pair
         with open(os.path.join(self.od, "spec-saved-%s.txt" % self.sid), "w", encoding="utf-8") as f:
             f.write("saved 1 spec lines \u00b7 0 packet lines\n")
-        a = self.sb.gate(self.sid, window=20)
-        b = self.sb.gate(self.sid, window=20)
+        a = self.sb.gate(self.sid, window=20, who="screen")
+        b = self.sb.gate(self.sid, window=20, who="model")
         self.assertTrue(a[0] and a[0] == b[0] and a[1] == b[1])
-        self.assertEqual(self.sb.gate(self.sid), (None, None) if False else self.sb.gate(self.sid))
+        # S3: each hook sees the pair ONCE; a later prompt within the window gets nothing
+        self.assertEqual(self.sb.gate(self.sid, window=20, who="screen"), (None, None))
+        self.assertEqual(self.sb.gate(self.sid, window=20, who="model"), (None, None))
 
     def test_writer_alive_is_wait(self):
         self._pidfile("spec-write-%s.pid" % self.sid, os.getpid())
@@ -77,7 +79,8 @@ class GateTest(unittest.TestCase):
         s, m = self.sb.gate(self.sid)
         self.assertIn("SAVED — saved 3 spec lines · 5 packet lines", s)
         self.assertIn("GATE: SAVED — saved 3 spec lines · 5 packet lines.", m)
-        self.assertIn("QUESTIONS (from code): read", m)
+        self.assertIn("QUESTIONS (from code)", m)
+        self.assertIn("1. what does it read first?", m)   # B1: the text itself is in the line
         self.assertIn("Never invent questions from this conversation", m)
         # consumed: the second call shows neither
         self.assertEqual(self.sb.gate(self.sid), (None, None))

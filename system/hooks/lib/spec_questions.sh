@@ -24,14 +24,17 @@ _SELF_DIR="$(cd "$(dirname "$0")" && pwd -P)"
 case "$SID" in ''|*[!A-Za-z0-9_-]*) exit 0;; esac
 export CLAUDE_CODE_SESSION_ID="$SID"
 OD="$HOME/.claude/run/observe"; mkdir -p "$OD"
-trap 'rm -f "$OD/spec-questions-$SID.pid"' EXIT
+PIDF="$OD/spec-questions-$SID.pid"
+mine() { [ "$(cat "$PIDF" 2>/dev/null)" = "$$" ]; }   # S2: a stale questioner (its pid file was replaced) never writes or removes anything
+trap 'mine && rm -f "$PIDF"' EXIT
 PY="$_SELF_DIR/sb_spec.py"
+sleep "${SPEC_Q_PIDWAIT:-0.3}"   # the launcher writes the pid file just after launching us
 
 python3 "$PY" active "$SID" || exit 0 # the run finished or was dropped while we waited: nothing to ask
 WD="$(python3 "$PY" flag-wd "$SID")"
 [ -n "$WD" ] && [ -d "$WD" ] || exit 0
 QOUT="$OD/spec-questions-$SID.txt"
-failq() { printf 'NONE (the fresh read failed)\n' > "$QOUT"; exit 0; }
+failq() { mine && printf 'NONE (the fresh read failed)\n' > "$QOUT"; exit 0; }
 PROMPT="$OD/spec-qprompt-$SID.md"; REPLY="$OD/spec-qreply-$SID.txt"
 INFO="$(python3 "$PY" build-questions "$SID" "$PROMPT" "${SPEC_Q_FINDINGS:-}" 2>/dev/null | head -1)"
 case "$INFO" in OK*) ;; *) failq;; esac
@@ -44,6 +47,7 @@ if [ $? -ne 0 ]; then
   printf '%s\n' "the questioner's model call failed: $(printf '%s\n' "$RMSG" | grep -F '[run_model] FAILED:' | head -1 | sed 's/.*FAILED: //' | cut -c1-160)" >> "$WD/spec-evidence.md" 2>/dev/null # allow-silence: evidence-log write is best effort; the questions file already says NONE
   failq
 fi
+mine || exit 0
 python3 "$PY" questions-out "$REPLY" "$QOUT" >/dev/null 2>&1 || failq
 rm -f "$PROMPT" "$REPLY"
 exit 0

@@ -84,7 +84,9 @@ END-WRITE
         text = open(os.path.join(self.wd, "draft-spec.md"), encoding="utf-8").read()
         self.assertIn("- Receipts are sorted by month [inferred]", text)
 
-    def test_replace_on_confirmed_line_aborts_the_whole_write(self):
+    def test_replace_on_confirmed_line_is_newest_wins_and_never_aborts_the_rest(self):
+        # 2g B3: the person changed their mind about a confirmed (D1) line: replace it, keep the old text beneath
+        # marked superseded, and the same write's other records still land
         res = run_apply(self.sb, self.wd, """REPLACE: Every receipt gets a category before it is filed
 NEW: Categories come later
 EVIDENCE: sort receipts by date
@@ -96,11 +98,13 @@ EVIDENCE: the receipts folder
 ---
 END-WRITE
 """)
+        self.assertTrue(res.startswith("APPLIED"), res)
         text = open(os.path.join(self.wd, "draft-spec.md"), encoding="utf-8").read()
-        self.assertEqual(text, SPEC)   # nothing changed: spec, packet and the slot all went back
-        self.assertNotIn("Categories come later", text)
-        self.assertIn("<[ask]", text)
-        self.assertIn("ABORTED", open(os.path.join(self.wd, "spec-evidence.md"), encoding="utf-8").read())
+        self.assertIn("- Categories come later", text)
+        self.assertIn("the receipts folder [inferred]", text)
+        self.assertRegex(text, r"- Every receipt gets a category before it is filed \(superseded \d{4}-\d\d-\d\d\)")
+        self.assertLess(text.index("Categories come later"), text.index("(superseded "))
+        self.assertIn("REPLACED", open(os.path.join(self.wd, "spec-evidence.md"), encoding="utf-8").read())
 
     def test_inferred_added_by_code_only(self):
         # the writer typing the mark itself is harmless: code strips and re-adds

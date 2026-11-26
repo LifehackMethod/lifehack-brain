@@ -61,14 +61,14 @@ chk "[C3] the questioner ran at the MEDIUM tier, after the writer's small call" 
 chk "[C4] the questions file holds the questioner's reply" 'grep -q "what does the skill read first" "$OD/spec-questions-'$SID'.txt"'
 # the gate reads the pair
 OUT="$(HOME="$HM" python3 "$H/lib/sb_spec.py" gate "$SID")"
-chk "[C5] gate: SAVED + QUESTIONS (from code) pointing at the questions file" 'printf "%s" "$OUT" | grep -q "GATE: SAVED — saved 0 spec lines · 1 packet lines." && printf "%s" "$OUT" | grep -q "QUESTIONS (from code): read"'
+chk "[C5] gate: SAVED + QUESTIONS (from code) with the questions TEXT in the line (2g B1)" 'printf "%s" "$OUT" | grep -q "GATE: SAVED — saved 0 spec lines · 1 packet lines." && printf "%s" "$OUT" | grep -q "QUESTIONS (from code)" && printf "%s" "$OUT" | grep -q "what does the skill read first"'
 chk "[C6] gate consumed: the second read shows neither line" '[ "$(HOME="$HM" python3 "$H/lib/sb_spec.py" gate "$SID" | head -1)" = "-" ]'
 
 echo "== the writer's failure =="
 rm -f "$OD/spec-saved-$SID.txt" "$OD/spec-saved-$SID.txt.shown" "$OD/spec-questions-$SID.txt" "$OD/spec-questions-$SID.txt.shown"
 export STUB_FAIL=1
 HOME="$HM" CLAUDE_CODE_SESSION_ID="$SID" bash "$H/lib/spec_write.sh" "$T/stop.json" "$SID"; unset STUB_FAIL
-chk "[C7] a writer failure writes the fail line, and NO new done-marker" '[ -s "$OD/spec-fail-'$SID'.txt" ] && [ ! -e "$OD/spec-saved-'$SID'.txt" ]'
+chk "[C7] a writer failure writes the fail line and a FAILED gate marker (2g), and starts NO questioner" '[ -s "$OD/spec-fail-'$SID'.txt" ] && grep -q "^FAILED: could not save" "$OD/spec-saved-'$SID'.txt" && [ ! -e "$OD/spec-questions-'$SID'.pid" ]'
 
 echo "== the stale marker is removed at the next launch (end_of_turn_checks.sh) =="
 printf 'stale counts\n' > "$OD/spec-saved-$SID.txt"
@@ -81,6 +81,24 @@ HOME="$HM" bash "$H/end_of_turn_checks.sh" < "$T/stop2.json" >/dev/null 2>&1
 chk "[C8] a new launch removed the stale done-marker before the writer ran" '[ ! -f "$OD/spec-saved-'$SID'.txt" ] || ! grep -q stale "$OD/spec-saved-'$SID'.txt"'
 i=0; while [ -f "$OD/spec-write-$SID.pid" ] && kill -0 "$(cat "$OD/spec-write-$SID.pid" 2>/dev/null)" 2>/dev/null && [ $i -lt 50 ]; do sleep 0.2; i=$((i+1)); done
 chk "[C9] the relaunched writer produced a fresh marker" '[ -s "$OD/spec-saved-'$SID'.txt" ] && grep -qE "saved [0-9]+ spec lines · [0-9]+ packet lines|nothing to save" "$OD/spec-saved-'$SID'.txt"'
+
+echo "== 2g: B2 no write into the cwd, B4 a failure is loud and keeps the offset, S2 a stale questioner is harmless =="
+CW="$T/cwd"; rm -rf "$CW"; mkdir -p "$CW"
+rm -f "$OD/spec-saved-$SID.txt" "$OD/spec-saved-$SID.txt.shown" "$OD/spec-fail-$SID.txt"
+rm -f "$OD/spec-sess-$SID.flag"    # the run flag has vanished (the audit's B2 case): no run folder to write into
+( cd "$CW" && HOME="$HM" bash "$H/lib/spec_write.sh" "$T/stop.json" "$SID" "" )
+chk "[C10] B2: an empty run folder writes NOTHING into the cwd, and leaves a FAILED gate marker" '[ -z "$(ls -A "$CW")" ] && grep -q "^FAILED: could not save: no run folder" "$OD/spec-saved-'$SID'.txt"'
+printf 'wd=%s\n' "$WD" > "$OD/spec-sess-$SID.flag"
+rm -f "$OD/spec-saved-$SID.txt" "$OD/spec-offset-$SID" "$OD/spec-questions-$SID.pid"
+printf 'REPLACE: A line that exists nowhere in this spec\nNEW: nope\nEVIDENCE: nope\n---\nEND-WRITE\n' > "$T/reply-rej.txt"
+STUB_REPLY="$T/reply-rej.txt" HOME="$HM" bash "$H/lib/spec_write.sh" "$T/stop.json" "$SID" "$WD"
+chk "[C11] B4: rejected-only writes FAILED (not 'nothing to save'), the offset does not advance, no questioner starts" 'grep -q "^FAILED: could not save: .*rejected" "$OD/spec-saved-'$SID'.txt" && [ ! -e "$OD/spec-offset-'$SID'" ] && [ ! -e "$OD/spec-questions-'$SID'.pid" ]'
+chk "[C11b] B4: the FAILED marker shows loudly on screen and the model line tells the model" 'GOUT="$(HOME="$HM" python3 "$H/lib/sb_spec.py" gate "$SID")"; printf "%s" "$GOUT" | grep -q "COULD NOT SAVE" && printf "%s" "$GOUT" | sed -n 2p | grep -q "COULD NOT SAVE"'
+rm -f "$OD/spec-questions-$SID.txt" "$OD/spec-questions-$SID.txt.shown"
+echo 99999999 > "$OD/spec-questions-$SID.pid"    # the pid file now belongs to a newer questioner
+HOME="$HM" SPEC_Q_PIDWAIT=0 bash "$H/lib/spec_questions.sh" "$SID"
+chk "[C12] S2: a stale questioner writes no questions and leaves the newer pid file alone" '[ ! -e "$OD/spec-questions-'$SID'.txt" ] && [ "$(cat "$OD/spec-questions-'$SID'.pid")" = "99999999" ]'
+rm -f "$OD/spec-questions-$SID.pid"
 rm -f "$OD/spec-sess-$SID.flag"
 
 echo "passed=$pass failed=$fail"
@@ -102,8 +120,8 @@ PYB
   local OUT; OUT="$(SPEC_PLUG="$C" timeout 300 bash "$0" 2>&1 | tail -1)"
   if printf '%s' "$OUT" | grep -q "failed=0"; then bad "[broken $1] $5 did NOT fail on the broken copy"; else ok "[broken $1] the copy fails $5"; fi
 }
-broken marker-counts system/hooks/lib/spec_write.sh 'printf '"'"'saved %s spec lines · %s packet lines\n'"'"' "$SPN" "$PKT"' 'printf '"'"'saved 99 spec lines · 99 packet lines\n'"'"' "$SPN" "$PKT"' C1
+broken marker-counts system/hooks/lib/spec_write.sh 'printf '"'"'saved %s spec lines · %s packet lines%s\n'"'"' "$SPN" "$PKT" "$REJNOTE"' 'printf '"'"'saved 99 spec lines · 99 packet lines%s\n'"'"' "$SPN" "$PKT" "$REJNOTE"' C1
 broken no-chain system/hooks/lib/spec_write.sh 'nohup bash "$_SELF_DIR/spec_questions.sh" "$SID" </dev/null >/dev/null 2>&1 &' ':' C2
-broken gate-questions system/hooks/lib/sb_spec.py 'QUESTIONS (from code): read %s and show its questions under # QUESTIONS. ' 'QUESTIONS: read %s. ' C5
+broken gate-questions system/hooks/lib/sb_spec.py 'QUESTIONS (from code): show these' 'QUESTIONS: show these' C5
 echo "passed=$pass failed=$fail"
 [ "$REAL_FAIL" = 0 ]

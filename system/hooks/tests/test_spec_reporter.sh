@@ -203,7 +203,7 @@ chk "[W8] the person never lost a line: every old line is still there except the
   # model failure
   export STUB_FAIL=1; stopj "$SID" ok "$HM/t3.jsonl" > "$HM/stop4.json"
   CLAUDE_CODE_SESSION_ID="$SID" bash "$R/system/hooks/lib/spec_write.sh" "$HM/stop4.json" "$SID"; unset STUB_FAIL
-  chk "[W11] a failed model call leaves the spec as it was, says why in the evidence file and on the next spec line" 'grep -q "WRITER FAILED" "$WD/spec-evidence.md" && ups "$SID" "x" 12 "$WD" | jq_ "d[\"systemMessage\"]" | grep -q "the writer did not run"'
+  chk "[W11] a failed model call leaves the spec as it was, says why in the evidence file and on the next spec line" 'grep -q "WRITER FAILED" "$WD/spec-evidence.md" && ups "$SID" "x" 12 "$WD" | jq_ "d[\"systemMessage\"]" | grep -q "COULD NOT SAVE"'
 
   # the marker (found live in a real window: "model output missing marker" on the NOTHING reply)
   rm -f "$OD/spec-offset-$SID" "$OD/spec-fail-$SID.txt"; printf 'NOTHING\n' > "$HM/reply3.txt"
@@ -240,7 +240,8 @@ chk "[R6e] a later turn with the spec unchanged again warns (the decision at 54 
 OUT="$(ups "$SID" "right" 56 "$WD")"
 chk "[R6f] one plain prompt later the line is plain again (state reset for the tests below)" 'printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]" = "📋 Spec: not changed this turn" 2>/dev/null || printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]" | grep -q "not changed this turn"'
   echo "== one writer at a time; the Stop launch (2f) =="
-  rm -f "$HM/stub.log"; export STUB_REPLY_FILE="$HM/reply2.txt" STUB_SLEEP=2
+  printf 'NOTHING\nEND-WRITE\n' > "$HM/reply-nothing.txt"
+  rm -f "$HM/stub.log"; export STUB_REPLY_FILE="$HM/reply-nothing.txt" STUB_SLEEP=2
   stopj "$SID" ok "$HM/t3.jsonl" > "$HM/stop5.json"
   printf 'stale saved lines\n' > "$OD/spec-saved-$SID.txt"
   bash "$EOT" < "$HM/stop5.json" >/dev/null 2>&1; sleep 0.6
@@ -314,10 +315,10 @@ PY
             is_page' B6
   broken person-unchecked system/hooks/lib/sb_spec.py 'who = "person" if by == "PERSON" and qn in persons else "inferred"' 'who = "person" if by == "PERSON" else "inferred"' W3
   broken no-inferred-mark system/hooks/lib/sb_spec.py 'rep = value + " [inferred]"' 'rep = value' W3
-  broken stop-no-writer system/hooks/end_of_turn_checks.sh 'rm -f "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"' ':' L0
+  broken stop-no-writer system/hooks/end_of_turn_checks.sh 'rm -f "$OBSD/spec-questions-$SID.pid" "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"' ':' L0
   broken no-chain system/hooks/lib/spec_write.sh 'nohup bash "$_SELF_DIR/spec_questions.sh" "$SID" </dev/null >/dev/null 2>&1 &' ':' L3
   broken gate-wait system/hooks/lib/sb_spec.py 'return GATE_WAIT_SCREEN, GATE_WAIT_MODEL' 'return None, None' L1b
-  broken no-marker-removal system/hooks/end_of_turn_checks.sh 'rm -f "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"' ':' L0
+  broken no-marker-removal system/hooks/end_of_turn_checks.sh 'rm -f "$OBSD/spec-questions-$SID.pid" "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"' ':' L0
   broken no-decision system/hooks/lib/sb_spec.py 'state["decided"] = bool(DECISION_RE.search(prompt)) if prompt else False' 'state["decided"] = False' R6b
   broken no-bars system/hooks/lib/sb_start.py 'out += sb_spec.turn_lines(hooks, a[0], sid)' 'pass' B1
   broken silent-error system/hooks/lib/sb_spec.py 'return "📋 Spec line unavailable: %s" % _log("spec report", e)[:160]' 'return None' E1

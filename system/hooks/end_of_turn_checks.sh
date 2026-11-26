@@ -86,14 +86,20 @@ fi
 # the gate never shows a round's SAVED line twice. No flag = ONE file test.
 if [ -f "$OBSD/spec-sess-$SID.flag" ]; then
   printf '%s' "$P" | python3 "$_lhb_dir/lib/sb_spec.py" stop "$SID" >/dev/null || echo "end_of_turn_checks: the bar check failed (see ~/.claude/run/observe/spec-errors.log)" >&2
-  _sp_run=""
-  [ -f "$OBSD/spec-write-$SID.pid" ] && kill -0 "$(cat "$OBSD/spec-write-$SID.pid" 2>/dev/null)" 2>/dev/null && _sp_run=1
-  if [ -z "$_sp_run" ]; then
-    rm -f "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"
+  # S2: ONE writer per session. The lock is an atomic mkdir (a doubled hook loses the race and does nothing); the writer
+  # removes it on exit; a lock older than 15 minutes is a dead writer's and is cleared.
+  _sp_lock="$OBSD/spec-launch-$SID.lock"
+  [ -d "$_sp_lock" ] && [ -n "$(find "$_sp_lock" -maxdepth 0 -mmin +15 2>/dev/null)" ] && rmdir "$_sp_lock" 2>/dev/null
+  if mkdir "$_sp_lock" 2>/dev/null; then
+    _sp_wd="$(python3 "$_lhb_dir/lib/sb_spec.py" flag-wd "$SID" 2>/dev/null)"   # the run folder, captured NOW (B2)
+    # the previous round's questioner is stale once a new round starts: retire it (its pid file is replaced, so it cannot clobber)
+    [ -f "$OBSD/spec-questions-$SID.pid" ] && kill "$(cat "$OBSD/spec-questions-$SID.pid" 2>/dev/null)" 2>/dev/null
+    rm -f "$OBSD/spec-questions-$SID.pid" "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"
     if printf '%s' "$P" > "$OBSD/spec-stop-$SID.json"; then
-      nohup bash "$_lhb_dir/lib/spec_write.sh" "$OBSD/spec-stop-$SID.json" "$SID" </dev/null >/dev/null 2>&1 & # allow-silence: detached writer; its own failures are logged to its fail file and spec-evidence.md
+      nohup bash "$_lhb_dir/lib/spec_write.sh" "$OBSD/spec-stop-$SID.json" "$SID" "$_sp_wd" </dev/null >/dev/null 2>&1 & # allow-silence: detached writer; its own failures are logged to its fail file and spec-evidence.md
       echo $! > "$OBSD/spec-write-$SID.pid"; disown
     else
+      rmdir "$_sp_lock" 2>/dev/null
       echo "end_of_turn_checks: the spec writer could not save the stop payload; no write this turn" >&2
     fi
   fi
