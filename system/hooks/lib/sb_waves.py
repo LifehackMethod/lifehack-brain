@@ -586,6 +586,7 @@ def check(sid, tp=""):
         td = (ptr or {}).get("turn")
         if not td:
             return []
+        warn = os.path.join(os.path.dirname(td.rstrip(os.sep)), "receipt-warn.txt")  # known before any risky work, so a crash can still warn
         rec = sb._json(os.path.join(td, "turn.json"))
         if not rec or "checked" in rec:
             return []

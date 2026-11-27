@@ -510,6 +510,16 @@ class ProofTest(Base):
         self.transcript(calls)
         self.assertEqual(self.wv.check(SID, self.tp), [])
 
+    def test_a_crashed_check_warns_next_turn_and_never_reads_as_all_present(self):
+        self.files()
+        bad = dict(self.rec); bad.pop("t", None)          # a damaged turn.json makes the check raise inside
+        with open(os.path.join(self.td, "turn.json"), "w", encoding="utf-8") as f:
+            json.dump(bad, f)
+        problems = self.wv.check(SID, self.tp)
+        self.assertTrue(problems and "COULD NOT RUN" in problems[0])
+        warn = open(os.path.join(self.run, "waves", "receipt-warn.txt"), encoding="utf-8").read()
+        self.assertIn("RECEIPT CHECK COULD NOT RUN", warn)
+
     def test_an_unreadable_transcript_checks_the_files_only_and_says_so(self):
         self.files()
         self.assertEqual(self.wv.check(SID, os.path.join(self.home, "none.jsonl")), [])
