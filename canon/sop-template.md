@@ -98,6 +98,28 @@ Every line here is a principle with its reason, except the three marked **must**
 - **Concise means high value, not short:** the most information in the fewest characters, readable straight through.
 - **Write for someone new to the project.** Every term is defined or pointed to.
 
+**Writing for a model reader** (applies to an SOP's steps, a checklist, a skill, any text a model will act on)
+- **Give the reason with each line of guidance.** Why: a reader that knows why can handle the case nobody wrote down,
+  and a later editor can tell whether the line still earns its place. A line whose reason is lost tends to stay
+  forever because nobody dares remove it.
+- **Prefer plain, conditional wording to an absolute.** "Ask before deleting a file you did not create" beats "never
+  delete files". Name what needs no approval as well as what does. Why: a model takes an absolute literally, applies it
+  well past its intent, or argues its way around it. A condition with its exception tells it where the edge is.
+- **Keep a binding line for the rare real bright line,** one that code already holds or that the owner has approved
+  (the "must" above). Everything else is a principle with its reason. Why: a binding word on a line nothing holds is only a
+  suggestion that sounds firmer than it is, and it teaches the reader to discount the lines that do bind.
+- **Keep the list short, and prune it when the model changes.** Date each line so it can be reviewed. Why: attention
+  thins as instructions pile up, and a caution written for an older model keeps being followed rigidly after the
+  problem it guarded against has gone.
+- **Check whether the point is already covered before adding it.** Repeating a point from a genuinely new angle is
+  fine; restating it in the same words is not. Why: two phrasings of one point can drift apart, and a reader then has to
+  guess which one wins.
+- **Back what matters with code, not wording.** Where a failure is costly, point to the check or guard that holds it.
+  Why: written principles are applied unevenly even by capable models, so a line that has to hold is better held
+  by friction in code than by phrasing.
+
+*(Approved by the owner, 2026-11-27; evidence: RESEARCHED, 2026-11-25.)*
+
 ## Before you hand it in
 
 Run this on your own draft before anyone reviews it. Each line is a slip that review kept catching in the first SOP written from this template (2026-11-14), or a check added at step 7b (2026-11-15; items 9-11), so catching it here saves a review round.

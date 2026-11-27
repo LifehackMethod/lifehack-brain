@@ -157,6 +157,7 @@ history: "canon/skill-building-sop.history.md"
 
 ### How a skill holds
 
+- **Write a skill's own text as a prompt,** following "Writing for a model reader" in `canon/sop-template.md` (How we write canon): reasons attached, conditional wording, few lines. Why: a skill is a prompt, so what holds for any text a model acts on holds for it; that section is the one home, pointed to here, not copied.
 - **Code holds what has to hold; the AI does the work; the person judges.** Why: prose fades as a window fills; code does not. Change
   if: a skill held by prose alone survives full windows in real use. Evidence: rig P4, TESTED — code held the stage
   order in 10 of 10 tries at about 80% fill, and all 6 stages in order in each of 2 fresh-window runs (one made-up
