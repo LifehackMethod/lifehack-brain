@@ -1690,3 +1690,43 @@ Text moved word for word out of the live body by checklist v3. When the draft la
 ~~~~
 
 ## 2026-11-16 - reason: step 4b (round five), LP1 (UP: an approved appeal (his yes)), on Enver's answer to item 12, 2026-11-16 (text added; nothing left the document)
+
+## 2026-11-27 - reason: C4 move unverified 79 percent figure (4.7) (landing map, Enver approved 2026-11-27)
+
+~~~~
+ But ~79% (unverified; likely conflated) of multi-agent failures are handoffs.
+~~~~
+
+## 2026-11-27 - reason: C4 move unverified 79 percent figure (5.12) (landing map, Enver approved 2026-11-27)
+
+~~~~
+~79% (unverified; likely conflated) of multi-agent failures are at handoffs; 
+~~~~
+
+## 2026-11-27 - reason: C6 distill-loop tension resolved (landing map, Enver approved 2026-11-27)
+
+~~~~
+the likely resolution is that distillation must also *shed*, but that is a
+ruling
+~~~~
+
+## 2026-11-27 - reason: C8 cloud-drive candidate closed, not admitted (landing map, Enver approved 2026-11-27)
+
+~~~~
+**CANDIDATE additional mode, awaiting Enver's ruling:** *the cloud drive is not a filesystem* —
+zero-byte reads at exit 0, dataless files, paths with spaces; four instances, one a near-miss that would have destroyed
+1.73 MB of append-only history.
+~~~~
+
+## 2026-11-27 - reason: C9 mode 22 broken pointers (landing map, Enver approved 2026-11-27)
+
+~~~~
+a speed bump once the coverage check is built (§9 item 41). The structural form is the Code+ reading harness (§9 item 42).
+~~~~
+
+## 2026-11-27 - reason: C4 move unverified 79 percent figure (12.g) (landing map, Enver approved 2026-11-27)
+
+~~~~
+~79% (unverified; likely conflated) of multi-agent failures are at
+handoffs, and 
+~~~~

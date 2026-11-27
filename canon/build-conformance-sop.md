@@ -156,7 +156,7 @@ Every line traces to `canon/build-conformance-sop.md`.
 - A verification regex using `\s*` spans newlines. → SOP §9.6
 - A script the harness runs as a bare command needs its execute bit. → SOP §9.7
 - After a rebase, a push can silently do nothing. "Checks settled", read right after a push, is a false result. → SOP §9.8
-- For a bulk archive or migration: back up, then move, never delete. → SOP §9.9
+- For a bulk archive or migration: back up, then move, never delete. Copy and leave the source only where something still reads it as a standing input. → SOP §9.9
 - Fix live references by hand. Never blanket-rewrite journals or records. → SOP §8.9
 - Subtraction counts as building. Aim for the least shared code with the most efficacy. → SOP §5.7, §11.4
 - Trust a record of the SHAs over commit messages. → SOP §4.22
@@ -168,6 +168,7 @@ Every line traces to `canon/build-conformance-sop.md`.
 - Say what the exam cannot see, and pick another check, such as one real person trying it. → SOP §6.24
 - Prove it on a real specimen. A passing validator is not the thing working. Write down the shape you searched for. State the full set a claim covers and which members were checked. → SOP §6.13 to §6.17
 - Turning off automatic compaction leaves idle compaction on. → SOP §4.18
+- Verify, then flip the state to built, not the other way round. → SOP §6.25
 
 — end of checklist —
 
@@ -291,6 +292,7 @@ The facts the layers above are built around. Most were learned the hard way.
 22. **Set the numbers and the scorer before running. If the scorer proves wrong, keep both figures.** One run reads 10 of 12 frozen and 12 of 12 by hand, and both stay on record. (MEASURED, repeated)
 23. **Evidence is the cost.** In the final exam, graders were about $32 of $37, at list prices. One fresh grader per case from full evidence is what made the result trustworthy, and shortening it would have given up that trust here. An estimate of unmeasured work ran from $3.42 to a measured $76; the one estimate from measured figures, about $40, held. A limit invented from a guess can throw away value. (MEASURED, one exam; owner's ruling)
 24. **State what the exam can't see.** A coworker really using a shared skill, a real plugin install or update, long conversations with more than one prompt, vague requests (most prompts are specific), other models (sessions ran on Sonnet), and a person's real machine. For anything load-bearing here, decide on another check, such as one real person trying it, before redesigning the rig. (MEASURED by what ran; owner's ruling)
+25. **Verify before you flip a component to built.** Re-run every check on the final tree, if you can in a window that built none of it, compare, and confirm no component page already exists; only then flip the state. Why: a receipt is produced by the checker, never the checked, and a page that says 'built' over work that then fails is a claim nobody verified. Good practice, not a must.
 
 ## 6a. Where the proof stands (2026-11-03)
 

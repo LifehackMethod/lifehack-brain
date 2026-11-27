@@ -39,7 +39,7 @@ Every line traces to `canon/desk-building-sop.md`.
 - Any jobs it ships passed through the job door (`--check-row` PASS). → §5 check 5
 - A `purpose.md` of two lines saying why this domain exists. → §2; §7 birth step 3
 - Glasses in their own file, the desk's seventh item — not folded into `purpose.md` (purpose is knowledge; glasses are instructions). → §6; §8 point 4
-- Glasses that fit, with the plugin's and the personal root's `CLAUDE.md`, inside one shared total token budget across the three layers. → §6; §8 point 4
+- Glasses that fit, with the plugin's and the personal root's `CLAUDE.md`, with their combined size tracked against the 200-line reference, not capped. → §6; §8 point 4
 - A diary made when the desk was created, called `<Desk>-Diary` (the planning desk's is Planning-Diary); shared code knows only that pattern, never a desk's name. → §6
 - One diary page per day: each machine read appends its own low-confidence entry, the person's sessions add high-confidence lines, and the machine never overwrites a high-confidence line; each entry a spare boil-down plus pointers to the raw records. → §6; §8 point 3
 - Exactly two machine-readable artifacts: the card (`desk.yaml`, YAML) and whatever its producers emit as status tiles (JSON). All knowledge is prose. → §8 point 1
@@ -58,7 +58,7 @@ Every line traces to `canon/desk-building-sop.md`.
 - If deciding where a fact goes → at the broadest scope where it is always true, no higher, no lower. → §1
 - If canon is nested below a desk → it is true for that desk's subfolders (vertical), never for siblings (lateral); the loader flags nested canon as not loaded. → §1; §4
 - If something is too big for a spare diary entry → it was never diary material; it is a record, and the entry points at it. → §6
-- If cron builds weekly, monthly, quarterly or annual roll-ups → they are low-confidence computer assumptions until a human validates them. → §6
+- However a roll-up is assembled → it is a low-confidence computer assumption until a human validates it. → §6
 - If summarizing unattended → never touch hard-to-summarize work; the unattended step only handles what was already spare. → §6
 - If judging trust → canon is trusted because of where it sits; everywhere else starts from a default of doubt; confidence accumulates as points of evidence; a load-bearing decision needs a human sign-off. → §1; §3
 - If a tile is written → its `stale_after_s` (the producer's rhythm) is set in the envelope; its `detail` field points into the diary or records. → §8 points 3, 5
@@ -208,6 +208,8 @@ command invocation, working in the CLI and the Anthropic app both.
 6. No copied shared tools — a desk uses the platform's tools or its own: skills in `~/.claude/skills/<name>/`,
    scripts in the personal code folder (`desks/<name>/tools/` only for code that serves this one desk).
 
+The door is `shared/desk_door.py` (it exists and is tested). **Not built into the scaffold yet:** the desk scaffold script does not call it, so it is run by hand.
+
 **Fine china protections.** Which of a desk's things get protection A or B is chosen by the person; protection C
 covers every folder; what each protection does is fixed. All three are there "to prevent broad catastrophic events
 from a misguided agent" (`canon/build-conformance-sop.md` §2 (the asks) and §5.11 (the friction levels)):
@@ -217,8 +219,9 @@ from a misguided agent" (`canon/build-conformance-sop.md` §2 (the asks) and §5
 - **Fine china protection C** — a speed bump with a sign in front of a mass delete (a whole folder or hundreds of
   files), on any folder, to slow down a possible catastrophic event. It is never a hard block or a pop-up.
 
-With nobody at the screen, protections A and B are denied with a sign and parked for the morning, and the run
-carries on; protection C's sign is logged and the action waits for the morning rather than being blocked outright.
+The guards are the hooks `system/hooks/guard_fine_china_ask.sh` and `system/hooks/guard_canon_write.sh`, with the helpers `system/hooks/lib/fine_china_ask.py` and `system/hooks/lib/fc_sign.py`.
+
+With nobody at the screen, the ask of protection A becomes a refusal (the session stops and tells the person), and protection B stays a refusal; protection C's sign is logged and the action waits for the morning rather than being blocked outright.
 
 ---
 
@@ -246,8 +249,8 @@ default of doubt elsewhere)), the card, and the diary (§6). Everything else exi
 2. Fill the card — three lines: name, canon, diary.
 3. Write two lines of purpose, two lines of canon. The desk is born walking; everything else accretes.
 4. The door checks it (section 5's list); fix what it names, re-run.
-5. The `/deskname` (⛔ placeholder example path) command invocation is created — CLI and Anthropic app both.
-6. The registry row is added: an index line that points the loader at the card and holds none of the card's facts
+5. The AI creates the `/deskname` command in the person's own skills folder (`~/.claude/skills/<desk>/`, never inside the plugin), CLI and Anthropic app both. (Nothing creates it today; adding it to the scaffold is open work.)
+6. The desk scaffold script adds the registry row, through the shared desk-list tool: an index line that points the loader at the card and holds none of the card's facts
    (one fact, one place); the desk now exists for the loader.
 
 **The launch sequence (every session, compressed):** the human chooses the desk — shortcut, folder, or command; the
@@ -288,7 +291,7 @@ against that rhythm (a TTL). The date axis made mechanical.
 hook, pre-injection; the model never sees it). But the model needs its own day-one note — who this desk is, how
 to talk here, what matters — and that is the per-desk CLAUDE.md, the third layer of the plural CLAUDE.md stack
 (plugin → personal root → desk), injected into the context window as system-prompt material. Two files, two
-audiences, two delivery mechanisms. All three layers share a total token budget (canon), because injected
+audiences, two delivery mechanisms. The combined size of all three layers is tracked, not capped (no number is set; the vendor's 200-line reference is the yardstick), because injected
 context is paid for every turn — the guard against context bloat. It is its own file, the desk's seventh item, not
 folded into purpose.md (purpose is knowledge and decays slowly; glasses are instructions and decay differently).
 

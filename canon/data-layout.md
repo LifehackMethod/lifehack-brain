@@ -32,7 +32,7 @@ is not set, the honest answer is "not set" and the tool refuses.
 │   ├── canon.md                    the few things that stay true. small on purpose.
 │   └── purpose.md                  what this folder is for
 ├── records/<type>/                  everything found, decided or written down — see "Types" below
-├── diary/YYYY/MM/DD.md              the dated tree. the main daily diary is the planning desk's Planning-Diary, not this folder.
+├── diary/YYYY/MM/DD.md              the dated tree. Nothing writes it today. The main daily diary is the planning desk's Planning-Diary, at `desks/<planning desk>/diary/YYYY/MM/DD.md`, written by `system/tools/planning-diary-capture.py`.
 ├── open-loops.md                    started, not finished
 ├── debt-ledger.md                   root only. all known system technical debt: the deferred build list
 ├── projects/<slug>/                 one folder per project not started from a desk — see "A project" below
@@ -48,7 +48,7 @@ is not set, the honest answer is "not set" and the tool refuses.
 ├── memory/
 │   └── topic-vocab.md               your subjects, in your words — written by you, never shipped
 └── desks/<subject>/                 root only. one folder per subject, built by `/ingest` from your material
-    ├── canon/canon.md
+    ├── canon/current.md
     ├── canon/purpose.md
     └── records/
 ```
@@ -139,17 +139,17 @@ Closed means closed: a seventh type is a change to this page, not a judgment cal
 
 - `<brain>/canon/canon.md` — the top-level file. The handful of things that are true across everything.
   Written only when a person says to. Keep it small; it is read often.
-- `<subject>/canon/canon.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
-  subject it finds in your material, and what a project settles about itself. `purpose.md` says what
-  the folder is *for*; `canon.md` holds what it has established (an older `current.md` is still read if it is all a folder has).
+- `<subject>/canon/current.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
+  subject it finds in your material (it writes `current.md`; the loader also reads `canon.md` if a folder has that instead), and what a project settles about itself. `purpose.md` says what
+  the folder is *for*; `current.md` holds what it has established.
 
 Every line in either has to survive being read cold, alone, months later, by someone with no memory of
 the conversation that produced it. If it needs the backstory, it is a record, not canon.
 
 ## The journal
 
-One file, appended to, never edited: `<brain>/system/journal.md`. When it gets long, older months
-move to `<brain>/system/journal/YYYY-MM.md`.
+One file, appended to, never edited: `<brain>/system/journal.md`. When wanted, older completed months
+move to `<brain>/system/journal/YYYY-MM.md`, by running `system/tools/journal.py rotate` by hand.
 
 **Anything reading the journal reads the current file AND the segments.** Reading only the current
 file loses everything older than the last rotation, and it fails *quietly*: the result comes back
@@ -233,7 +233,7 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 |---|---|---|
 | `<brain>/canon/canon.md` | `/save` | only on an explicit go |
 | `<brain>/system/journal.md` | `/save`, `bootstrap.py` | every save |
-| `<brain>/system/journal/YYYY-MM.md` | whatever rotates it | when the journal gets long |
+| `<brain>/system/journal/YYYY-MM.md` | `system/tools/journal.py rotate`, run by hand | when wanted; only completed months move, nothing is deleted |
 | `<brain>/system/project-registry.md` | `project-manager`, `bootstrap.py` | a project starts |
 | `<brain>/system/learnings.md` | `/save` | when the system learns something about itself |
 | `<brain>/projects/<slug>/brief.md` | `project-manager`, `/checkin`, `/save` | continuously, in place |
@@ -243,7 +243,7 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<brain>/drafts/builds/<name>/` (a folder) or `<brain>/drafts/builds/<name>.md` (small) | the builders (`/build`, `/skill-builder`) | a design packet with no project: it stays as the record, with the runner's run folder inside it |
 | `<brain>/projects/<slug>/packet/` | the builders (`/build`, `/skill-builder`) | a design packet for a project: the brief links to it through `project-manager` |
 | `<brain>/open-loops.md` | `/save` | something is started and not finished |
-| `<brain>/diary/YYYY/MM/DD.md` | not used for the main diary: that is the planning desk's Planning-Diary (the plugin's `planning-diary` job row stays off) | — |
+| `<brain>/diary/YYYY/MM/DD.md` | not used for the main diary: that is the planning desk's Planning-Diary (`desks/<planning desk>/diary/YYYY/MM/DD.md`, written by `planning-diary-capture.py`) (the plugin's `planning-diary` job row stays off) | nothing writes it today |
 | `<brain>/status/<producer>.json` | each producer, its own tile | overwritten on every run |
 | `<brain>/debt-ledger.md` | `/save`, `/build` | a piece of system technical debt becomes known |
 | `<brain>/records/<type>/` | `/save` | a finding belongs to no one project |
@@ -256,9 +256,8 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
 | `<brain>/config/ship-rewrites.json` | a person, by hand | optional — `/ship`'s cosmetic substitutions, which get fixed and reported rather than blocking |
 | `<brain>/councils/` | a person, by hand | if advisor rosters are used |
 | `<brain>/memory/topic-vocab.md` | a person, by hand | your subjects, in your words |
-| `<brain>/desks/<subject>/canon/` | `/ingest` | once per subject it finds |
+| `<brain>/desks/<subject>/canon/` | `/ingest` | once per subject it finds; canon lines are written directly, after your yes at the confirm step |
 | `<brain>/desks/<subject>/records/` | `/ingest` | a stub file per finding it places |
-| `<brain>/desks/<subject>/records/proposals/` | `/ingest` | canon lines, written only after you approve the placement preview |
 
 ## When you add something that writes
 
@@ -269,4 +268,4 @@ The diagram above is the shape; this is the list, so nothing has to be inferred 
    the resolver; if what you are writing survives the run, it is not scratch.
 2. If your path is not on this page, add it here first — in the same change, not afterwards.
 3. Never create a folder to be helpful. Everything above is created when something is actually put in
-   it, except the three day-one files, which exist because nothing else would ever make them.
+   it, except the four day-one items (three files and the empty projects folder), which exist because nothing else would ever make them.

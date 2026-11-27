@@ -15,38 +15,60 @@ read_when: "Only when you need the reasoning behind a design choice (for example
 history: "canon/canonical-principles-sop.history.md (retired and moved text; never read in normal use)"
 route_format: "[section, line_in_this_file, purpose]; find a section by grep -n on its heading text; generated last, regenerate after any edit"
 route:
-  - ["frame.testing", 55, "centering frame: testing asks does it work, security asks what happens when it does not; you buy friction, not certainty"]
-  - ["frame.friction", 71, "layers of friction: overlapping circles, compliance is the center of the Venn diagram"]
-  - ["frame.what", 99, "what this document is, evidence tiers, the standalone admission gate, the governing caveat"]
-  - ["frame", 134, "the frame: the stochastic-environment sentence (the one rule), evidence tiers, operating rule, keep it small, human in the loop, stateless"]
-  - ["§0", 184, "why an AI differs from code; how a model session really works"]
-  - ["§0.1", 211, "what you are guarding against: drift and rationalisation; a real layer needs neither memory nor agreement; how to count layers"]
-  - ["§0.2", 247, "the step-runner: one more circle of friction, with evidence and what it does not claim"]
-  - ["§0.3", 280, "a picture that helps: the hospital (illustrates friction, does not replace it)"]
-  - ["§0.4", 296, "rules about rules: rules exist only as architecture; implementation has no rules, only code (Enver, 2026-11-15)"]
-  - ["§0.5", 307, "canon as gravity: easier to carry down than up, in Enver's words (2026-11-15)"]
-  - ["§1", 324, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
-  - ["§2", 368, "subtract, do not add"]
-  - ["§3", 393, "complicated versus complex; the growth chain; the desk model"]
-  - ["§4", 415, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
-  - ["§4.6", 473, "code works when it takes away an ability or checks what happened; a hook is two different things"]
-  - ["§5", 553, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
-  - ["§5.4", 579, "bind what is predictable and catastrophic; the smallest tool that does the job"]
-  - ["§5.12", 709, "the smallest tool that does the job; decomposing by trust boundary; handoffs"]
-  - ["§5.20", 794, "compliance is the center of the Venn diagram, not a choice"]
-  - ["§6", 812, "learning, refutation, choosing not to build, secrets"]
-  - ["§7", 840, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
-  - ["§8", 934, "one-line practices"]
-  - ["§9", 985, "Enver's rulings, including the GitHub and shipping rulings"]
-  - ["§10", 1028, "claims retracted; do not carry forward"]
-  - ["§10a", 1062, "approaches proven not to work, with receipts"]
-  - ["§11", 1103, "corrections to earlier answers"]
-  - ["§12", 1113, "unresolved or resolved tensions, kept visible"]
-  - ["§14", 1186, "where the evidence lives"]
-  - ["§15", 1192, "research candidates, held, bind nothing"]
-  - ["§16", 1354, "the failure-mode census: 21 recurring failures, ranked, with tiers"]
-  - ["§17", 1484, "experiments: proposed and run, with dated ground results"]
+  - ["frame.testing", 77, "centering frame: testing asks does it work, security asks what happens when it does not; you buy friction, not certainty"]
+  - ["frame.friction", 93, "layers of friction: overlapping circles, compliance is the center of the Venn diagram"]
+  - ["frame.what", 121, "what this document is, evidence tiers, the standalone admission gate, the governing caveat"]
+  - ["frame", 156, "the frame: the stochastic-environment sentence (the one rule), evidence tiers, operating rule, keep it small, human in the loop, stateless"]
+  - ["§0", 206, "why an AI differs from code; how a model session really works"]
+  - ["§0.1", 233, "what you are guarding against: drift and rationalisation; a real layer needs neither memory nor agreement; how to count layers"]
+  - ["§0.2", 269, "the step-runner: one more circle of friction, with evidence and what it does not claim"]
+  - ["§0.3", 302, "a picture that helps: the hospital (illustrates friction, does not replace it)"]
+  - ["§0.4", 318, "rules about rules: rules exist only as architecture; implementation has no rules, only code (Enver, 2026-11-15)"]
+  - ["§0.5", 329, "canon as gravity: easier to carry down than up, in Enver's words (2026-11-15)"]
+  - ["§1", 346, "the verifier nobody verifies; detection is not the gap; fixes un-fix themselves; the human action after the finding"]
+  - ["§2", 390, "subtract, do not add"]
+  - ["§3", 415, "complicated versus complex; the growth chain; the desk model"]
+  - ["§4", 437, "how models behave: self-report, absence, self-checking, impossibility, rule budget, code versus prose, chains, drift"]
+  - ["§4.6", 495, "code works when it takes away an ability or checks what happened; a hook is two different things"]
+  - ["§5", 575, "how to shape a harness: redundancy, binding the predictable, shedding, heartbeats, guards, handoffs, scope, compliance"]
+  - ["§5.4", 601, "bind what is predictable and catastrophic; the smallest tool that does the job"]
+  - ["§5.12", 731, "the smallest tool that does the job; decomposing by trust boundary; handoffs"]
+  - ["§5.20", 816, "compliance is the center of the Venn diagram, not a choice"]
+  - ["§6", 834, "learning, refutation, choosing not to build, secrets"]
+  - ["§7", 862, "what a cold reader can and cannot trust: citations, saved work, recency, discriminators, tests, backlogs"]
+  - ["§8", 958, "one-line practices"]
+  - ["§9", 1009, "Enver's rulings, including the GitHub and shipping rulings"]
+  - ["§10", 1058, "claims retracted; do not carry forward"]
+  - ["§10a", 1092, "approaches proven not to work, with receipts"]
+  - ["§11", 1133, "corrections to earlier answers"]
+  - ["§12", 1143, "unresolved or resolved tensions, kept visible"]
+  - ["§14", 1214, "where the evidence lives"]
+  - ["§15", 1220, "research candidates, held, bind nothing"]
+  - ["§16", 1383, "the failure-mode census: 23 recurring failures, ranked, with tiers"]
+  - ["§17", 1513, "experiments: proposed and run, with dated ground results"]
 ---
+
+**Before you build, these are the ten things most likely to go wrong.** They are the ways builds actually went wrong in the V2 era (2026-10-23 to 2026-11-25), ranked by how often, skipping kinds that code already fully stops. Each is a principle with its reason, not a rule. Counts are floors from one reading of the records. Evidence: two checked real instances per entry, with file and line, are kept in the maintainer's build-list evidence file, and the V2-era failure count is in the owner's notes; the full failure-mode text is in section 16.
+
+1. **A fact copied into several places, where a fix misses the other copies** (84 times; code catches it only partly). Count every copy, the template included, before you change one; where you can, generate the copies from one source instead of typing them. Why: a fix to one copy leaves the others saying the old thing, and the next reader trusts whichever they find first. (§16 mode 3)
+
+2. **A check that says no to correct work** (44; nothing in code catches it). Before trusting a checker's "no", see it say "yes" to something you know is right. Why: a checker that refuses good work sends the builder off fixing what wasn't broken, or teaching it to work around the checker. (§16 mode 15)
+
+3. **A guard that only stops the exact wording it lists** (40; partly caught). Build a guard to refuse by default, and watch it refuse a real attempt before relying on it. Why: a guard that matches words lets through every spelling nobody wrote down, while looking like protection. (§16 mode 7)
+
+4. **An old written claim believed over what's live today** (35; partly caught). Give a claim its date; when two disagree, check the live source and lean toward the more recent. Why: documents keep stating what was true when they were written, and the system moves faster than they're updated. (§16 mode 16)
+
+5. **A test that can't fail the way the real thing fails** (29; partly caught). Watch a test fail on something you know is broken before you trust it passing. Why: a test built from the same assumptions as the code passes for the same reasons the code is wrong. (§16 mode 4)
+
+6. **A careful observation that hardens into a false rule when it's retold** (27; nothing in code catches it). Carry the hedges ("usually", a scope, a unit) through every retelling. Why: a summary that drops one qualifier can be wrong even when every fact in it is true, and the confident version is the one that spreads. (§16 mode 17)
+
+7. **A failure that looks exactly like success** (24; partly caught, for scheduled jobs). Make an error look different from success. Why: when broken and quiet give the same signal, the problem stays hidden until it has cost something. (§16 mode 2)
+
+8. **Believing a helper's own account of its work** (23; partly caught). Check what a helper actually did, not what it says it did. Why: a helper's summary is written by the same process that may have skipped the work. (§16 mode 8)
+
+9. **Starting to build from a premise nobody checked** (22; partly caught). Look for what already exists, and measure, before designing. Why: building on an unchecked premise means the whole build inherits the error, and it surfaces late. (§16 mode 5)
+
+10. **Acting on a "yes" the owner never gave** (17; a new kind). Treat only the owner's own clear words as approval, and ask when a reply is ambiguous. Why: a window that reads an aside, a garbled reply or its own summary as a yes moves ahead on a decision that was never made, which is costly to undo. (§16 mode 23, a CANDIDATE; merged from "acting without approval", "approval misrecorded" and related names in the census)
 
 # Canonical principles — the merged canon — v2 (in force in the V2 sandbox)
 
@@ -307,7 +329,7 @@ One line: rules exist only as architecture; implementation has no rules, only co
 ## 0.5 — Canon as gravity (v2, 2026-11-15)
 > Enver, 2026-11-15: "the way we should treat canonical documents is like gravity It's harder and harder and harder. It's a gravity that increases more as you go upward, right? It's not impossible But it's easy for higher level documents information to be persisted downward and it's harder for lower level documents to be persisted upwards, so But it is possible"
 
-When the person rules against canon, the stale passage gets a one-line marker the same day ("superseded by the person's ruling of <date>; see <home>"); the full rewrite waits for the canon round. (Enver's decision 3, approved 2026-11-21.)
+When the person rules against canon, the stale passage gets a one-line marker the same day, placed by whichever session hears the ruling ("superseded by the person's ruling of <date>; see <home>", where <home> is the dated record of that ruling); the full rewrite waits for the canon round. (Enver's decision 3, approved 2026-11-21.)
 
 ## 0.6 — Owed, not scheduled (v2, 2026-11-21)
 > Enver, 2026-11-21: "We cannot build a system around the diary, or around any computer writes in the background in general, that are locked to a specific time of day … If the human doesn't open their laptop then their system is stuck, and that's on the human. But we also can't make it so much human friction that everything breaks if the human doesn't open the laptop at a very specific date."
@@ -500,7 +522,7 @@ anything. AUTHORITATIVE. *(Added 2026-11-01, approved by Enver.)* **Isolation is
 - **4.6 (v2, 2026-10-28) — OBSERVED:** content, not presence. A check validates the value (shape, range, a re-derived number) and not merely that a file or key is there.
 
 **4.7 Reliability belongs to the chain, not the step — and the seam, not the step, is the failure
-unit.** `[U]` `0.90**10 = 0.349`. But ~79% (unverified; likely conflated) of multi-agent failures are handoffs. Retries convert a step
+unit.** `[U]` `0.90**10 = 0.349`. Retries convert a step
 (`1-(0.05×0.05)` = 99.75%). Checkpointing decomposes a chain (~72% vs ~20% at 85% base over 10 steps).
 **Correlated phases behind an external gate defeat compounding better than shortening does** —
 `phase_gate.py` already does this: *"the model never stamps its own homework,"* full-state handoff,
@@ -713,7 +735,7 @@ agent-engineering primary sources; every hit is generic web-app consultancy. For
 **in-process, never across a network**: a documented reversal merged microservices back as a team
 shrank, because they had solved a people problem a solo maintainer structurally cannot have. Keep the
 cheap deterministic path separate from expensive judgment — all six peer systems converged on it.
-**Default to one unit and earn the split:** ~79% (unverified; likely conflated) of multi-agent failures are at handoffs; a single
+**Default to one unit and earn the split:** a single
 well-configured agent matched or beat multi-agent on 64% of tasks at ~2× the cost. Give a helper enough to do the job well: full
 context is the safe default, and current state as files suits step-by-step runs; use judgment. Authorisation belongs at the point of action: credentials held in a
 vault or bound to the resource, never passed into the sandbox where generated code runs (Saltzer &
@@ -723,7 +745,7 @@ add new ones. WORKING THEORY, strongly convergent → validation §C.
 *Note: the ownership model (platform, tenant, client) is not the retracted n-tier; its boundary is the seam.*
 
 
-> **v2 (orchestrator-v2, 2026-10-28):** Handoff, revised: hand the next agent current state as files, not history; full context still applies to merged work (§12.g). CANDIDATE.
+> **v2 (orchestrator-v2, 2026-10-28):** Handoff, revised: hand the next agent current state as files, not history; full context still applies to merged work (§12.g). CANDIDATE, scoped to step-runner cards only (ruling 2026-11-25).
 
 **5.13 When you fix one instance, sweep for siblings — but stage the friction.** `[U]` Apple's goto fail:
 the patch removed one duplicated line; the same algorithm remained 6× in the file. Under-fixing is the
@@ -1162,18 +1184,16 @@ Automating away pain lets the real fix be deprioritised forever · Reducing aler
 under-alerting (EEMUA 191, ISA-18.2) · A watchdog can substitute for correctness discipline · *"A
 no-blame culture is neither feasible nor desirable"* (Dekker) · Per-step error dominates cost (40×)
 versus a local worker-tier to reader-tier switch at ~$268/mo saved (local spend, not re-derived) · **The distill loop adds by design, and §2 says
-addition is the disease** — the likely resolution is that distillation must also *shed*, but that is a
-ruling · Pruning is dangerous in the other direction: a wrongly-cut safety rule costs more than bloat ·
+addition is the disease** — resolved 2026-11-26: When a rulebook update is about to add something, it first checks whether that's already covered. If it is, the update may only need to change the existing passage, not add a new one. Overlap of subject is fine when the new material brings a genuinely new angle or topic. Telling the two apart is a judgment call for the model, not a rule. · Pruning is dangerous in the other direction: a wrongly-cut safety rule costs more than bloat ·
 Every authorisation source is enterprise-scale; the solo fit is **inferred by every searcher, stated by
 none** · **Canon-is-immutable vs everything-under-suspicion** — the old canon's 2026-08-15 chronology
 framing read as "canon doesn't change"; Enver's 2026-09-02 ruling put the entire old canon under review.
-Likely resolution, not yet ruled: *immutable means never silently edited, not never superseded* — this
+Ruled 2026-11-25: *immutable means never silently edited, not never superseded* — this
 file's own status line (struck, not deleted; nothing carries forward without re-ratification) is already
 built to that reading.
 
 **12.g Give a helper enough context (§5.12) versus withhold the expected answer when checking.** `[H]`
-§5.12 says to give a helper enough to do the job well, and full context is the safe default: ~79% (unverified; likely conflated) of multi-agent failures are at
-handoffs, and context-starved sub-agents make **conflicting implicit decisions invisible to each other**
+§5.12 says to give a helper enough to do the job well, and full context is the safe default: context-starved sub-agents make **conflicting implicit decisions invisible to each other**
 (independently, 2026-09-11: Cognition abandoned parallel sub-agents for exactly this, replacing them with
 single-threaded full-context agents; corroborated by a study of 5 frameworks / 150 tasks naming inter-agent
 misalignment the dominant failure category). **But a checker handed the author's expected answer CONFIRMS it** —
@@ -1356,6 +1376,7 @@ The evidence behind these principles lives in the builder's notes.
   sharpened by a 2026-10-24 `/audit`: cheap designs kept working, layered ones kept failing, but cost
   crept up failure by failure, and no figures yet measure the ratio. **CANDIDATE** (one local audit).
   Pairs with §2.
+- **15.31** Unverified figure, moved here from §4.7, §5.12 and §12.g (2026-11-27): "~79% (unverified; likely conflated) of multi-agent failures are handoffs." **CANDIDATE** (kept with its caveat; not doctrine).
 
 ---
 
@@ -1403,7 +1424,9 @@ The evidence behind these principles lives in the builder's notes.
 
 21. **Low-altitude pull** (by Enver's account, repeatedly, over long sessions and multi-window builds; no census). All work happens at ground level, so doing the work pulls attention toward ground level. As a session goes on, the middle and top altitudes fade from its context, and the human ends up holding them and pushing them back in. **It also travels up a chain of command.** We assume influence only flows down: a coordinator sets direction, a build window manages it, and sub-agents execute. But a sub-agent only knows the ground, so its reports only describe the ground. Those reports are most of what the levels above it see, so they gradually pull the coordinator down too. It's like a CEO whose only information comes from reports written by people who can see only their own task: nobody means any harm, yet the CEO's picture slowly narrows to what those reports contain. **What helps:** the harness re-injects three altitudes into a session every so often, which seems to work well in a single window. It doesn't address the chain: a sub-agent doesn't get them, and its reports still come up ground-level. **Candidate fixes, untested:** carry three altitudes through a plan, with the real question at the top and a line at each phase or step saying how that step serves it, so a build window has them at the moment it prepares work. It can pass them to a sub-agent in full, or let them shape the prompt it writes. Reports should say what a result means for the level above, not just what happened. A coordinator should re-read the goal before acting on a report. · **OBSERVED** (added 2026-11-03 on Enver's ruling; rests on his account and one session's experience, journals not yet searched). Mode 20 is its costliest known example. Experiment: 17.28.
 
-**22. The read nobody saw** (uncounted; entered by Enver's ruling 2026-11-17, not by the census). A session or helper is told to read a document and says it did, and nobody can see whether it did: reading happens inside the model, hidden from the person and from the session that asked. Cheap and long-context readers skim, opening part of a file or none and answering from its headings, and still report "read in full: yes." **It isn't lying.** A model is structurally worst at noticing what's missing (§4.2), so it can't see the part it skipped, and telling it to "read every line" is prose asked nicely (mode 11), which doesn't fix it. It bites hard because reading is how every written layer of friction reaches the work: canonical documentation, briefs, plans, the manual. A skimmed read quietly switches those layers off while every report says they held. **A read is verified by what the reader opened, never by its word. Count what was opened from the record of its tool calls, and for load-bearing reads, check something only a real read could produce.** · **OBSERVED** (CR-9 stress test, 2026-11-17: a code check caught GLM readers reporting "read in full: yes" after reaching only part of the document.) Mechanism RESEARCHED via §4.2 and §15.9. · **Category:** both. The coverage check is built once; deciding which reads are load-bearing is a live call. · **Relations:** the input side of mode 8 (mode 8 is a worker's account of what it did; this is its account of what it took in). A special case of §5.6, "a count of what you found cannot prove you looked." · **Rung:** a speed bump once the coverage check is built (§9 item 41). The structural form is the Code+ reading harness (§9 item 42). The code for this failure mode now exists as three built pieces: the reading tool itself (whole documents in front of a model, checked), the routing of cheap jobs to it (a `read` job never opens files itself), and the counter that reports from a helper's record how much of each file it opened.
+**22. The read nobody saw** (uncounted; entered by Enver's ruling 2026-11-17, not by the census). A session or helper is told to read a document and says it did, and nobody can see whether it did: reading happens inside the model, hidden from the person and from the session that asked. Cheap and long-context readers skim, opening part of a file or none and answering from its headings, and still report "read in full: yes." **It isn't lying.** A model is structurally worst at noticing what's missing (§4.2), so it can't see the part it skipped, and telling it to "read every line" is prose asked nicely (mode 11), which doesn't fix it. It bites hard because reading is how every written layer of friction reaches the work: canonical documentation, briefs, plans, the manual. A skimmed read quietly switches those layers off while every report says they held. **A read is verified by what the reader opened, never by its word. Count what was opened from the record of its tool calls, and for load-bearing reads, check something only a real read could produce.** · **OBSERVED** (CR-9 stress test, 2026-11-17: a code check caught GLM readers reporting "read in full: yes" after reaching only part of the document.) Mechanism RESEARCHED via §4.2 and §15.9. · **Category:** both. The coverage check is built once; deciding which reads are load-bearing is a live call. · **Relations:** the input side of mode 8 (mode 8 is a worker's account of what it did; this is its account of what it took in). A special case of §5.6, "a count of what you found cannot prove you looked." · **Rung:** a speed bump, now that the coverage check is built. The structural form is the Code+ reading harness. The code for this failure mode now exists as three built pieces: the reading tool itself (whole documents in front of a model, checked), the routing of cheap jobs to it (a `read` job never opens files itself), and the counter that reports from a helper's record how much of each file it opened.
+
+**23. Acting on a yes the owner never gave** (17; a new kind, merged from "acting without approval", "approval misrecorded" and related names in the census). A window reads an aside, a garbled reply or its own summary as approval and moves ahead on a decision that was never made. **Only the owner's own clear words count as approval; ask when a reply is ambiguous.** · **CANDIDATE** (one reading of the V2-era records; not reproduced) · Cost: a decision nobody made is costly to undo.
 
 **v2 step-runner verdict (orchestrator-v2, 2026-10-28) — OBSERVED in a fault-injection harness only, not validated by multi-week use.** Does the one-step-at-a-time runner (§0.2) help with each mode? YES / PARTLY / NO:
 1. Built, then never called — PARTLY (a card step is called by the runner; an unwired card is not)
@@ -1483,9 +1506,7 @@ strongest outside, PARTIAL here (storage vs delivery).
 ~~66 one-off failures (report §6, preserved, not patterns)~~ *re-read 2026-09-05: 63 IDs → 13 duplicates → 26 re-placed into
 the modes above (+12 to mode 2 · +5 to 5 · +3 to 1 · +3 to 12 · +2 to 3 · +1 to 11) → 9 true one-offs, ledgered as
 `[ONE-TIME-FAILURES]`* · 300 unallocated instances. *Reshaped:* the scope loop is a symptom of 5; barn-sour step-skipping
-is 11 seen from inside a skill. **CANDIDATE additional mode, awaiting Enver's ruling:** *the cloud drive is not a filesystem* —
-zero-byte reads at exit 0, dataless files, paths with spaces; four instances, one a near-miss that would have destroyed
-1.73 MB of append-only history.
+is 11 seen from inside a skill. **Considered 2026-11-27 and not admitted as a failure mode:** *the cloud drive is not a filesystem.* Cause found: the owner's notes sit on a cloud drive in streaming mode (files live in the cloud and the computer downloads a file on first read), so the freezes and stalled searches were on-demand downloads, not data loss; code already reads file details, not contents.
 
 ---
 

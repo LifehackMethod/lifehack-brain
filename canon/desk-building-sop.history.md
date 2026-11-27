@@ -483,3 +483,34 @@ At midnight, the desk's diary cron writes the day's spare boil-down with pointer
 **The room remembers on its own.** At midnight, a little robot comes in and writes the day's page in the diary —
 not you, not the intern, nobody maintains it. Once a week another robot squints at the week's pages and drafts a
 ~~~~
+
+## 2026-11-27 - reason: landing B2 budget tracked not capped (2026-11-27)
+
+~~~~
+- Glasses that fit, with the plugin's and the personal root's `CLAUDE.md`, inside one shared total token budget across the three layers. → §6; §8 point 4
+~~~~
+
+## 2026-11-27 - reason: landing B2 budget tracked not capped, body line (2026-11-27)
+
+~~~~
+audiences, two delivery mechanisms. All three layers share a total token budget (canon), because injected
+~~~~
+
+## 2026-11-27 - reason: landing B3 who creates the command (2026-11-27)
+
+~~~~
+5. The `/deskname` (⛔ placeholder example path) command invocation is created — CLI and Anthropic app both.
+~~~~
+
+## 2026-11-27 - reason: landing B4b unattended behaviour (2026-11-27)
+
+~~~~
+With nobody at the screen, protections A and B are denied with a sign and parked for the morning, and the run
+carries on; protection C's sign is logged and the action waits for the morning rather than being blocked outright.
+~~~~
+
+## 2026-11-27 - reason: landing B5 rollup wording (2026-11-27)
+
+~~~~
+- If cron builds weekly, monthly, quarterly or annual roll-ups → they are low-confidence computer assumptions until a human validates them. → §6
+~~~~

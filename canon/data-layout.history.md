@@ -231,3 +231,54 @@ authority.** This page does not repeat it. This page is only the shape of what g
 ~~~~
 | `<brain>/diary/YYYY/MM/DD.md` | the diary cron job, at the end of the day | one entry per day, append-only |
 ~~~~
+
+## 2026-11-27 - reason: A1 ingest builds current.md (landing 2026-11-27)
+
+~~~~
+- `<subject>/canon/canon.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
+  subject it finds in your material, and what a project settles about itself. `purpose.md` says what
+  the folder is *for*; `canon.md` holds what it has established (an older `current.md` is still read if it is all a folder has).
+~~~~
+
+## 2026-11-27 - reason: A4 journal rotation by hand (landing 2026-11-27)
+
+~~~~
+One file, appended to, never edited: `<brain>/system/journal.md`. When it gets long, older months
+move to `<brain>/system/journal/YYYY-MM.md`.
+~~~~
+
+## 2026-11-27 - reason: A5 proposals row is stale (landing 2026-11-27)
+
+~~~~
+| `<brain>/desks/<subject>/records/proposals/` | `/ingest` | canon lines, written only after you approve the placement preview |
+~~~~
+
+## 2026-11-27 - reason: A4 rotation table row (landing 2026-11-27)
+
+~~~~
+| `<brain>/system/journal/YYYY-MM.md` | whatever rotates it | when the journal gets long |
+~~~~
+
+## 2026-11-27 - reason: landing ingest builds current.md (2026-11-27)
+
+~~~~
+- `<subject>/canon/canon.md` and `canon/purpose.md` — per folder. What `/ingest` builds for each
+  subject it finds in your material, and what a project settles about itself. `purpose.md` says what
+  the folder is *for*; `canon.md` holds what it has established (an older `current.md` is still read if it is all a folder has).
+
+~~~~
+
+## 2026-11-27 - reason: landing journal rotation by hand (2026-11-27)
+
+~~~~
+One file, appended to, never edited: `<brain>/system/journal.md`. When it gets long, older months
+move to `<brain>/system/journal/YYYY-MM.md`.
+
+~~~~
+
+## 2026-11-27 - reason: landing stale proposals row (2026-11-27)
+
+~~~~
+| `<brain>/desks/<subject>/records/proposals/` | `/ingest` | canon lines, written only after you approve the placement preview |
+
+~~~~

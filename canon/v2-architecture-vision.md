@@ -2,7 +2,7 @@
 
 > **Lives in V2 canon from 2026-11-22 (Enver's ruling); remove or rework before the merge to main.** Moved from the private ClaudeOps repo (`canon/v2-architecture-vision.md`).
 
-> **Status: DRAFT (evolving toward canon on Enver's yes).** Born 2026-11-06 from the desk/presentation SOP
+> **Status: canon in V2, in a trusted location; evolving.** Born 2026-11-06 from the desk/presentation SOP
 > rounds and the architecture teaching session; restructured the same day after his correction that rendering
 > is delegated, not owned. This is the highest-altitude document in V2: everything else — the desk SOP, the
 > interface spec (the presentation SOP), the plans — hangs from it. Where it and his words differ, the tension is surfaced to him; nothing here outranks anything else.
@@ -50,8 +50,7 @@ comes first.
   organism layer): they hold the intended-vs-actual record.
 - **Looking for friction — what guards and checks actually run?** The code and the SOPs.
 - **Looking for why we decided — the decision trail?** The rulings records, the vetting records, and the
-  Vision's own rulings file (case records, one decision per entry, his words verbatim, never edited, only
-  superseded). COMPASS is the seedling these grew from: it
+  Vision's own rulings file (a rulings file is the live notepad during a round; once each decision reaches its permanent home it is archived word for word, and the permanent homes are the record). COMPASS is the seedling these grew from: it
   retires once its content is persisted into the lower-altitude documents.
 
 **Document hygiene (his doctrine, 2026-11-08):** live-instruction documents hold only what is current —
@@ -688,8 +687,8 @@ functional, not an air-gap that lobotomizes it.
   folder; what each protection does is fixed (for canon and fine china outside git, protection B is COMPASS
   P-136's no-override hard block). One rule governs every mode that quiets the guards (overnight, long-chain
   runs): anything de-prompted resolves to **silent-deny-with-sign** — never silent-allow, never
-  timeout-allow. A guard that quietly stops asking must answer "no" on the occupant's behalf, with a note
-  left on the counter: fine china protections A and B are denied with a sign and parked for the morning, and
+  timeout-allow. A guard that quietly stops asking should answer "no" on the occupant's behalf, with a note
+  left on the counter. Why: a de-prompted guard that answers "yes", or waits out a timeout, turns the absence of a person into permission. Fine china protections A and B are denied with a sign and parked for the morning, and
   the run carries on; protection C's sign is logged and the mass delete waits for the morning; hard blocks
   are always denied.
 

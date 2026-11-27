@@ -91,6 +91,8 @@ history: "canon/skill-building-sop.history.md"
 - **[BUILD AND TEST]** If a travelling skill copies a shared part → the copy is pinned by hash, with a check that it has not drifted from `system/parts/`. → SOP Open Tensions (settled 2026-11-16)
 - **[ALWAYS TRUE]** If it ships in the Harness → it carries no private names, window names or personal paths. → SOP Principles, Building and fixing
 - If files were renamed or moved → someone checked which copy actually loads. → SOP Principles, Building and fixing
+- If a skill is scaffolded from the skill template → delete the sections that do not apply and check that no command or skill of the same name already exists; it goes in the person's own skills folder if personal, in the plugin if shipped, with nothing private in the plugin; the plan says which template files it leaves out. → SOP Build 2
+- If a skill asks the person to choose → give its recommendation with a confidence level and stop there; no "none of these" option and no separate stakes line. → SOP Principles, Building and fixing
 - If something broke → the failing seam was found before any fix, and the bug's siblings swept before the second fix. → SOP Principles, Building and fixing; When Something Goes Wrong
 - **[BUILD AND TEST]** If testing → every check was first seen failing on a deliberately broken copy, with no AI involved. → SOP Test 1
 - **[BUILD AND TEST]** If testing in a live window → it was launched with the person's real launcher flags, never plain `claude -p`. → SOP Test 2
@@ -237,6 +239,8 @@ history: "canon/skill-building-sop.history.md"
   ordinary reader and take the reader's word.** Why: skills are the biggest senders of reading to helpers; one line
   puts the floor inside the skill-building rules. Change if: Enver rules otherwise. Evidence: proposed (debt ledger
   §10 entry 39; reading-harness plan card 8.3; the CR-9 stress test receipts).
+- Keeping a skill's spec current is strongly encouraged, not a must. Before changing a skill, the session uses its judgment. A change that would significantly alter what the skill does goes through /skill-builder, which updates the spec as part of the change. A small change can simply be made. The first time a session edits a skill, a one-time sign points it to /skill-builder, and a second try goes through. (The sign is not built yet.)
+- **A skill that asks the person to choose gives its recommendation with a confidence level and stops there.** There is no "none of these" option and no separate stakes line.
 
 ### Testing
 
@@ -298,6 +302,7 @@ history: "canon/skill-building-sop.history.md"
    - **Why:** only about the first 250 characters are read, and auto-triggering is unreliable even with a good
      description; a slightly pushy description under-triggers less than a modest one. Anything that has to fire needs
      an explicit invocation or a hook (archived SOP §III.3, carried on Enver's yes (RULED · Enver, 2026-11-10)).
+   - **Why a routing test has should-not-fire cases:** a test with only should-fire prompts cannot catch a skill that fires on everything. Set the scoring before the run so it cannot be bent to fit the result. Worked example, not a must: three of three holds, zero of three fails, one or two of three is unscored and re-run.
    - **Expect:** the should-fire prompts fire it and the near-misses do not, on repeated runs.
    - **Check:** the routing-eval results, each case run at least three times.
 4. **Do:** lay out the skill's folder by Anthropic's convention: `scripts/` for files to run, `references/` for files

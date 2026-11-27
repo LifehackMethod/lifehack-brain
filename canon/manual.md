@@ -910,7 +910,7 @@ Three-skill cluster + two hooks that continuously re-assert a shared voice contr
 
 INTEROP:
   CHAINS      save                      · /save Step 8 continuation handoff specifies a two-pass DRAFT → /explain re-render as its voice-seed; the only place a translator skill is a REQUIRED intermediate step in another skill's flow
-  KEYS-OFF    ~~system/translator-rubric.md~~ `system/sops/translator-rubric.md` *(2026-10-30: moved)* · all five cluster components (3 skills + 2 hooks) key off this file as the authority on translator voice; rubric edit must propagate to all five — propagation is honor-system ⚠ 2026-10-31: the rubric is work in progress, disconnected until picked up again and validated.
+  KEYS-OFF    ~~system/translator-rubric.md~~ ~~`system/sops/translator-rubric.md`~~ ⛔ *(RETIRED 2026-11-27: moved to `archive/translator-rubric-retired-2026-11-27/`; how replies are shaped now lives in "How to write to them" in `CLAUDE.md`)* *(2026-10-30: moved)* · all five cluster components (3 skills + 2 hooks) key off this file as the authority on translator voice; rubric edit must propagate to all five — propagation is honor-system ⚠ 2026-10-31: the rubric is work in progress, disconnected until picked up again and validated.
   COMPLEMENTS distill                   · /summarize explicitly routes full-thread or multi-turn distillations to /distill; complementary non-redundant tools for different scopes
 
 ## red-team · /red-team   [LIVE [provisional]]   → system/organism/elements/red-team.md
