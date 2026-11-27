@@ -54,9 +54,10 @@ All take `--workdir DIR` (default: the current folder).
 | `person-turn --turn T --cmd next\|back` | Appends the person's typed command as a `person` line. The ONLY writer of `person` lines. A used turn id: exit 4. A finished run: exit 4. |
 | `resume --choice continue` | Reissues the CURRENT step's instructions with a fresh code word ("update the Code word line in <out file>"). Half-done handover: exit 7 (run `recover` first); finished or abandoned: exit 4. Writes no pass/done. The old code word is then refused: "another window took over this run at <time>" (exit 3). Records the newest person prompt from `<run folder>/person.log` in its record line. The AI's own menu command is gated (see below): no fresh, unused person prompt → exit 3, "ask the person first". |
 | `abandon --choice start-over` | Appends `abandoned` (with the newest person prompt) if the record verifies; always renames the marker to `.stage-runner.json.abandoned-<run>` (a COMPLETE run gets `.done-<run>`), even on a damaged record, unreadable card or bad marker. Deletes nothing; never writes pass/done/complete. Same menu gate as `resume`. The run folder must sit inside the marker's folder (resolved as `find_run` resolves it): a copied folder whose marker still names the original run renames its marker only and never appends to that record. |
+| `refresh --choice continue` | A card or prompt file was edited mid-run (every other command says `CARD UPDATED`, exit 8, and moves nothing). On the person's yes ONLY: appends one `refresh {prev_card_sha, card_sha, card, code_hash, person}` line that pins the NEW card sha, issues a fresh code word and carries on AT THE SAME STEP; every earlier line stays as it was. Refuses (exit 3, nothing written) when the open step is no longer in the updated card or the card does not fit the steps already done; unchanged card: exit 4. Same menu gate as `resume`, plus: the question must have been shown (a `CARD UPDATED` report leaves `card-updated-seen.json` in the run folder holding that prompt id) and the newest person prompt must be a different, later one; the refresh line records it as `seen_on`. |
 | `snooze --choice leave-it` | Appends `snoozed` (with the newest person prompt); the reader stays quiet for this run until a later `person` or `reissue` line (a later `resume` lifts it). Same menu gate as `resume`. |
 | `recover` | Completes a handover that died between `intent` and `done`. |
-| `verify` | Chain + replay rule + the mover's logs; writes nothing. Reports a `person` line whose turn is not in `<run folder>/mover.log` ("person line not written by the mover", exit 3); a `reissue`/`abandoned`/`snoozed` line whose recorded person prompt is missing from `<run folder>/person.log`, older than the record line before it, or already used by another menu line (exit 3); a changed or unreadable card (exit 6); any record line after `abandoned` (exit 6). `verify --run <run folder>` reads a set-aside (abandoned) run directly, without a marker. The mover hook writes `mover.log` (one `prompt_id` per line) and `person.log` (`prompt_id` and unix time for EVERY person prompt while a run is open); the runner never does. |
+| `verify` | Chain + replay rule + the mover's logs; writes nothing. Reports a `person` line whose turn is not in `<run folder>/mover.log` ("person line not written by the mover", exit 3); a `reissue`/`abandoned`/`snoozed` line whose recorded person prompt is missing from `<run folder>/person.log`, older than the record line before it, or already used by another menu line (exit 3); a changed or unreadable card (exit 6: this is `verify`'s code; every live command reports a changed card as CARD UPDATED, exit 8); a `refresh` line whose person prompt is the one its update question was shown on (exit 3); any record line after `abandoned` (exit 6). `verify --run <run folder>` reads a set-aside (abandoned) run directly, without a marker. The mover hook writes `mover.log` (one `prompt_id` per line) and `person.log` (`prompt_id` and unix time for EVERY person prompt while a run is open); the runner never does. |
 | `statusline [--inner CMD]` | Reads Claude Code's status JSON; prints `RUN n/N stage (mode)`. |
 | `--selftest` | The no-AI finish check. |
 
@@ -75,9 +76,9 @@ the current word lives after a cut-off (fixed 2026-11-24: a long prompt plus a /
 
 `start` (with `card_sha`) · `person {turn, cmd}` · `pass` · `fail` · `handover` · `back` · `intent` ·
 `done` · `complete` · `reissue {code_hash, choice}` · `abandoned {choice}` · `snoozed {choice}` ·
-`recover`. Replay rule: a forward `intent` needs a `pass` of the step it leaves since that step
+`refresh {prev_card_sha, card_sha, card, code_hash}` · `recover`. Replay rule: a forward `intent` needs a `pass` of the step it leaves since that step
 opened, `done` needs its `intent`, `complete` needs the last step's pass; a card or prompt file
-edited mid-run reads as DAMAGED ("card changed mid-run").
+edited mid-run reads as CARD UPDATED (exit 8, "card changed mid-run") until a `refresh` line (the person's yes) pins the new card; `verify` accepts a card change only across such a line, whose `prev_card_sha` must equal the sha it replaces.
 
 ## The person-turn rule, and talk vs alone
 
@@ -111,7 +112,7 @@ edited mid-run reads as DAMAGED ("card changed mid-run").
 0 OK · 2 USAGE / cannot-evaluate / bad `--choice` · 3 CHECKFAIL (stage refused; also "no person
 turn", "another window took over this run", unlogged person line in `verify`) · 4 NOTHING (no-op,
 repeat turn, unfinished run on `start`) · 5 NORUN · 6 DAMAGED (record failed verification,
-card changed, bad marker) · 7 DANGLING (run `recover`).
+bad marker; `verify` also reports an unrefreshed card change) · 7 DANGLING (run `recover`) · 8 CARD UPDATED (card or prompt edited mid-run; `refresh`).
 
 **A job wrapper maps 4 to the cron stand-down code itself** — the runner's 4 means "nothing to do",
 and the wrapper decides what that means to the scheduler.

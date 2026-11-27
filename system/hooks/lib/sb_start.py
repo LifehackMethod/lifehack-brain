@@ -39,6 +39,7 @@ a pass, a person line or a handover: only stage_runner.py does that.
 #      model must relay and stop on; the turn is never wedged and no partial run state is left
 #      for the model to clean up.
 # ─────────────────────────────────────────────────────────────────────────────
+import glob
 import json
 import os
 import re
@@ -49,6 +50,9 @@ import time
 TAG = "[RUN STEP — harness-injected, not user input]"
 SKILL = "skill-builder"
 MODE_WORDS = ("observe", "note", "wrap")
+# ITEM 5 (2026-11-27): observe / note / wrap count ONLY when the person's prompt STARTS with the command (leading whitespace
+# trimmed; the plugin form too). The same pattern as system/hooks/observe_ups.sh, so the two never disagree.
+_MODE_LEAD = re.compile(r"\s*/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t]*[:\-\u2014][ \t\r\n]*|[ \t\r\n]+|$)")
 _CMD = re.compile(r"(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder(?![A-Za-z0-9_-])(?P<rest>[^\n]*)")
 
 
@@ -60,9 +64,12 @@ def _blank(prompt):
 
 
 def detect(prompt):
-    """(mode, arg). Any observe/note/wrap command anywhere wins ("other"); then catch-up; then the normal job."""
+    """(mode, arg). An observe/note/wrap command at the START of the prompt wins ("other"); a mode word mentioned anywhere else
+    (pasted or quoted text) is ignored altogether, never routed to observe and never to the normal job; then catch-up; then the normal job."""
     if not isinstance(prompt, str) or "skill-builder" not in prompt:
         return None, ""
+    if _MODE_LEAD.match(prompt):
+        return "other", ""
     scan = _blank(prompt)
     found = []
     for m in _CMD.finditer(scan):
@@ -71,9 +78,9 @@ def detect(prompt):
         found.append((first, rest))
     if not found:
         return None, ""
-    for first, rest in found:
-        if first in MODE_WORDS:
-            return "other", ""
+    found = [(first, rest) for first, rest in found if first not in MODE_WORDS]   # a pasted mode mention is nothing
+    if not found:
+        return None, ""
     for first, rest in found:
         if first in ("catch-up", "catchup"):
             return "catchup", rest.split(None, 1)[1].strip() if len(rest.split(None, 1)) > 1 else ""
@@ -253,8 +260,211 @@ def per_turn(stage_runner, hooks, cwd, sid, pid="", prompt="", tp=""):
         return []
 
 
-def begin(stage_runner, hooks, cwd, sid, pid, name):
-    """The normal job: status first; resume an active run, otherwise start. Returns the lines to inject."""
+# ---------------------------------------------------------------- ITEM 1: resume like /ingest
+# The state of a run lives in its design folder, not in the session id. A bare /skill-builder with no run found by cwd or by the
+# session pointer looks for UNFINISHED runs in the design folders and ASKS (one line); nothing moves until the person answers.
+# The offer is written to ~/.claude/run/resume-offer/offer-<sid>.json and is good for exactly the NEXT person prompt: a reply that
+# is exactly yes / pick up / start new (or a number when several are listed) acts on it; any other prompt drops it.
+
+OFFER_TTL = 24 * 3600
+YES_WORDS = ("yes", "y", "pick up", "pick it up", "yes pick up", "yes please")
+NEW_WORDS = ("start new", "new", "start a new one")
+
+
+def _offer_dir():
+    return os.path.join(os.path.expanduser("~"), ".claude", "run", "resume-offer")
+
+
+def _offer_path(sid):
+    return os.path.join(_offer_dir(), "offer-%s.json" % re.sub(r"[^A-Za-z0-9_-]", "_", sid or "nosession"))
+
+
+def _taken_path(sid, pid):
+    return _offer_path(sid)[:-5] + ".taken-" + re.sub(r"[^A-Za-z0-9_-]", "_", pid or "none")
+
+
+def _sweep_taken(sid, keep=""):
+    try:
+        pre = os.path.basename(_offer_path(sid))[:-5] + ".taken-"
+        for f in os.listdir(_offer_dir()):
+            if f.startswith(pre) and os.path.join(_offer_dir(), f) != keep:
+                os.unlink(os.path.join(_offer_dir(), f))
+    except OSError:
+        pass
+
+
+def drop_offer(sid):
+    """Forget a pending offer (the person typed something that is not an answer). Never raises."""
+    try:
+        os.unlink(_offer_path(sid))
+    except OSError:
+        pass
+
+
+def _save_offer(sid, runs):
+    os.makedirs(_offer_dir(), exist_ok=True)
+    tmp = _offer_path(sid) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"t": time.time(), "runs": runs}, f)
+    os.replace(tmp, _offer_path(sid))
+
+
+def _design_name(wd):
+    n = os.path.basename(os.path.normpath(wd))
+    return n[len("packet-"):] if n.startswith("packet-") else n
+
+
+def unfinished_runs(stage_runner, hooks, brain, sid, limit=40):
+    """Unfinished skill-builder runs in the design folders under the notes folder, most recent first (read-only: find_run,
+    status). Each: {wd, name, step, total, damaged, holding}. A run the runner reports DAMAGED (a changed card mid-run) is
+    listed with damaged=True and is never repaired here. Real design folders win; _holding-* folders come back only when
+    nothing else exists."""
+    cands = []
+    for pat in (os.path.join(brain, "drafts", "builds", "*"), os.path.join(brain, "state", "projects", "*", "packet-*")):
+        for d in glob.glob(pat):
+            m = os.path.join(d, stage_runner.MARKER)
+            if os.path.isdir(d) and os.path.isfile(m):
+                try:
+                    cands.append((os.path.getmtime(m), d))
+                except OSError:
+                    pass
+    cands.sort(reverse=True)
+    out = []
+    for _, wd in cands[:limit]:
+        try:
+            found = stage_runner.find_run(wd)
+        except Exception:
+            found = None
+        if not found or os.path.realpath(found[0]) != os.path.realpath(wd):
+            continue
+        run_dir = found[1] if os.path.isabs(found[1]) else os.path.join(found[0], found[1])
+        try:
+            when = os.path.getmtime(os.path.join(run_dir, "record.jsonl"))
+        except OSError:
+            when = 0
+        item = {"wd": wd, "name": _design_name(wd), "step": None, "total": None, "damaged": False, "updated": False,
+                "holding": os.path.basename(wd).startswith("_holding-"), "when": when}
+        rc, st = _status(hooks, wd, sid)
+        if rc == 0 and st:
+            if st.get("skill") != SKILL or st.get("complete") or st.get("abandoned"):
+                continue
+            item["step"], item["total"] = st.get("index"), st.get("total")
+        elif rc in (stage_runner.DAMAGED, stage_runner.CARDCHANGED):
+            try:   # best effort, read-only: whose run is it and where was it
+                with open(os.path.join(wd, stage_runner.MARKER), encoding="utf-8") as f:
+                    card_path = json.load(f).get("card", "")
+                if os.path.basename(os.path.dirname(card_path)) != SKILL:
+                    continue
+                state = stage_runner.derive(stage_runner.load_record(run_dir))
+                if state["complete"] or state["cur"] == "COMPLETE" or state["abandoned"]:
+                    continue
+                card = stage_runner.load_card(state["card"])
+                idx = stage_runner.stage_index(card, state["cur"])
+                item["step"], item["total"] = (idx + 1 if idx >= 0 else None), len(card["stages"])
+            except Exception:  # allow-silence: display-only step number; the run is still listed (step shown as unknown)
+                pass
+            if rc == stage_runner.CARDCHANGED:
+                item["updated"] = True   # the card changed since the run started: the person's yes can refresh it (the runner's `refresh`)
+            else:
+                item["damaged"] = True
+        else:
+            continue
+        out.append(item)
+    out.sort(key=lambda r: r["when"], reverse=True)
+    real = [r for r in out if not r["holding"]]
+    return real or out
+
+
+DAMAGED_NOTE = "its record is damaged, so it cannot be picked up"
+UPDATED_NOTE = "the skill was updated since you started"
+
+
+def _where(r):
+    return ("step %s of %s" % (r["step"], r["name"])) if r.get("step") else ("%s (step not known)" % r["name"])
+
+
+def _carry(r):
+    return "carry on with the new version%s" % ((" from step %s" % r["step"]) if r.get("step") else "")
+
+
+def _offer_lines(runs):
+    ask = TAG + " RESUME OFFER: an unfinished run was found, so no new run was started. Show the person exactly the text between " \
+        "the markers, word for word, then STOP and wait for their answer. Start nothing, move nothing, run no helper, write nothing. "
+    if len(runs) == 1:
+        r = runs[0]
+        if r["damaged"]:
+            text = "You left off at %s, but %s. Start new? (start new)" % (_where(r), DAMAGED_NOTE)
+        elif r.get("updated"):
+            text = "You left off at %s: %s; %s? (yes / start new)" % (_where(r), UPDATED_NOTE, _carry(r))
+        else:
+            text = "You left off at %s. Pick up? (yes / start new)" % _where(r)
+        return [ask + "[[" + text + "]]"]
+    rows = []
+    for i, r in enumerate(runs, 1):
+        note = (" (%s)" % DAMAGED_NOTE) if r["damaged"] else ((" (%s; %s)" % (UPDATED_NOTE, _carry(r))) if r.get("updated") else "")
+        rows.append("%d. %s%s" % (i, _where(r), note))
+    text = "You have %d unfinished runs, most recent first:\n%s\nType the number to pick one up, or start new." % (len(runs), "\n".join(rows))
+    return [ask + "[[" + text + "]]"]
+
+
+def _norm_reply(prompt):
+    t = " ".join((prompt or "").lower().split())
+    return t.rstrip(".!")
+
+
+def offer_reply(stage_runner, hooks, cwd, sid, pid, prompt):
+    """The person's next prompt after a resume offer. None: no offer was waiting (the caller carries on as usual). A list of
+    lines (maybe empty): the offer was handled and the caller must print them and stop. One offer answers one prompt: it is
+    consumed whatever the person typed; only an exact yes / pick up / start new (or a listed number) acts on it."""
+    try:
+        taken = _taken_path(sid, pid)
+        if pid and os.path.exists(taken):
+            return []   # the twin copy of this hook already handled this very prompt
+        mine = taken if pid else _offer_path(sid) + ".taken-x"
+        try:
+            os.replace(_offer_path(sid), mine)   # atomic: of two racing copies only one gets the offer
+        except OSError:
+            return [] if (pid and os.path.exists(taken)) else None   # lost the race to the twin copy: it handles the prompt
+        _sweep_taken(sid, keep=mine)
+        try:
+            with open(mine, encoding="utf-8") as f:
+                offer = json.load(f)
+            runs = offer["runs"]
+            fresh = time.time() - float(offer["t"]) < OFFER_TTL and isinstance(runs, list) and runs
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+        if not fresh:
+            return None
+        t = _norm_reply(prompt)
+        pick = None
+        if t in NEW_WORDS:
+            return begin(stage_runner, hooks, cwd, sid, pid, "", fresh=True)
+        if t in YES_WORDS:
+            if len(runs) == 1:
+                pick = runs[0]
+            else:
+                _save_offer(sid, runs)
+                return [TAG + " RESUME OFFER: the person said yes but %d runs were listed. Tell them in one line to type the number of "
+                        "the run to pick up (or start new). Start nothing." % len(runs)]
+        else:
+            m = re.fullmatch(r"(\d+)(?:\s+(?:yes|pick up))?", t) if len(runs) > 1 else None
+            if m and 1 <= int(m.group(1)) <= len(runs):
+                pick = runs[int(m.group(1)) - 1]
+        if pick is None:
+            return None   # not an answer: the offer is gone, the prompt goes on as an ordinary one
+        if pick.get("damaged"):
+            _save_offer(sid, runs)
+            return [TAG + " RESUME OFFER: that run cannot be picked up: %s. Tell the person this in one line and offer "
+                    "start new. Start nothing and do not touch the run." % DAMAGED_NOTE]
+        return begin(stage_runner, hooks, cwd, sid, pid, "", pick=pick["wd"])
+    except Exception as e:
+        return _fail("the resume answer failed (%s)" % type(e).__name__)
+
+
+def begin(stage_runner, hooks, cwd, sid, pid, name, pick=None, fresh=False):
+    """The normal job: status first; resume an active run, otherwise start. Returns the lines to inject.
+    pick: the design folder of an unfinished run the person said yes to (resume it, never start one). fresh: the person said
+    start new (always a new run, never over an unfinished one)."""
     try:
         try:
             import sb_spec
@@ -266,18 +476,31 @@ def begin(stage_runner, hooks, cwd, sid, pid, name):
         if not card:
             return _fail("the skill builder's card.json was not found next to the plugin")
         notes = []
-        a = active_run(stage_runner, hooks, cwd, sid)
+        drop_offer(sid)
+        a = None if (pick or fresh) else active_run(stage_runner, hooks, cwd, sid)
         if a:
             wd = a[0]
+        elif pick:
+            wd = pick
         else:
             brain = _brain(hooks)
             if not brain:
                 return _fail("your notes folder is not set, so there is nowhere to keep the design folder")
             base = os.path.join(brain, "drafts", "builds")
+            if not name and not fresh:
+                runs = unfinished_runs(stage_runner, hooks, brain, sid)
+                if runs:
+                    _save_offer(sid, [{k: r[k] for k in ("wd", "name", "step", "total", "damaged", "updated")} for r in runs])
+                    return _offer_lines(runs)
             if name:
                 wd = os.path.join(base, name)
             else:
                 wd = os.path.join(base, "_holding-" + (sid or "nosession")[:8])
+                if fresh:   # an explicit start new is always a NEW run: never the folder of one already in progress
+                    n = 1
+                    while os.path.isfile(os.path.join(wd, stage_runner.MARKER)):
+                        n += 1
+                        wd = os.path.join(base, "_holding-%s-%d" % ((sid or "nosession")[:8], n))
                 notes.append(TAG + " HOLDING FOLDER: no skill name was given yet, so this run uses a holding folder named for "
                              "this session. A live run folder cannot be moved (the runner records its path), so it stays "
                              "the design folder; say its path to the person once the skill has a name.")
@@ -295,9 +518,23 @@ def begin(stage_runner, hooks, cwd, sid, pid, name):
                 _log_person(found[1] if os.path.isabs(found[1]) else os.path.join(found[0], found[1]), pid)
             p = _run(hooks, ["resume", "--choice", "continue", "--workdir", wd], sid)
             verb = "resume"
+        elif rc == stage_runner.CARDCHANGED and pick:
+            # ITEM 2 wired in: the person said yes to "carry on with the new version?": the runner pins the new card and carries on
+            # at the SAME step (its `refresh`; it refuses, writing nothing, if the open step is gone from the new card)
+            try:
+                found = stage_runner.find_run(wd)
+            except Exception as e:
+                return _fail("the run record there is damaged (%s)" % e)
+            if found:
+                _log_person(found[1] if os.path.isabs(found[1]) else os.path.join(found[0], found[1]), pid)
+            p = _run(hooks, ["refresh", "--choice", "continue", "--workdir", wd], sid)
+            verb = "refresh"
         elif rc == 5 or (rc == 0 and st and (st.get("complete") or st.get("abandoned"))):
             p = _run(hooks, ["start", "--card", card, "--workdir", wd], sid)
             verb = "start"
+        elif rc == stage_runner.CARDCHANGED:
+            return _fail("the skill was updated since the run in %s started, so it was not touched; the person must say yes to "
+                         "carrying on with the new version first" % wd)
         else:
             return _fail("the step runner could not read the run in %s (it said exit %s: %s)"
                          % (wd, rc, "damaged or unreadable record"))

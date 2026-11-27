@@ -69,6 +69,11 @@ def _age(now, t):
 
 
 def _can_t(reason):
+    if "card changed" in reason:   # item 2: a card change is not damage; the person can carry on with the new version
+        _say("can't pick up as it was: %s. Ask the person: \"The skill was updated since you started; carry on with the new "
+             "version?\" Only on their separate yes (stage_runner.py refresh --choice continue pins the new card and carries on "
+             "at the same step); start over (abandon --choice start-over) is their other choice." % reason)
+        return
     _say("can't pick up: %s. Tell the person; offer only start over "
          "(stage_runner.py abandon --choice start-over moves the marker aside)." % reason)
 

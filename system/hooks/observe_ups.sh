@@ -19,7 +19,7 @@ trap 'lhb_journal_fire "$?" "observe_ups.sh" "UserPromptSubmit" "" 2>/dev/null |
 # SIGNPOST: design = brief 2.1 (build-skill-v2). The reviewer = system/tools/observe_review.sh; the Stop launcher =
 #      end_of_turn_checks.sh. Cap (2d): the spec line plus at most ONE reviewer line, ~1,200 characters on screen.
 # FAIL_POSTURE: degrade-safe — any error exits 0 with no output (a prompt hook's failure must never stop a prompt).
-# UPDATED: 2026-11-25 (2d: one reviewer line at most, spec line = changed/not changed; 2c: the spec line checks decision words in the person's prompt -- the unchanged-spec warning; 2b-Y: while a skill-builder run is live (flag spec-sess-<sid>.flag) the ONE spec line comes first in the merged systemMessage, reviewer lines capped at 4; 2.4: optional : - — after the mode word; notes go to observe-notes.md; 2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
+# UPDATED: 2026-11-27 (item 5: the command arms only when the person's prompt STARTS with it, never from pasted text mid-message); 2026-11-25 (2d: one reviewer line at most, spec line = changed/not changed; 2c: the spec line checks decision words in the person's prompt -- the unchanged-spec warning; 2b-Y: while a skill-builder run is live (flag spec-sess-<sid>.flag) the ONE spec line comes first in the merged systemMessage, reviewer lines capped at 4; 2.4: optional : - — after the mode word; notes go to observe-notes.md; 2.3: the command is found anywhere in the prompt, outside backtick spans; text before a note is filed too)
 # ─────────────────────────────────────────────────────────────────────────────
 IFS= read -r -d '' P || true
 re_sid='"session_id"[[:space:]]*:[[:space:]]*"([A-Za-z0-9_-]+)"'
@@ -46,14 +46,13 @@ def flag(*args):
     r = subprocess.run(["bash", flagtool] + list(args), capture_output=True, text=True, timeout=20)
     return r.returncode, r.stdout.strip()
 
-# Anywhere in the prompt, when the command starts a word (start of message or after whitespace) and is not inside a
-# backtick span or fence (blanked to spaces, same length, so offsets still index the real prompt; same approach as
-# buried_command_hint.sh). First match wins: one mode per message. A plain /skill-builder [skill] has no mode word: untouched.
-scan = re.sub(r"```.*?```", lambda x: " " * len(x.group(0)), prompt, flags=re.S)
-scan = re.sub(r"`[^`\n]*`", lambda x: " " * len(x.group(0)), scan)
-m = re.search(r"(?:^|(?<=\s))/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t]*[:\-—][ \t\r\n]*|[ \t\r\n]+|$)", scan)
+# ITEM 5 (2026-11-27): a mode command counts ONLY when the person's own prompt STARTS with it (leading whitespace trimmed;
+# the plugin form /lifehack-brain:skill-builder too). Pasted or quoted text that mentions the command mid-message never arms
+# anything. One mode per message. A plain /skill-builder [skill] has no mode word: untouched.
+before = ""
+m = re.match(r"\s*/(?:[A-Za-z0-9_-]+:)?skill-builder[ \t]+(observe|note|wrap)(?:[ \t]*[:\-\u2014][ \t\r\n]*|[ \t\r\n]+|$)", prompt)
 if m:
-    verb = m.group(1); rest = prompt[m.end():]; before = prompt[:m.start()].rstrip()
+    verb = m.group(1); rest = prompt[m.end():]
     if verb == "observe":
         arg = (rest.split() or [""])[0]
         if arg in ("off", "clear", "stop"):

@@ -45,9 +45,13 @@ has "$OUT" "RUN: step 1 of 6 (step-1), folder ($WD)" && ok || bad 1a "no RUN lin
 [ "$(pointer)" = "$WD" ] && ok || bad 1c "the run pointer is not set to $WD (got '$(pointer)')"
 has "$OUT" "code word: RUN-" && ok || bad 1d "the step-1 code word was not handed over"
 RID1="$(ls "$WD/runs")"
-# 2. a plain /skill-builder with no name: a session-scoped holding folder, said so
+# 2. a plain /skill-builder with no name in a window with no run, while an unfinished run exists (item 1, 2026-11-27): ONE offer line,
+#    nothing starts; only an explicit "start new" opens a session-scoped holding folder, said so
 fire "$HOOK" "/skill-builder" "$OUTSIDE" "sess-sb-test-0002"
-has "$OUT" "RUN: step 1 of 6 (step-1), folder ($BUILDS/_holding-sess-sb-" && ok || bad 2a "no holding-folder run: $OUT"
+has "$OUT" "You left off at step 1 of monthly-budget. Pick up? (yes / start new)" && ok || bad 2a "no resume offer for the unfinished run: $OUT"
+[ ! -d "$BUILDS/_holding-sess-sb-" ] && [ "$(ls "$BUILDS" | wc -l | tr -d ' ')" = 1 ] && ok || bad 2a2 "the offer started a run or a folder: $(ls "$BUILDS")"
+fire "$HOOK" "start new" "$OUTSIDE" "sess-sb-test-0002"
+has "$OUT" "RUN: step 1 of 6 (step-1), folder ($BUILDS/_holding-sess-sb-" && ok || bad 2b0 "no holding-folder run after start new: $OUT"
 has "$OUT" "HOLDING FOLDER" && ok || bad 2b "the holding folder was not announced"
 # 3. an active run exists: resume, never start (the run id is unchanged), and the run line says so
 sleep 1
@@ -73,18 +77,23 @@ has "$OUT" "stage/02.prompt.md" && ok || bad 5b "/next from outside did not move
 fire "$HOOK" "what do you think about the second question?" "$OUTSIDE"
 has "$OUT" "RUN: step 2 of 6 (step-2), folder ($WD)" && ok || bad 6a "no per-turn RUN line on plain chat during a live run: $OUT"
 # 7. observe / note / wrap are not this code's: nothing from it, with or without a run
-for P in "/skill-builder observe monthly-budget" "/skill-builder note a thought" "/skill-builder wrap" "please /skill-builder note remember this"; do
+for P in "/skill-builder observe monthly-budget" "/skill-builder note a thought" "/skill-builder wrap"; do
   fire "$HOOK" "$P" "$OUTSIDE"
   [ -z "$OUT" ] && ok || bad 7 "mode prompt '$P' produced output: $OUT"
 done
+# 7b. item 5: a mode word mid-message is just text: with a run live it is an ordinary turn (the per-turn line), never routed anywhere else
+fire "$HOOK" "please /skill-builder note remember this" "$OUTSIDE"
+has "$OUT" "RUN: step 2 of 6 (step-2), folder ($WD)" && ! has "$OUT" "OBSERVE" && ok || bad 7b "a mid-message note mention was not an ordinary turn: $OUT"
 # 8. plain chat with no run anywhere: nothing
 fire "$HOOK" "how is the weather" "$OUTSIDE" "sess-sb-test-0099"
 [ -z "$OUT" ] && ok || bad 8a "plain chat with no run produced output: $OUT"
 fire "$HOOK" "tell me about the \`/skill-builder\` skill" "$OUTSIDE" "sess-sb-test-0099"
 [ -z "$OUT" ] && ok || bad 8b "a command shown in backticks started a run: $OUT"
 [ "$(ls "$BUILDS" | wc -l | tr -d ' ')" = 2 ] && ok || bad 8c "plain chat created a design folder: $(ls "$BUILDS")"
-# 9. an ordinary word after the command is speech, not a skill name (holding folder, no folder named 'to')
+# 9. an ordinary word after the command is speech, not a skill name (an offer, then start new: holding folder, no folder named 'to')
 fire "$HOOK" "/skill-builder to plan my week" "$OUTSIDE" "sess-sb-test-0003"
+has "$OUT" "RESUME OFFER" && ok || bad 9a "no offer for speech after the command: $OUT"
+fire "$HOOK" "start new" "$OUTSIDE" "sess-sb-test-0003"
 [ ! -d "$BUILDS/to" ] && has "$OUT" "HOLDING FOLDER" && ok || bad 9 "speech after the command was taken as a skill name: $OUT"
 
 echo "B1: the runner cannot start -> one NO RUN line, nothing else"

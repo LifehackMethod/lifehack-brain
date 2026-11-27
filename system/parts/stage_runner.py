@@ -50,7 +50,7 @@ USAGE AND EXIT CODES -- the ONE list is system/templates/skill-template/RUNNER.m
   docstring point at each other; change the list THERE. In short: start, status, check,
   advance, back, person-turn, resume, abandon, snooze, recover, verify, statusline, --selftest;
   exits 0 OK · 2 usage/bad choice · 3 check failed / no person turn / taken over ·
-  4 nothing to do / repeat turn · 5 no run · 6 damaged · 7 dangling.
+  4 nothing to do / repeat turn · 5 no run · 6 damaged · 7 dangling · 8 card updated mid-run (`refresh`).
 
 CARD FORMAT (JSON; lives with the skill, e.g. system/templates/skill-template/card.template.json)
   { "skill": "<name>", "stop_limit": 3,
@@ -98,6 +98,7 @@ DELEGATES = {
 PROMPT_VARS = ("CODE", "OUT", "PREV", "ID", "MODE", "N", "TOTAL", "SKILL")
 
 OK, USAGE, CHECKFAIL, NOTHING, NORUN, DAMAGED, DANGLING = 0, 2, 3, 4, 5, 6, 7
+CARDCHANGED = 8   # the card or a prompt file was edited after the run started: not damage; `refresh` (the person's yes) carries on
 
 
 class Damaged(Exception):
@@ -248,6 +249,12 @@ def derive(lines):
             if s["code"]:
                 s["superseded"][s["code"]] = l["t"]
             s.update(code=d.get("code_hash"), snoozed=False)
+        elif e == "refresh":   # the person said yes to carrying on with an updated card: the ONLY way the pinned card_sha changes
+            if s["pending"] or d.get("prev_card_sha") != s["card_sha"] or not d.get("card_sha"):
+                raise Damaged("a refresh line that does not follow the card it replaces")
+            if s["code"]:
+                s["superseded"][s["code"]] = l["t"]
+            s.update(card_sha=d["card_sha"], card=d.get("card") or s["card"], code=d.get("code_hash"), snoozed=False)
         elif e == "abandoned":
             s["abandoned"] = True
         elif e == "snoozed":
@@ -847,7 +854,24 @@ def do_recover(run_dir, card):
 
 
 # ---------------------------------------------------------------- commands
-def get_ctx(args):
+SEEN = "card-updated-seen.json"
+
+
+def _note_card_updated(run_dir):
+    """The CARD UPDATED question was just reported on the newest person prompt: remember that prompt (once, never overwritten
+    until a refresh succeeds). `refresh` must then see a DIFFERENT, later person prompt: a separate turn after the question
+    was shown, so the model cannot ask and answer in the same turn."""
+    path = os.path.join(run_dir, SEEN)
+    try:
+        if not os.path.exists(path):
+            n = _newest_person(run_dir)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"prompt": n["id"] if n else ""}, f)
+    except OSError:
+        pass
+
+
+def get_ctx(args, allow_card_change=False):
     try:
         f = find_run(getattr(args, "workdir", None))
     except Damaged as e:
@@ -870,9 +894,14 @@ def get_ctx(args):
         return None, DAMAGED
     try:
         if st["card_sha"] and card_sha(st["card"], card) != st["card_sha"]:
-            print("stage_runner: DAMAGED -- card changed mid-run (the card or a prompt file was edited "
-                  "after the run started). Everything but `verify` refuses.")
-            return None, DAMAGED
+            if not allow_card_change:
+                _note_card_updated(run_dir)
+                print("stage_runner: CARD UPDATED -- card changed mid-run (the card or a prompt file was edited after "
+                      "the run started). Nothing moved. Everything but `verify` and `refresh` refuses. Ask the person: "
+                      "\"The skill was updated since you started; carry on with the new version from step %s?\" On their "
+                      "yes only, `refresh --choice continue` pins the new card and carries on at the same step."
+                      % (stage_index(card, st["cur"]) + 1 if st["cur"] != "COMPLETE" else "the end"))
+                return None, CARDCHANGED
         if st["cur"] != "COMPLETE" and stage_index(card, st["cur"]) < 0:
             print("stage_runner: record damaged: the open step %r is not in the card. "
                   "Everything but 'verify' refuses." % st["cur"])
@@ -1034,7 +1063,7 @@ def cmd_back(a):
     return rc
 
 
-MENU = {"resume": "continue", "abandon": "start-over", "snooze": "leave-it"}
+MENU = {"resume": "continue", "abandon": "start-over", "snooze": "leave-it", "refresh": "continue"}
 
 
 def _bad_choice(cmd, choice):
@@ -1068,6 +1097,92 @@ def cmd_resume(a):
     rc, txt = do_resume(c[1], c[4])
     print(txt)
     return rc
+
+
+def cmd_refresh(a):
+    """The person said yes to "carry on with the new version?": pin the NEW card sha with one `refresh` line and carry on AT THE
+    SAME STEP (a fresh code word, the step's prompt from the new card). Every earlier line (person, pass, answers) stays as it
+    was; nothing is restarted or back-filled. Refuses, writing nothing, when the updated card no longer has the open step or does
+    not fit the steps already done. Needs a logged person prompt like the other menu words."""
+    bad = _bad_choice("refresh", a.choice)
+    if bad:
+        return bad
+    try:
+        f = find_run(getattr(a, "workdir", None))
+    except Damaged as e:
+        print("stage_runner: record damaged: %s. Nothing was written." % e)
+        return DAMAGED
+    if not f:
+        print("no active run in %s" % os.path.abspath(getattr(a, "workdir", None) or os.getcwd()))
+        return NORUN
+    wd, run_dir = f
+    with locked(run_dir):
+        try:
+            lines = load_record(run_dir)
+        except Damaged as e:
+            print("stage_runner: record damaged: %s. Nothing was written." % e)
+            return DAMAGED
+        st = derive(lines)
+        if st["complete"] or st["cur"] == "COMPLETE" or st["abandoned"]:
+            print("stage_runner: the run is finished or set aside; nothing to refresh.")
+            return NOTHING
+        if st["pending"]:
+            print("stage_runner: a handover was left half-done: run recover first.")
+            return DANGLING
+        try:
+            card = load_card(st["card"])
+            new_sha = card_sha(st["card"], card)
+        except (OSError, ValueError) as e:
+            print("stage_runner: the run's card is unreadable: %s. Nothing was written." % e)
+            return DAMAGED
+        if st["card_sha"] and new_sha == st["card_sha"]:
+            print("stage_runner: the card has not changed since the run started (or was already refreshed); nothing to refresh.")
+            return NOTHING
+        i = stage_index(card, st["cur"])
+        if i < 0:
+            print("stage_runner: cannot carry on with the new version: the open step %r is no longer in the updated card "
+                  "(removed or renamed). Nothing was written. Do not guess: ask the person what to do." % st["cur"])
+            return CHECKFAIL
+        try:
+            check_order(lines, card)
+        except Damaged as e:
+            print("stage_runner: cannot carry on with the new version: the updated card does not fit the steps already "
+                  "done (%s). Nothing was written. Ask the person." % e)
+            return CHECKFAIL
+        refused = _menu_gate(run_dir, lines)
+        if refused:
+            print(refused[1])
+            return refused[0]
+        seen = None
+        try:
+            with open(os.path.join(run_dir, SEEN), encoding="utf-8") as f:
+                seen = json.load(f).get("prompt")
+        except (OSError, ValueError, AttributeError):
+            pass
+        if seen is None:
+            print("stage_runner: the update question has not been shown yet (no CARD UPDATED report is on record for this run). "
+                  "Ask the person first; nothing was written (exit 3).")
+            return CHECKFAIL
+        newest = _newest_person(run_dir)
+        if newest and newest["id"] == seen:
+            print("stage_runner: the person's newest prompt is the one the update question was shown on; their yes must be a "
+                  "separate, later prompt. Ask the person and wait for their answer; nothing was written (exit 3).")
+            return CHECKFAIL
+        code = new_code()
+        append(run_dir, "refresh", st["cur"], {"prev_card_sha": st["card_sha"], "card_sha": new_sha, "card": st["card"],
+                                               "code_hash": chash(code), "choice": "continue",
+                                               "seen_on": seen, "person": _newest_person(run_dir)})
+        try:
+            os.unlink(os.path.join(run_dir, SEEN))
+        except OSError:
+            pass
+        prompt = render_prompt(card, run_dir, i, code)
+        out = os.path.join(run_dir, card["stages"][i]["out"])
+        print("stage_runner: card refreshed; carrying on with the new version at step %s (%d of %d). Earlier lines are "
+              "untouched. A FRESH code word was issued and the old one no longer works: %s\nUpdate the Code word line in %s "
+              "to the new word. The step and its checks come from the updated card.\n\n%s"
+              % (st["cur"], i + 1, len(card["stages"]), code, out, prompt))
+        return OK
 
 
 def cmd_snooze(a):
@@ -1177,7 +1292,7 @@ def cmd_verify(a):
             return DAMAGED
         try:
             if st["card_sha"] and card_sha(st["card"], card) != st["card_sha"]:
-                print("DAMAGED: card changed mid-run")
+                print("DAMAGED: card changed mid-run (no refresh line in the record accepts the new card)")
                 return DAMAGED
             check_order(lines, card)
         except OSError as e:
@@ -1214,7 +1329,7 @@ def cmd_verify(a):
     prev_t = None
     for l in lines:
         e = l["event"]
-        if e in ("reissue", "abandoned", "snoozed"):
+        if e in ("reissue", "abandoned", "snoozed", "refresh"):
             rec = l["data"].get("person")
             where = "line %d" % (l["seq"] + 1)
             pid_ = rec.get("id") if isinstance(rec, dict) else None
@@ -1229,6 +1344,12 @@ def cmd_verify(a):
             elif prev_t is not None and ptimes.get(pid_, 0.0) + 1.0 < prev_t:
                 nprompts.append("%s at %s: its person prompt is older than the run's last "
                                 "move" % (e, where))
+            if e == "refresh":   # the yes must be a later prompt than the one the question was shown on
+                if "seen_on" not in l["data"]:
+                    nprompts.append("%s at %s: no record of the prompt the update question was shown on" % (e, where))
+                elif pid_ and pid_ == l["data"]["seen_on"]:
+                    nprompts.append("%s at %s: its person prompt %r is the one the update question was shown on"
+                                    % (e, where, pid_))
             if pid_:
                 used_menu_ids.add(pid_)
         prev_t = l["t"]
@@ -1596,6 +1717,7 @@ def main():
     add("resume", cmd_resume, ("--choice", dict(default=None)))
     add("abandon", cmd_abandon, ("--choice", dict(default=None)))
     add("snooze", cmd_snooze, ("--choice", dict(default=None)))
+    add("refresh", cmd_refresh, ("--choice", dict(default=None)))
     add("recover", cmd_recover)
     add("verify", cmd_verify, ("--run", dict(default=None, metavar="RUN_FOLDER",
         help="verify this run folder directly (also a set-aside/abandoned run)")))

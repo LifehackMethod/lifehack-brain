@@ -23,7 +23,8 @@ trap 'lhb_journal_fire "$?" "run_step_hook.sh" "UserPromptSubmit" "" 2>/dev/null
 # SIGNPOST: runner contract in system/parts/stage_runner.py header + RUNNER.md; the spec is the
 #      run-pickup spec (G2). The AI-side rule lives in /next and /back's own text: no [RUN STEP]
 #      line this turn means the mover did not run — tell the person.
-# UPDATED: 2026-11-26 (round 2c waves: per_turn hands over the ANSWER-moment wave list and, after a typed /next or /back, handover() prints the
+# UPDATED: 2026-11-27 (item 1: a bare /skill-builder with no run by cwd or pointer offers to pick up an unfinished run from the design folders; the person's next prompt answers it, via sb_start.offer_reply);
+#      2026-11-26 (round 2c waves: per_turn hands over the ANSWER-moment wave list and, after a typed /next or /back, handover() prints the
 #      START-moment list of the step now begun; the lists come from lib/sb_waves.py via lib/sb_start.py; no new hook, no background writer).
 #      2026-11-25 (also the plugin forms /lifehack-brain:next and :back, exact; round 2b B1/B5: the /skill-builder prompt starts or resumes the skill builder's run via
 #      lib/sb_start.py; per-turn RUN line while it is live; /skill-builder catch-up; SB-10: run pointer second door; no-run line for an exact command).
@@ -85,6 +86,14 @@ except BaseException as _e:  # a runner that cannot even load: the skill builder
         print(NORUN % ("the step runner could not load (%s)" % type(_e).__name__))
         sys.exit(0)
     raise
+if sb_start:  # ITEM 1: a resume offer waits for the person's NEXT prompt: an exact yes / pick up / start new acts on it; anything else drops it
+    if sb_mode is None:
+        _o = sb_start.offer_reply(stage_runner, hooks, cwd, sid, pid, ptext)
+        if _o is not None:
+            print("\n".join(_o))
+            sys.exit(0)
+    elif sb_mode != "normal":   # normal's begin() replaces the offer itself
+        sb_start.drop_offer(sid)
 if sb_mode == "normal":
     print("\n".join(sb_start.begin(stage_runner, hooks, cwd, sid, pid, sb_arg)))
     sys.exit(0)

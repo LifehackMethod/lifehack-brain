@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RUNNER = os.path.join(HERE, "..", "stage_runner.py")
 
 OK, USAGE, CHECKFAIL, NOTHING, NORUN, DAMAGED, DANGLING = 0, 2, 3, 4, 5, 6, 7
+CARDCHANGED = 8
 
 _results = []
 
@@ -777,21 +778,21 @@ def test_start_after_abandon_begins_a_new_run_from_step_1(tmp_path):
 
 
 # ---------------------------------------------------------------- card changed mid-run
-def test_card_edited_mid_run_is_damaged(tmp_path):
+def test_card_edited_mid_run_is_card_updated(tmp_path):
     r = R(tmp_path)
     c = json.load(open(r.card, encoding="utf-8"))
     c["stages"][0]["checks"]["min_words"] = 1
     json.dump(c, open(r.card, "w", encoding="utf-8"))
     for args in (["status"], ["check"], ["advance"], ["resume", "--choice", "continue"]):
         p = r.cmd(*args)
-        assert p.returncode == DAMAGED and "card changed mid-run" in text(p), (args, text(p))
+        assert p.returncode == CARDCHANGED and "CARD UPDATED" in text(p) and "card changed mid-run" in text(p), (args, text(p))
 
 
-def test_prompt_file_edited_mid_run_is_damaged(tmp_path):
+def test_prompt_file_edited_mid_run_is_card_updated(tmp_path):
     r = R(tmp_path)
     open(os.path.join(r.td, "prompts", "02-shape.md"), "a", encoding="utf-8").write("sneaky extra line\n")
     p = r.cmd("status")
-    assert p.returncode == DAMAGED and "card changed mid-run" in text(p), text(p)
+    assert p.returncode == CARDCHANGED and "card changed mid-run" in text(p), text(p)
 
 
 def test_unedited_card_is_not_damaged(tmp_path):
@@ -1454,3 +1455,161 @@ def test_start_sets_a_revived_abandoned_run_aside(tmp_path):
     assert r.step()["index"] == 1 and r.step()["complete"] is False # a NEW run began
     n_after = len(glob.glob(os.path.join(r.wd, ".stage-runner.json.abandoned-*")))
     assert n_after == n_before + 1, (n_before, n_after) # the revived run was set aside
+
+
+# ======================================================================================
+# ITEM 2 (2026-11-27): a card changed mid-run is its own state (exit 8, CARD UPDATED), and the person's yes
+# (`refresh --choice continue`) pins the new card and carries on at the SAME step. The check that was missed last time:
+# a live run survives a card change.
+# ======================================================================================
+def _edit_card(r, **kw):
+    c = json.load(open(r.card, encoding="utf-8"))
+    c["stages"][1]["checks"]["min_words"] = kw.get("min_words", 4)
+    json.dump(c, open(r.card, "w", encoding="utf-8"))
+
+
+def _mover_log(r, *turns):
+    open(os.path.join(r.run_dir, "mover.log"), "w", encoding="utf-8").write("".join(t + "\n" for t in turns))
+
+
+def test_live_run_survives_a_card_change_and_continues_at_the_same_step(tmp_path):
+    r = R(tmp_path)
+    r.write(0)
+    assert r.move("t1").returncode == OK
+    _mover_log(r, "t1")
+    before = open(os.path.join(r.run_dir, "record.jsonl"), encoding="utf-8").read()
+    assert r.step()["index"] == 2
+    _edit_card(r)
+    p = r.cmd("status")
+    assert p.returncode == CARDCHANGED and "CARD UPDATED" in text(p) and "step 2" in text(p), text(p)
+    assert r.cmd("advance").returncode == CARDCHANGED          # still refuses: nothing moves on a changed card
+    r.answer("yes1")
+    p = r.cmd("refresh", "--choice", "continue")
+    assert p.returncode == OK and "carrying on with the new version at step shape (2 of 3)" in text(p), text(p)
+    r.code = re.search(r"(RUN-[0-9A-Z]{6})", p.stdout).group(1)
+    after = open(os.path.join(r.run_dir, "record.jsonl"), encoding="utf-8").read()
+    assert after.startswith(before)                            # every earlier line is exactly as it was
+    new = r.lines()[len(before.splitlines()):]
+    assert [l["event"] for l in new] == ["refresh"] and new[0]["stage"] == "shape", new
+    assert new[0]["data"]["person"]["id"] == "yes1"
+    st = r.step()
+    assert st["index"] == 2 and not st["complete"], st          # same step, no restart
+    assert r.cmd("verify").returncode == OK, text(r.cmd("verify"))   # verify passes across the refresh
+    r.write(1)
+    assert r.move("t2").returncode == OK                       # and the run goes on from there
+    _mover_log(r, "t1", "t2")
+    assert r.step()["index"] == 3
+    assert r.cmd("verify").returncode == OK
+
+
+def test_a_changed_card_without_a_refresh_line_fails_verify(tmp_path):
+    r = R(tmp_path)
+    _edit_card(r)
+    v = r.cmd("verify")
+    assert v.returncode == DAMAGED and "card changed mid-run" in text(v), text(v)
+
+
+def test_a_forged_card_sha_in_the_record_fails_verify(tmp_path):
+    r = R(tmp_path)
+    _edit_card(r)
+    rec = os.path.join(r.run_dir, "record.jsonl")
+    ls = open(rec, encoding="utf-8").read().splitlines()
+    first = json.loads(ls[0])
+    sys.path.insert(0, os.path.dirname(RUNNER))
+    import stage_runner as sr
+    first["data"]["card_sha"] = sr.card_sha(r.card, sr.load_card(r.card))   # pretend the run started on the new card
+    open(rec, "w", encoding="utf-8").write(json.dumps(first, sort_keys=True) + "\n")
+    assert r.cmd("verify").returncode == DAMAGED               # the chain no longer matches
+
+
+def test_a_hand_made_refresh_line_that_does_not_follow_the_card_fails(tmp_path):
+    r = R(tmp_path)
+    sys.path.insert(0, os.path.dirname(RUNNER))
+    import stage_runner as sr
+    ls = r.lines()
+    o = {"seq": len(ls), "t": time.time(), "prev": ls[-1]["hash"], "event": "refresh", "run": ls[0]["run"], "stage": "gather",
+         "data": {"prev_card_sha": "f" * 64, "card_sha": "e" * 64, "card": r.card, "code_hash": "x"}}
+    o["hash"] = sr._hash(o["prev"], o)
+    open(os.path.join(r.run_dir, "record.jsonl"), "a", encoding="utf-8").write(json.dumps(o, sort_keys=True) + "\n")
+    assert r.cmd("verify").returncode == DAMAGED
+    assert r.cmd("status").returncode == DAMAGED
+
+
+def test_refresh_refuses_when_the_open_step_is_gone(tmp_path):
+    r = R(tmp_path)
+    r.write(0)
+    assert r.move("t1").returncode == OK
+    c = json.load(open(r.card, encoding="utf-8"))
+    del c["stages"][1]                                         # the open step "shape" is removed
+    json.dump(c, open(r.card, "w", encoding="utf-8"))
+    r.answer("yes1")
+    n = len(r.lines())
+    p = r.cmd("refresh", "--choice", "continue")
+    assert p.returncode == CHECKFAIL and "shape" in text(p) and "no longer in the updated card" in text(p), text(p)
+    assert len(r.lines()) == n                                 # nothing written
+
+
+def test_refresh_needs_a_person_prompt_a_changed_card_and_the_menu_word(tmp_path):
+    r = R(tmp_path)
+    assert r.cmd("refresh", "--choice", "continue").returncode == NOTHING     # unchanged card: nothing to do
+    _edit_card(r)
+    p = r.cmd("refresh", "--choice", "continue")
+    assert p.returncode == CHECKFAIL and "no person prompt" in text(p), text(p)
+    assert r.cmd("status").returncode == CARDCHANGED                        # the question is shown
+    r.answer("yes1")
+    assert r.cmd("refresh", "--choice", "start-over").returncode == USAGE
+    assert r.cmd("refresh", "--choice", "continue").returncode == OK
+    assert r.cmd("refresh", "--choice", "continue").returncode == NOTHING      # already refreshed
+
+
+def test_the_model_cannot_ask_and_answer_in_the_same_turn(tmp_path):
+    """The blocker: /next on a changed card is exit 8 and writes no record line, so that prompt is still 'unused'. An immediate
+    refresh on it must be refused; only a separate, later person prompt (the yes) lets it through."""
+    r = R(tmp_path)
+    _edit_card(r)
+    r.answer("p-next")                                          # the person typed /next; the mover logged the prompt
+    assert r.cmd("advance").returncode == CARDCHANGED           # the question is shown on p-next; nothing written
+    n = len(r.lines())
+    p = r.cmd("refresh", "--choice", "continue")                # the model's immediate refresh, no new prompt
+    assert p.returncode == CHECKFAIL and "separate, later prompt" in text(p), text(p)
+    assert len(r.lines()) == n
+    r.answer("p-yes")                                           # the person's own yes
+    p = r.cmd("refresh", "--choice", "continue")
+    assert p.returncode == OK, text(p)
+    last = r.lines()[-1]
+    assert last["event"] == "refresh" and last["data"]["seen_on"] == "p-next" and last["data"]["person"]["id"] == "p-yes", last
+    assert not os.path.exists(os.path.join(r.run_dir, "card-updated-seen.json"))
+    assert r.cmd("verify").returncode == OK, text(r.cmd("verify"))
+
+
+def test_refresh_without_the_question_ever_shown_is_refused(tmp_path):
+    r = R(tmp_path)
+    _edit_card(r)
+    r.answer("p1")
+    p = r.cmd("refresh", "--choice", "continue")
+    assert p.returncode == CHECKFAIL and "not been shown" in text(p), text(p)
+
+
+def test_verify_flags_a_refresh_on_the_prompt_its_question_was_shown_on(tmp_path):
+    r = R(tmp_path)
+    sys.path.insert(0, os.path.dirname(RUNNER))
+    import stage_runner as sr
+    old_sha = sr.card_sha(r.card, sr.load_card(r.card))
+    _edit_card(r)
+    new_sha = sr.card_sha(r.card, sr.load_card(r.card))
+    r.answer("p1")
+    ls = r.lines()
+    for seen_on in ("p1", None):                                # same prompt; and no seen_on at all
+        data = {"prev_card_sha": old_sha, "card_sha": new_sha, "card": r.card, "code_hash": "x", "choice": "continue",
+                "person": {"id": "p1", "t": time.time()}}
+        if seen_on:
+            data["seen_on"] = seen_on
+        o = {"seq": len(ls), "t": time.time(), "prev": ls[-1]["hash"], "event": "refresh", "run": ls[0]["run"],
+             "stage": "gather", "data": data}
+        o["hash"] = sr._hash(o["prev"], o)
+        rec = os.path.join(r.run_dir, "record.jsonl")
+        keep = open(rec, encoding="utf-8").read()
+        open(rec, "a", encoding="utf-8").write(json.dumps(o, sort_keys=True) + "\n")
+        v = r.cmd("verify")
+        assert v.returncode == CHECKFAIL and "update question" in text(v), (seen_on, text(v))
+        open(rec, "w", encoding="utf-8").write(keep)
