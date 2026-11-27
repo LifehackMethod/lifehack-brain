@@ -1,0 +1,975 @@
+{
+  "_readme": "THE WAVE TABLE (round 2c). Code hands the talking AI this list at two moments: 'start' (a step has just started, the /next or /back handover) and 'answer' (the person has just answered, any non-command prompt during a live step). The AI runs the waves in that turn, in order; code checks the receipts after the turn (the Stop check). One table drives both: system/hooks/lib/sb_waves.py renders it into the injected text and checks each job's output file. Edit the table, never the renderer, to change who runs when. A job is one Agent helper (kind agent) or one Bash command (kind bash). An agent job's brief is written by code to <run>/waves/<turn id>/briefs/<job>.md with a fresh token; the list carries a one-line prompt pointing at it, and the receipt needs an Agent call whose prompt contains the token. Jobs in one wave run together; the next wave starts only after the whole wave has finished. Every output file goes into the RUN folder, <run>/waves/<turn id>/<file>, so a file from an earlier turn can never pass for this turn's.",
+  "_fields": "job fields: kind agent|bash; tier small|medium|other (agent only; see tiers); label (plain words for the line); brief (agent: the whole prompt, given word for word) or cmd (bash); out (file name in the turn folder); receipt (the file that must exist after the turn, default = out); shows (the scratchpad name its result goes by in the HELPER RESULTS line; only checked results are ever listed); once visit|input (visit: once each time the step is entered; input: again only when a 'needs' section is newer than the last output); needs (scratchpad sections the AI writes that must exist and be non-empty or the job is left out); needs_out (job ids whose output must already exist for this visit or be in an earlier wave of this turn, else the job is held back and the line says so); optional + when (a wave the AI runs only when its plain-words condition holds; never receipt-checked); Tokens in briefs: {B:name} brief file, {wd} design folder, {turn} this turn's folder, {out} this job's output path, {out:id} another job's path this turn, {latest:id} newest earlier output of a job or (none yet), {sec:name} scratchpad section file, {outcome}, {person}, {input}, {findings}, {plug}, {scripts}, {hooklib}, {form}, {sop}, {sid}. Also: announce (a line said when the job is left out because a section is missing); chain (optional waves of one chain are receipt-checked together as soon as any job of the chain ran); gate (a wave that must run only if the writer's receipt says APPLIED). Also: long_chains (step/moment keys whose list is long; the text tells the person to press Esc then type /next to move on now).",
+  "tiers": {
+    "small": "haiku",
+    "medium": "sonnet",
+    "other": "opus"
+  },
+  "_tiers_note": "How the tiers are mapped. small = haiku: a bounded mechanical job (the writer saves the person's answers by a written rule). medium = sonnet, the default: reading, searching, drafting, compiling, the fresh questioner, and every checker whose check is claim-by-claim against a named source (1.3 skill-check, 1.7 harness-check, 2.1 step-check, 3.3 heal-check, the save-check). other = opus: only where the check is genuinely hard judgment over a whole document: the spec-update check (4.0a), the findings check that merges and orders (4.2), the validation check (4.5) and the compiled-spec check (5.2). Each checker is simply its own Agent call with its own brief file and token; no rule says which model must differ from another. Tier is a one-word edit here.",
+  "screen": {
+    "answer": "saving your answers and running checks…",
+    "start": "running checks…"
+  },
+  "jobs": {
+    "writer": {
+      "kind": "agent",
+      "tier": "small",
+      "label": "saves the person's answers to the draft spec and the packet",
+      "out": "writer.md",
+      "receipt": "writer.md.applied",
+      "tail": false,
+      "brief": "Read {input}. It holds the saver's whole brief, the current draft spec, the packet, and the person's words this turn, which are the only evidence. Do what the brief says: your whole reply is the records it asks for. Write that reply to {out}. Then run exactly this one command and report the line it prints: python3 {sh:hooklib}/sb_spec.py apply {sh:out} {sid} {sh:wd}   It applies your records to the draft spec and the packet by code. Never edit the draft spec or the packet yourself. Ask nothing."
+    },
+    "save-check": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "checks what the writer saved against the person's words",
+      "out": "save-check.md",
+      "needs_out": [
+        "writer"
+      ],
+      "brief": "Read {B:checker-save} in full and do the check it describes. The person's words this turn: {person}. The writer's records: {out:writer}. What code applied: {out:writer}.applied. The evidence log (its newest lines are this turn's): {wd}/spec-evidence.md. The draft spec: {wd}/draft-spec.md. The packet folder: {wd}."
+    },
+    "citations": {
+      "kind": "bash",
+      "label": "source and citation check on the packet files",
+      "out": "citations.txt",
+      "cmd": "python3 {sh:hooklib}/sb_waves.py cites {sh:wd} {sh:out} notes.md rulings.md research.md"
+    },
+    "citations-spec": {
+      "kind": "bash",
+      "label": "source and citation check on the compiled draft spec",
+      "out": "citations-spec.txt",
+      "cmd": "python3 {sh:hooklib}/sb_waves.py cites {sh:wd} {sh:out} draft-spec.md"
+    },
+    "questioner": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "a fresh reader of the SAVED spec writes the next questions",
+      "out": "questions.md",
+      "tail": false,
+      "brief": "Read {B:spec-questioner} in full and do the job it describes. Your only source is the SAVED draft spec at {wd}/draft-spec.md and, if a path is given here, the checked findings: {findings}. You have not seen any conversation and must not guess at one. Write your reply to {out}; its last line is QUESTIONS-END. Ask nothing."
+    },
+    "skill-reader": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "reads the skill the person pointed at, in full",
+      "out": "skill-reading.md",
+      "needs": [
+        "pointed-skill"
+      ],
+      "once": "input",
+      "brief": "Read {B:skill-reader} in full and do the job it describes. Inputs: pointed-skill = {sec:pointed-skill}; packet folder = {wd}; plugin root = {plug}."
+    },
+    "skill-check": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "a checker re-reads that skill against the reading",
+      "out": "skill-checked.md",
+      "shows": "skill-checked",
+      "needs_out": [
+        "skill-reader"
+      ],
+      "brief": "Read {B:checker-base} and {B:checker-skill-reading} in full and do the check. The work to check (the section skill-reading): {out:skill-reader}. The skill it describes: {sec:pointed-skill}. Packet folder = {wd}; plugin root = {plug}."
+    },
+    "harness-search": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "the harness check: what Lifehack already has for this",
+      "out": "harness-findings.md",
+      "brief": "Read {B:harness-search} in full and do the job it describes. Inputs: outcome = {outcome}; plugin root = {plug}; packet folder = {wd}.",
+      "once": "input",
+      "needs": [
+        "outcome"
+      ],
+      "announce": "`outcome` is not written yet, so the harness check, the research mark and the size check are not running: write `outcome` (your unconfirmed play-back of what they want) this turn and they start next turn, and again whenever the outcome changes."
+    },
+    "harness-check": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "a checker confirms every find exists where it is said to",
+      "out": "harness-checked.md",
+      "shows": "harness-checked",
+      "needs_out": [
+        "harness-search"
+      ],
+      "brief": "Read {B:checker-base} and {B:checker-harness-findings} in full and do the check. The work to check (the section harness-findings): {out:harness-search}. The outcome: {outcome}. Plugin root = {plug}; packet folder = {wd}."
+    },
+    "research-mark": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "marks whether outside research is needed, and runs it",
+      "out": "research-mark.md",
+      "shows": "research-mark",
+      "brief": "Read {B:research-mark} in full and do the job it describes. Inputs: outcome = {outcome}; which-skill = {sec:which-skill} (use it only if outcome is empty); packet folder = {wd}.",
+      "once": "input",
+      "needs": [
+        "outcome"
+      ]
+    },
+    "size-sense": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "the size check: is this too big for one skill",
+      "out": "size-sense.md",
+      "shows": "size-sense",
+      "brief": "Read {B:size-sense} in full and do the job it describes. Inputs: outcome = {outcome}; packet folder = {wd}.",
+      "once": "input",
+      "needs": [
+        "outcome"
+      ]
+    },
+    "research-mark-again": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "looks again at the research mark when the steps changed",
+      "out": "research-mark-again.md",
+      "shows": "research-mark",
+      "needs": [
+        "steps-draft"
+      ],
+      "once": "input",
+      "brief": "Read {B:research-mark} in full and do the job it describes. Inputs: steps-draft = {sec:steps-draft}; outcome = {outcome}; the earlier mark = {latest:research-mark}; packet folder = {wd}. If nothing changed, pass the earlier mark through."
+    },
+    "step-drafter": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "quietly drafts each agreed step's start-of-step instruction",
+      "out": "step-prompts.md",
+      "needs": [
+        "steps-draft"
+      ],
+      "brief": "Read {B:step-prompt-drafter} in full and do the job it describes, once for EVERY step of the skill that the person has agreed in the steps-draft, in order, one section per step headed with its target line 'step N: <name>'. Skip a step that already has a draft in {latest:step-drafter}; if no step is new, write only 'nothing new' and the finish signal. Inputs: steps-draft = {sec:steps-draft}; outcome = {outcome}; packet folder = {wd}."
+    },
+    "step-check": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "a checker checks those drafts",
+      "out": "step-prompts-checked.md",
+      "shows": "step-prompts-checked",
+      "needs_out": [
+        "step-drafter"
+      ],
+      "brief": "Read {B:checker-base} and {B:checker-step-prompts} in full and do the check. The work to check (the section step-prompts): {out:step-drafter}. steps-draft = {sec:steps-draft}; packet folder = {wd}."
+    },
+    "healer": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "finds what broke and researches a fix",
+      "out": "heal-proposal.md",
+      "needs": [
+        "break"
+      ],
+      "once": "input",
+      "brief": "Read {B:healer} in full and do the job it describes. Inputs: break = {sec:break}; packet folder = {wd}; plugin root = {plug}."
+    },
+    "heal-check": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "a checker confirms the fix against the plugin",
+      "out": "heal-checked.md",
+      "shows": "heal-checked",
+      "needs_out": [
+        "healer"
+      ],
+      "brief": "Read {B:checker-base} and {B:checker-heal} in full and do the check. The work to check (the section heal-proposal): {out:healer}. The break: {sec:break}. Plugin root = {plug}; packet folder = {wd}."
+    },
+    "spec-updater-a": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "brings the spec up to date (4.0a)",
+      "out": "spec-update.md",
+      "once": "visit",
+      "brief": "Read {B:spec-updater} in full and do the job it describes. First line of your task: target: 4.0a. Inputs: packet folder = {wd}; the draft spec to edit in place = {wd}/draft-spec.md; the spec form = {form}; the rulings file = {wd}/rulings.md; step-prompts-checked = {latest:step-check}. Your final message is the change list the brief asks for."
+    },
+    "spec-check-a": {
+      "kind": "agent",
+      "tier": "other",
+      "label": "a checker checks every ruling landed (4.0a)",
+      "out": "spec-update-checked.md",
+      "shows": "spec-update-checked",
+      "needs_out": [
+        "spec-updater-a"
+      ],
+      "brief": "Read {B:checker-base} and {B:checker-spec-update} in full and do the check. First line of your task: target: 4.0a. The change list to check: {out:spec-updater-a}. The draft spec: {wd}/draft-spec.md. The rulings file: {wd}/rulings.md. The spec form: {form}. Packet folder = {wd}."
+    },
+    "reviewer-screens": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "reviewer, the screens (blind)",
+      "out": "tension-screens.md",
+      "once": "visit",
+      "needs_out": [
+        "spec-check-a"
+      ],
+      "brief": "Read {B:reviewer-base} and {B:reviewer-screens} in full and do the job they describe. Read the whole draft spec blind: {wd}/draft-spec.md. Do not open any other reviewer's file. steps-draft = {sec:steps-draft}; prep-decisions = {sec:prep-decisions}; packet folder = {wd}."
+    },
+    "reviewer-logic": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "reviewer, the logic (blind)",
+      "out": "tension-logic.md",
+      "once": "visit",
+      "needs_out": [
+        "spec-check-a"
+      ],
+      "brief": "Read {B:reviewer-base} and {B:reviewer-logic} in full and do the job they describe. Read the whole draft spec blind: {wd}/draft-spec.md. Do not open any other reviewer's file. steps-draft = {sec:steps-draft}; prep-decisions = {sec:prep-decisions}; packet folder = {wd}."
+    },
+    "reviewer-saving": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "reviewer, what gets saved (blind)",
+      "out": "tension-saving.md",
+      "once": "visit",
+      "needs_out": [
+        "spec-check-a"
+      ],
+      "brief": "Read {B:reviewer-base} and {B:reviewer-saving} in full and do the job they describe. Read the whole draft spec blind: {wd}/draft-spec.md. Do not open any other reviewer's file. steps-draft = {sec:steps-draft}; prep-decisions = {sec:prep-decisions}; packet folder = {wd}."
+    },
+    "reviewer-order": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "reviewer, the order (second look with the others' findings)",
+      "out": "tension-order.md",
+      "once": "visit",
+      "needs_out": [
+        "reviewer-screens",
+        "reviewer-logic",
+        "reviewer-saving"
+      ],
+      "brief": "Read {B:reviewer-base} and {B:reviewer-order} in full and do the job they describe. First look, blind: read the whole draft spec {wd}/draft-spec.md before anything else. Second look, only if the others found something: read their findings, {out:reviewer-screens} and {out:reviewer-logic} and {out:reviewer-saving}. steps-draft = {sec:steps-draft}; prep-decisions = {sec:prep-decisions}; packet folder = {wd}."
+    },
+    "research-pass": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "the research pass on every open fact the reviewers named",
+      "out": "facts.md",
+      "once": "visit",
+      "needs_out": [
+        "reviewer-order"
+      ],
+      "brief": "Read {B:research-pass-item} in full and do the job it describes once for EACH open item: every FACT NEEDED line in the four reviewers' files {out:reviewer-screens}, {out:reviewer-logic}, {out:reviewer-saving} and {out:reviewer-order}. Newest source first; leave an item that truly needs the build for the planner. One entry per item, in that order. If there is no FACT NEEDED line anywhere, write only 'nothing to look up' and the finish signal. Packet folder = {wd}."
+    },
+    "proposer": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "the rulebook proposer, always last",
+      "out": "proposals.md",
+      "once": "visit",
+      "needs_out": [
+        "research-pass"
+      ],
+      "brief": "Read {B:rulebook-proposer} in full and do the job it describes. Inputs: the draft spec = {wd}/draft-spec.md; steps-draft = {sec:steps-draft}; the facts = {out:research-pass} (say so if that file says the research pass failed); the skills rulebook = {sop}; prep-decisions = {sec:prep-decisions}; packet folder = {wd}."
+    },
+    "tensions-check": {
+      "kind": "agent",
+      "tier": "other",
+      "label": "a checker checks, merges and orders every finding (4.2)",
+      "out": "tensions-checked.md",
+      "shows": "tensions-checked",
+      "once": "visit",
+      "needs_out": [
+        "proposer"
+      ],
+      "brief": "Read {B:tensions-checker} in full and do the job it describes. Inputs: the tensions = {out:reviewer-screens}, {out:reviewer-logic}, {out:reviewer-saving} and {out:reviewer-order}; the proposals = {out:proposer}; the facts = {out:research-pass}; the draft spec = {wd}/draft-spec.md."
+    },
+    "validation-update": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "writes the person's rulings into the spec (4.5)",
+      "out": "validation-update.md",
+      "needs": [
+        "tension-rulings"
+      ],
+      "brief": "Read {B:spec-updater} in full and do the job it describes. First line of your task: target: 4.5. Inputs: packet folder = {wd}; the draft spec to edit in place = {wd}/draft-spec.md; the spec form = {form}; the rulings file = {wd}/rulings.md; tension-rulings = {sec:tension-rulings}. Your final message is the change list the brief asks for."
+    },
+    "validation-check": {
+      "kind": "agent",
+      "tier": "other",
+      "label": "a checker checks how complete the spec is (4.5)",
+      "out": "validation.md",
+      "shows": "validation",
+      "needs_out": [
+        "validation-update"
+      ],
+      "brief": "Read {B:checker-base} and {B:checker-spec-update} in full and do the check. First line of your task: target: 4.5. The change list to check: {out:validation-update}. The draft spec: {wd}/draft-spec.md. The rulings file: {wd}/rulings.md. tension-rulings = {sec:tension-rulings}. The spec form: {form}. Packet folder = {wd}. Also list the slots still missing, load-bearing ones first, with a best guess each."
+    },
+    "backup": {
+      "kind": "bash",
+      "label": "keeps a copy of the draft spec before the compile",
+      "out": "draft-spec.before-compile.md",
+      "cmd": "cp {wd}/draft-spec.md {out} && echo saved {out}"
+    },
+    "compiler": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "compiles one clean draft spec (5.1)",
+      "out": "compile-note.md",
+      "receipt": "compile-note.md",
+      "once": "visit",
+      "needs_out": [
+        "backup"
+      ],
+      "brief": "Read {B:compiler} in full and do the job it describes. Inputs: packet folder = {wd}; the current spec = {wd}/draft-spec.md; the spec form = {form}; the rulings file = {wd}/rulings.md; known = {sec:known}; parts-result = {sec:parts-result}; the example specs = {skill}/references/examples/. The output path for the clean draft spec is {wd}/draft-spec.md (a copy of what it was is at {out:backup}). Your final message is the compile note the brief asks for."
+    },
+    "draft-check": {
+      "kind": "agent",
+      "tier": "other",
+      "label": "a checker checks the compiled spec (5.2)",
+      "out": "draft-check.md",
+      "shows": "draft-check",
+      "needs_out": [
+        "compiler"
+      ],
+      "brief": "Read {B:checker-base} and {B:checker-draft-spec} in full and do the check. The draft spec: {wd}/draft-spec.md. The compile note: {out:compiler}. stale = {sec:stale}. Packet folder = {wd}; the spec form = {form}."
+    },
+    "tool-builder-msg": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "writes the tool builder's message for a part still owed (5.0)",
+      "out": "tool-builder-message.md",
+      "brief": "Read {B:tool-builder-handoff} in full and do the job it describes. Inputs: the owed part = the one the packet names as deferred work in {wd}/notes.md; packet folder = {wd}."
+    },
+    "handoff-note": {
+      "kind": "agent",
+      "tier": "medium",
+      "label": "the technical hand-off note for the next AI (5.4)",
+      "out": "handoff-note.md",
+      "shows": "handoff-note",
+      "brief": "Read {B:handoff-note} in full and do the job it describes. Inputs: draft-spec = {wd}/draft-spec.md; destination = {sec:destination}; filing = {sec:filing}; packet folder = {wd}."
+    },
+    "path-check-msg": {
+      "kind": "bash",
+      "label": "mechanical path check on the tool builder's message",
+      "out": "path-check-msg.txt",
+      "needs_out": [
+        "tool-builder-msg"
+      ],
+      "cmd": "python3 {sh:hooklib}/sb_waves.py cites {sh:wd} {sh:out} {sh:out:tool-builder-msg}"
+    },
+    "path-check-build": {
+      "kind": "bash",
+      "label": "mechanical path check on the hand-off message to /build",
+      "out": "path-check-build.txt",
+      "cmd": "python3 {sh:hooklib}/sb_waves.py cites {sh:wd} {sh:out} handoff-to-build.md"
+    }
+  },
+  "steps": {
+    "1": {
+      "results": [
+        "harness-check",
+        "skill-check",
+        "research-mark",
+        "size-sense"
+      ],
+      "start": [],
+      "answer": [
+        {
+          "label": "save, and start the back-room work",
+          "jobs": [
+            "writer",
+            "skill-reader",
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "checks",
+          "jobs": [
+            "save-check",
+            "citations",
+            "skill-check",
+            "harness-check"
+          ]
+        },
+        {
+          "label": "the hand-off to /build: mechanical path check",
+          "optional": true,
+          "chain": "takeit",
+          "when": "the person chose take-it (hand off to /build) and you wrote the hand-off message to handoff-to-build.md in the design folder",
+          "jobs": [
+            "path-check-build"
+          ]
+        },
+        {
+          "label": "the fresh questions",
+          "jobs": [
+            "questioner"
+          ],
+          "gate": "writer"
+        }
+      ]
+    },
+    "2": {
+      "results": [
+        "harness-check",
+        "skill-check",
+        "research-mark",
+        "size-sense",
+        "research-mark-again"
+      ],
+      "start": [
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        }
+      ],
+      "answer": [
+        {
+          "label": "save",
+          "jobs": [
+            "writer"
+          ]
+        },
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "look again at the research mark",
+          "optional": true,
+          "when": "the person's answer changed the steps (merged, cut or added one)",
+          "jobs": [
+            "research-mark-again"
+          ],
+          "chain": "research"
+        },
+        {
+          "label": "the hand-off to /build: mechanical path check",
+          "optional": true,
+          "chain": "takeit",
+          "when": "the person chose take-it (hand off to /build) and you wrote the hand-off message to handoff-to-build.md in the design folder",
+          "jobs": [
+            "path-check-build"
+          ]
+        },
+        {
+          "label": "checks",
+          "jobs": [
+            "save-check",
+            "citations"
+          ]
+        },
+        {
+          "label": "the fresh questions",
+          "jobs": [
+            "questioner"
+          ],
+          "gate": "writer"
+        }
+      ]
+    },
+    "3": {
+      "results": [
+        "harness-check",
+        "research-mark",
+        "step-check",
+        "size-sense",
+        "research-mark-again"
+      ],
+      "start": [
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        }
+      ],
+      "answer": [
+        {
+          "label": "save",
+          "jobs": [
+            "writer"
+          ]
+        },
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "draft the agreed steps' start-of-step instructions, quietly",
+          "optional": true,
+          "when": "the person agreed another step of the skill in this answer (a played-back yes)",
+          "jobs": [
+            "step-drafter"
+          ],
+          "chain": "drafts"
+        },
+        {
+          "label": "check those drafts",
+          "optional": true,
+          "when": "you ran the step drafter",
+          "jobs": [
+            "step-check"
+          ],
+          "chain": "drafts"
+        },
+        {
+          "label": "look again at the research mark",
+          "optional": true,
+          "when": "the person's answer merged, cut or added a step",
+          "jobs": [
+            "research-mark-again"
+          ],
+          "chain": "research"
+        },
+        {
+          "label": "checks",
+          "jobs": [
+            "save-check",
+            "citations"
+          ]
+        },
+        {
+          "label": "the fresh questions",
+          "jobs": [
+            "questioner"
+          ],
+          "gate": "writer"
+        }
+      ]
+    },
+    "4": {
+      "results": [
+        "step-check",
+        "heal-check",
+        "harness-check",
+        "size-sense"
+      ],
+      "start": [
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "make sure every agreed step has a checked draft",
+          "jobs": [
+            {
+              "id": "step-drafter",
+              "unless_out": [
+                "step-check"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "check those drafts",
+          "jobs": [
+            {
+              "id": "step-check",
+              "unless_out": [
+                "step-check"
+              ]
+            }
+          ]
+        }
+      ],
+      "answer": [
+        {
+          "label": "save, and find a fix if something broke",
+          "jobs": [
+            "writer",
+            "healer"
+          ]
+        },
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "checks",
+          "jobs": [
+            "save-check",
+            "citations",
+            "heal-check"
+          ]
+        },
+        {
+          "label": "the fresh questions",
+          "jobs": [
+            "questioner"
+          ],
+          "gate": "writer"
+        }
+      ]
+    },
+    "5": {
+      "results": [
+        "spec-check-a",
+        "tensions-check",
+        "validation-check",
+        "step-check",
+        "harness-check",
+        "size-sense"
+      ],
+      "findings": "tensions-check",
+      "start": [
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "make sure every agreed step has a checked draft",
+          "jobs": [
+            {
+              "id": "step-drafter",
+              "unless_out": [
+                "step-check"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "check those drafts",
+          "jobs": [
+            {
+              "id": "step-check",
+              "unless_out": [
+                "step-check"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "bring the spec up to date before anything is shown",
+          "jobs": [
+            "spec-updater-a"
+          ]
+        },
+        {
+          "label": "check it",
+          "jobs": [
+            "spec-check-a"
+          ]
+        },
+        {
+          "label": "the fresh questions for the prep report",
+          "jobs": [
+            "questioner"
+          ]
+        }
+      ],
+      "answer": [
+        {
+          "label": "save",
+          "jobs": [
+            "writer"
+          ]
+        },
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "checks, and the first three reviewers (blind, together)",
+          "jobs": [
+            "save-check",
+            "citations",
+            "reviewer-screens",
+            "reviewer-logic",
+            "reviewer-saving"
+          ]
+        },
+        {
+          "label": "the order reviewer",
+          "jobs": [
+            "reviewer-order"
+          ]
+        },
+        {
+          "label": "the research pass",
+          "jobs": [
+            "research-pass"
+          ]
+        },
+        {
+          "label": "the rulebook proposer, always last",
+          "jobs": [
+            "proposer"
+          ]
+        },
+        {
+          "label": "check, merge and order the findings",
+          "jobs": [
+            "tensions-check"
+          ]
+        },
+        {
+          "label": "the validation moment: write the rulings in",
+          "optional": true,
+          "when": "the person has ruled on the last batch of findings they want to see, or says they are done with them",
+          "jobs": [
+            "validation-update"
+          ],
+          "chain": "validation"
+        },
+        {
+          "label": "check the whole spec",
+          "optional": true,
+          "when": "you ran the validation update",
+          "jobs": [
+            "validation-check"
+          ],
+          "chain": "validation"
+        },
+        {
+          "label": "the fresh questions or the next findings",
+          "jobs": [
+            "questioner"
+          ],
+          "gate": "writer"
+        }
+      ]
+    },
+    "6": {
+      "results": [
+        "validation-check",
+        "draft-check",
+        "spec-check-a",
+        "harness-check",
+        "size-sense"
+      ],
+      "start": [
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "finish step 5's final check if it never ran",
+          "jobs": [
+            {
+              "id": "validation-update",
+              "unless_out": [
+                "validation-check@5"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "check it",
+          "jobs": [
+            {
+              "id": "validation-check",
+              "unless_out": [
+                "validation-check@5"
+              ]
+            }
+          ]
+        },
+        {
+          "label": "keep a copy of the spec",
+          "jobs": [
+            "backup"
+          ]
+        },
+        {
+          "label": "compile one clean draft spec",
+          "jobs": [
+            "compiler"
+          ]
+        },
+        {
+          "label": "check the compiled spec",
+          "jobs": [
+            "draft-check",
+            "citations-spec"
+          ]
+        }
+      ],
+      "answer": [
+        {
+          "label": "save",
+          "jobs": [
+            {
+              "id": "writer"
+            }
+          ]
+        },
+        {
+          "label": "back-room checks on the outcome (they run when the outcome is written and again when it changes)",
+          "jobs": [
+            "harness-search",
+            "research-mark",
+            "size-sense"
+          ]
+        },
+        {
+          "label": "check the harness search",
+          "jobs": [
+            "harness-check"
+          ]
+        },
+        {
+          "label": "checks",
+          "jobs": [
+            "save-check",
+            "citations"
+          ]
+        },
+        {
+          "label": "the tool builder's message",
+          "optional": true,
+          "when": "a part is still owed (a hook, a scheduled job, an outside connection, a sheet), the tool builder exists, and the person said yes to the parts round",
+          "jobs": [
+            "tool-builder-msg"
+          ],
+          "chain": "toolbuilder"
+        },
+        {
+          "label": "mechanical path check on that message",
+          "optional": true,
+          "chain": "toolbuilder",
+          "when": "you ran the tool builder's message",
+          "jobs": [
+            "path-check-msg"
+          ]
+        },
+        {
+          "label": "a small correction: keep a copy, then compile again",
+          "optional": true,
+          "when": "the person's answer is a small correction to the draft (not a change to how the skill works), or the parts round has just settled and you wrote parts-result",
+          "jobs": [
+            {
+              "id": "backup",
+              "once": null
+            }
+          ],
+          "chain": "recompile"
+        },
+        {
+          "label": "compile again",
+          "optional": true,
+          "when": "you ran the copy just above",
+          "jobs": [
+            {
+              "id": "compiler",
+              "once": null
+            }
+          ],
+          "chain": "recompile"
+        },
+        {
+          "label": "check the new compile",
+          "optional": true,
+          "when": "you compiled again",
+          "jobs": [
+            {
+              "id": "draft-check",
+              "once": null
+            }
+          ],
+          "chain": "recompile"
+        }
+      ]
+    },
+    "done": {
+      "results": [
+        "draft-check"
+      ],
+      "start": [
+        {
+          "label": "the technical hand-off note (5.4)",
+          "jobs": [
+            "handoff-note"
+          ]
+        }
+      ],
+      "answer": []
+    }
+  },
+  "long_chains": [
+    "5/answer",
+    "6/start",
+    "5/start"
+  ]
+}

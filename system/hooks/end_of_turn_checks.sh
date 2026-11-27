@@ -44,10 +44,10 @@ trap 'lhb_journal_fire "$?" "end_of_turn_checks.sh" "Stop" "" 2>/dev/null || tru
 #          reported it lets that turn end, logs "UNREPORTED after 3 asks" to push-warnings.log and keeps the marker,
 #          so each later turn nudges once more until reported. Never silently dropped.
 #          Its text rides along with any other end-of-turn block in the same message.
-# UPDATED: 2026-11-25 (observe mode: one file test, then a detached reviewer when this session is watching a skill; see the step after the session id is read)
+# UPDATED: 2026-11-26 (2c: the detached spec writer and its lock/pid launch block removed; the Stop check now also checks the wave receipts). 2026-11-25 (observe mode: one file test, then a detached reviewer when this session is watching a skill; see the step after the session id is read)
 #      observe mode (2026-11-25, brief 2.1): if ~/.claude/run/observe/observe-sess-<session>.flag exists, launch system/tools/observe_review.sh
 #          detached (one per session) and carry on; never waits, never blocks, never changes this hook's decision. Unarmed = one file test.
-#      spec writer + bar check (2026-11-25, 2b-Y; 2f: the gated writer relaunches here every turn): spec-sess-<session>.flag present -> lib/sb_spec.py stop + detached lib/spec_write.sh (one at a time; stale done-marker removed first); absent = one file test.
+#      bar check + wave receipts (2b-Y; 2c 2026-11-26: the background writer is gone, the writer is a helper in the turn's waves): spec-sess-<session>.flag or spec-wave-<session>.json present -> lib/sb_spec.py stop only (bars, files read, receipts); absent = two file tests.
 # 2026-11-02
 # ─────────────────────────────────────────────────────────────────────────────
 . "$_lhb_dir/lib/roundb.sh" 2>/dev/null || roundb_on() { return 1; }
@@ -80,29 +80,13 @@ if [ -f "$OBSD/observe-sess-$SID.flag" ]; then
     fi
   fi
 fi
-# BAR CHECK + THE GATED WRITER (brief 2f, 2026-11-25; the writer is relaunched by code at the end of every turn): if a
-# skill-builder run is live in THIS session (flag set by the run starter), run the cheap bar/read-list check, then
-# launch the detached writer (lib/spec_write.sh) — one at a time (its pid file); the stale done-marker goes first, so
-# the gate never shows a round's SAVED line twice. No flag = ONE file test.
-if [ -f "$OBSD/spec-sess-$SID.flag" ]; then
-  printf '%s' "$P" | python3 "$_lhb_dir/lib/sb_spec.py" stop "$SID" >/dev/null || echo "end_of_turn_checks: the bar check failed (see ~/.claude/run/observe/spec-errors.log)" >&2
-  # S2: ONE writer per session. The lock is an atomic mkdir (a doubled hook loses the race and does nothing); the writer
-  # removes it on exit; a lock older than 15 minutes is a dead writer's and is cleared.
-  _sp_lock="$OBSD/spec-launch-$SID.lock"
-  [ -d "$_sp_lock" ] && [ -n "$(find "$_sp_lock" -maxdepth 0 -mmin +15 2>/dev/null)" ] && rmdir "$_sp_lock" 2>/dev/null
-  if mkdir "$_sp_lock" 2>/dev/null; then
-    _sp_wd="$(python3 "$_lhb_dir/lib/sb_spec.py" flag-wd "$SID" 2>/dev/null)"   # the run folder, captured NOW (B2)
-    # the previous round's questioner is stale once a new round starts: retire it (its pid file is replaced, so it cannot clobber)
-    [ -f "$OBSD/spec-questions-$SID.pid" ] && kill "$(cat "$OBSD/spec-questions-$SID.pid" 2>/dev/null)" 2>/dev/null
-    rm -f "$OBSD/spec-questions-$SID.pid" "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"
-    if printf '%s' "$P" > "$OBSD/spec-stop-$SID.json"; then
-      nohup bash "$_lhb_dir/lib/spec_write.sh" "$OBSD/spec-stop-$SID.json" "$SID" "$_sp_wd" </dev/null >/dev/null 2>&1 & # allow-silence: detached writer; its own failures are logged to its fail file and spec-evidence.md
-      echo $! > "$OBSD/spec-write-$SID.pid"; disown
-    else
-      rmdir "$_sp_lock" 2>/dev/null
-      echo "end_of_turn_checks: the spec writer could not save the stop payload; no write this turn" >&2
-    fi
-  fi
+# BAR CHECK + WAVE RECEIPTS (brief 2c, 2026-11-26): if a skill-builder run is live in THIS session (flag set by the run starter), or this
+# session has a wave pointer (the turn that completed the run still gets its receipts checked), run lib/sb_spec.py stop: the cheap
+# bar/read-list check and the receipt check (lib/sb_waves.py: did every back-room job this turn's list handed over leave its output
+# file in the run folder for THIS turn? a miss is written as a one-shot warning the NEXT turn's injected text says loudly).
+# Nothing is launched here (the background writer is gone) and nothing blocks. No flag and no pointer = TWO file tests.
+if [ -f "$OBSD/spec-sess-$SID.flag" ] || [ -f "$OBSD/spec-wave-$SID.json" ]; then
+  printf '%s' "$P" | python3 "$_lhb_dir/lib/sb_spec.py" stop "$SID" >/dev/null || echo "end_of_turn_checks: the bar and receipt check failed (see ~/.claude/run/observe/spec-errors.log)" >&2
 fi
 DIR="${LHB_TURN_WRITES_DIR:-$HOME/.claude/run/turn-writes}"; LIST="$DIR/$SID.list"
 # push warnings (fc_private_push_mode=warn): unreported findings of a push this session made -> PWMSG (empty = nothing owed)

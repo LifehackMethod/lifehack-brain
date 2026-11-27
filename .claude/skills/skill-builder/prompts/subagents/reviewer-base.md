@@ -44,7 +44,7 @@ Head your message `angle: <your angle>`. A few strong, quoted tensions beat many
 reviewer is rerun once, then the main window shows "stopped: critic failed: <reason>". Last line.
 
 ## Who checks you
-The tensions checker at 4.2 (`tensions-checker.md`), a different model, drops misquotes and merges duplicates.
+The tensions checker at 4.2 (`tensions-checker.md`), drops misquotes and merges duplicates.
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)
 - **Desired result:** quoted tensions only where work would differ, plus FACT NEEDED lines, no rewrite.

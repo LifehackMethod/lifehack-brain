@@ -73,7 +73,7 @@ End with exactly one signal on its own last line:
   failure is shown to the person, never a quiet success.
 
 ## Who checks you
-The checker at 1.3 (`checker-base.md` + `checker-skill-reading.md`), a different model, re-reads the skill
+The checker at 1.3 (`checker-base.md` + `checker-skill-reading.md`), re-reads the skill
 against your reading. Nothing you write reaches the person before it passes (L11).
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)

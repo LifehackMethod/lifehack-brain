@@ -4,7 +4,7 @@
 hand-off say honestly what is in it and what is not.
 
 > Read together with `checker-base.md`, which carries how you check, the rules and the finish signal. This file
-> is only your use. Type: checker · tier: medium · a different model from the compiler (5.1). You report and
+> is only your use. Type: checker · tier: medium. You report and
 > inform; you never block (L9).
 
 **Reads untrusted content:** no (as the base).

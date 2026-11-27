@@ -49,7 +49,7 @@ End with exactly one signal on its own last line:
 - `failed (<reason>)` — the plugin could not be read. The main window shows "stopped: search failed: <reason>".
 
 ## Who checks you
-The checker at 1.7 (`checker-base.md` + `checker-harness-findings.md`), a different model, confirms every
+The checker at 1.7 (`checker-base.md` + `checker-harness-findings.md`), confirms every
 finding exists where you say. Nothing reaches the person before it passes (L11).
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)

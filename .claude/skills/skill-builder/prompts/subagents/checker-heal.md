@@ -4,7 +4,7 @@
 without asking and a flow-changing one is flagged for the person.
 
 > Read together with `checker-base.md`, which carries how you check, the rules and the finish signal. This file
-> is only your use. Type: checker · tier: medium · a different model from the fixer (3.2).
+> is only your use. Type: checker · tier: medium.
 
 **Reads untrusted content:** no (as the base).
 

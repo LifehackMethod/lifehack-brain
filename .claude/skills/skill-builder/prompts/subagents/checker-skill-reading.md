@@ -4,7 +4,7 @@
 looks like four or five steps") rests on what the skill really does.
 
 > Read together with `checker-base.md`, which carries how you check, the rules and the finish signal. This file
-> is only your use. Type: checker · tier: medium · a different model from the skill reader (1.2).
+> is only your use. Type: checker · tier: medium.
 
 **Reads untrusted content:** yes: the pointed skill's own files are someone else's text. They reach you only as
 the screened copies the ingest-reader returned (everything verbatim except a real injection attempt, redacted);

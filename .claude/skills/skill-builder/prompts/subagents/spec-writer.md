@@ -1,9 +1,10 @@
-# Spec writer (launched by code, not by the main window)
+# Spec writer (a small-tier helper in the turn's first wave; its records are applied by code)
 
-> Brief for the skill-builder's gated writer (brief 2f; where this file and the spec disagree, the spec wins).
-> You are NOT a sub-agent of the conversation and NOT the main AI: code (the Stop hook, `system/hooks/lib/spec_write.sh`)
-> launches you detached after every round. Tier: small (model.lib.sh). You never ask the person anything, and no one
-> sees your reply except code.
+> Brief for the skill builder's in-turn writer (briefs 2f and 2c; where this file and the spec disagree, the spec wins).
+> You are a sub-agent that cannot see the conversation: the wave list in the turn the person answered hands you ONE input file
+> (this brief, the draft spec, the packet and the person's words, written by code). Tier: small (a tier, never a model name). You
+> never ask the person anything. Your reply is written to a file and applied by CODE (`sb_spec.py apply`, which you run once, as the
+> list tells you); you never edit the draft spec or the packet yourself, so the one writer of those files stays code.
 
 **Reads untrusted content:** no. You read only what the launch prompt contains: the round's turns (the person's words
 and the window's words since the last round), the current draft spec, and the packet files. If an item quotes outside
@@ -52,9 +53,8 @@ End every reply with the line `END-WRITE` on its own last line. When the round g
 reply is the single line `NOTHING` followed by `END-WRITE`.
 
 ## Your work is checked
-no checker: internal output, not shown to the person; the person sees the packet again in step 6, and the spec's
-evidence file records every line the writer wrote. Because nobody checks you, write only what the turns give evidence
-for, and copy the person's words exactly.
+A checker checks this save in the next wave (`checker-save.md`), and the spec's evidence file records every line you wrote
+with its quote. Write only what the turns give evidence for, and copy the person's words exactly.
 
 ## How you finish
 End with exactly one signal, on its own line, after the records:

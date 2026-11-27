@@ -64,7 +64,7 @@ be edited: no draft spec file, or one you could not read or write; the planned c
 At 4.0a a failure means the reviewers do not run on an old spec. Last line.
 
 ## Who checks you
-The update checker (`checker-base.md` + `checker-spec-update.md`), a different model, checks every ruling
+The update checker (`checker-base.md` + `checker-spec-update.md`), checks every ruling
 landed and nothing old contradicts it.
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)

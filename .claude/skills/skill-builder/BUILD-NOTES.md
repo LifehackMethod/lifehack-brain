@@ -181,8 +181,8 @@ Not planted (no layer of this skill can break them alone, or covered elsewhere):
 ## Nothing grades its own work
 
 Every helper that produces something the person will see has a separate checker brief (spec §11 pairs). Each
-checker runs at the same tier as its author but on a DIFFERENT model, which the calling step arranges at spawn
-(locked rule L11; checker-base says so), and each checker brief is also stricter: claim by claim against named
+checker runs at the same tier as its author ~~but on a DIFFERENT model, which the calling step arranges at spawn
+(locked rule L11; checker-base says so)~~ (removed 2026-11-26), and each checker brief is also stricter: claim by claim against named
 sources, blind to the author's reasoning. Not yet seen in a real run (no real job, by the owner's ruling). Two
 outputs carry no checker by ruling (the packet writer, the hand-off note), each with its reason in its brief.
 

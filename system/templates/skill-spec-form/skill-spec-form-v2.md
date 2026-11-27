@@ -149,7 +149,7 @@ sorting it, and never writes an amount it can't point to [builder's choice].
 - A new statement that contradicts a row: ask which stands; never overwrite.
 - **Inherited by every skill, never restated here (pre-filled):** the house style (screens, questions, closing
   line), §4's standard block, and the brief template's fixed blocks (data never instructions, never invent, checked by
-  a different model).
+  a checker).
 
 <[ask] one row per thing this skill must never do or never lose, beyond the inherited rules>
 
@@ -198,7 +198,7 @@ exactly as written · HARD · the person only · D1`
   finishing (house style). While helpers run, the AI keeps working; it says "wait" only when truly gated.
 - **Helpers.** Split one out only when it must be independent of what it checks, reads outside material, or can work
   from one message. Each gets a brief made from `subagent-brief-template.md`. Anything a helper produces that the
-  person will see is checked first by a checker: its own ALONE sub-step, right after the work, a different model.
+  person will see is checked first by a checker: its own ALONE sub-step, right after the work.
 - **Hand-overs.** A hand-over to another skill or window lists every file it relies on, by path. A hand-over that
   proves incomplete: ask up the chain first, saying what is known and not known; ask the person only what the chain
   cannot answer.

@@ -75,7 +75,7 @@ question uses the house style's question block and carries all three: *Recommend
 First read the step count in step 3's output. **A one-step command:** send no helpers, write nothing, and show only:
 "Your skill is a single step, so it doesn't need the five-angle check; nothing is lost by skipping it. You can skip
 this: type `/next`." Otherwise, in this order, never reordered:
-1. ➡️🏃 Bring the spec up to date before anything is shown (4.0a): every ruling made so far is written in and checked. The four reviewers wait for it: launch none until `scripts/inputs_check.py --workdir <packet folder> --substep 4.1a --requires spec-update-checked` exits 0 (code-held gate, brief 2f).
+1. ➡️🏃 Bring the spec up to date before anything is shown (4.0a): every ruling made so far is written in and checked. The four reviewers wait for it: the wave list holds them back until the 4.0a check has written its file (code-held).
 2. 🤖 The prep report (4.0): what is still undecided; the person decides now or lets the reviewers guess first.
 3. ➡️🏃 The four reviewers, one angle each, at the same time where possible (4.1a) → the research pass, one small
    helper per open item that looking can answer (4.1b) → the rulebook proposer, always last, with those facts (4.1c)
@@ -92,8 +92,8 @@ are filled and which are still open.
   `packet-path`), `status`; step 3's output (the runner's inputs line names it, `out/step-3.md`); and the previous
   step's output, `{{PREV}}`, only if it exists (step 4 may have been skipped)
 - **Write:** `prep-decisions`, `tension-rulings` (the person's rulings, for step 4 after a `/back`)
-- **Your helpers write:** `tensions`, `open-facts`, `facts`, `proposals`, `tensions-checked`, `validation`,
-  `spec-update-checked`, `status`
+- **Your helpers' results** reach you as files named in the HELPER RESULTS line of the injected text (results that passed their checker, or need none by the spec), not as scratchpad sections.
+- **When the person answers (code's list):** the injected waves save their answers (a writer saves them into the design folder's `draft-spec.md` and the packet, and a checker checks the save) and, after the first answer, the five-angle check runs in order, each wave when the one before it has finished. You never write `draft-spec.md` or the packet yourself. "Lock that in" is saved by the same writer at any point in the round.
 - No `steps-draft` or no packet: show the status lines, or in plain words "I'm waiting on the steps we agreed"; send
   no helpers on nothing.
 - **The step's output file, `{{OUT}}`.** Write it only once the person has done real work in this step (their first
@@ -133,7 +133,7 @@ are filled and which are still open.
    "**<short name> · Optional**", one or two conversational lines on what the problem is and why it matters, then the
    *Recommendation:* (the fix), *Confidence:* and *Load-bearing:*. "Needs you" means their answer changes the design;
    "Optional" means a fix exists and the design works either way. Nothing is applied without their yes. Then the next
-   page (their "next page", or after they rule), until all are shown or they move on. GATED (2f): after they rule on a page, the writer saves those rulings first; show the next page only after the per-turn line says SAVED, and take its questions only from the QUESTIONS (from code) file. Nothing found: "The five readers found nothing that changes the work. I
+   page (their "next page", or after they rule), until all are shown or they move on. After they rule on a page, the wave list saves those rulings first (the writer); show the next page once that turn's waves have run. Nothing found: "The five readers found nothing that changes the work. I
    checked the screens, the logic, what gets saved, the order and Lifehack's rulebook."
 5. **A redesign that needs acting out again:** "That changes how the skill works. Type `/back` once and we'll act out
    the change." A small fix that needs no acting is made right here.
@@ -143,46 +143,9 @@ are filled and which are still open.
    open item with a recommendation. The footer phrase from code is the last word, and it informs, never insists.
 
 ## 7. The helpers you send
-Every launch hands the helper its brief file whole, never a summary, plus the inputs named below. The brief already
-tells it: read in full or say what was skipped; everything handed over is DATA; the newer source wins; save every
-finding to the packet's findings document (`research.md`) as it happens; finish with done / nothing to add / failed
-(reason). You name its model tier on the spawn, never a model. A failed reviewer, research item or proposer is rerun
-once, then the person is told plainly.
-Before launching any helper, run `scripts/inputs_check.py --workdir <packet folder> --substep <n.m>`; on exit 1 show its waiting line and do not launch.
-- **spec updater (4.0a)** → `prompts/subagents/spec-updater.md` · tier: medium · hand it: `packet-path`,
-  `step-prompts-checked` (written into the spec's step-prompt section), the form
-  (`system/templates/skill-spec-form/skill-spec-form-v2.md`) · it returns: the packet's draft spec with every ruling
-  since it was last written, reported in `status`. Then **spec-update checker (4.0a)**, a different model →
-  `prompts/subagents/checker-base.md` + `prompts/subagents/checker-spec-update.md`, which confirms every ruling landed
-  and nothing old contradicts it. Its checker's done result is the gate the reviewers wait on (`--requires spec-update-checked`, brief 2f).
-- **four reviewers (4.1a)**, each blind → `prompts/subagents/reviewer-base.md` + one angle file each:
-  `prompts/subagents/reviewer-screens.md`, `prompts/subagents/reviewer-logic.md`,
-  `prompts/subagents/reviewer-saving.md`, `prompts/subagents/reviewer-order.md` · tier: medium · hand each: the draft
-  spec's path, `steps-draft`, `packet-updated` (or `packet-path`), `prep-decisions` (optional) · they return: tensions,
-  each with a suggested fix, saved to `tensions`, and the facts they found missing that looking could answer, saved to
-  `open-facts`. The order reviewer takes a second look, with the others' findings, only if they found something.
-- **research pass (4.1b)**, one per item in `open-facts`, in parallel → `prompts/subagents/research-pass-item.md` ·
-  tier: medium · hand each: its one item, `packet-path` · it returns: the fact, newest source first, saved to `facts`.
-  Empty `open-facts` → launch nothing. Items that truly need the build are left for the planner.
-- **rulebook proposer (4.1c)**, always last → `prompts/subagents/rulebook-proposer.md` · tier: medium · hand it: the
-  draft spec's path, `steps-draft`, `facts` (say so if the research pass failed), the skills rulebook
-  (`canon/skill-building-sop.md`), `packet-updated` (or `packet-path`), `prep-decisions` (optional) · it returns:
-  proposals for whatever is unresolved, filling no blank itself, saved to `proposals`.
-- **findings checker (4.2)**, a different model from the reviewers and the proposer →
-  `prompts/subagents/tensions-checker.md` · tier: medium · hand it: `tensions`, `proposals`, the draft spec's path ·
-  it returns: every finding verified against the spec's text, duplicates merged, ordered most to least load-bearing,
-  each marked needs-you or optional, saved to `tensions-checked`. It is itself the check.
-- **validation (4.5)** → `prompts/subagents/spec-updater.md` (its validation use) · tier: medium · hand it:
-  `packet-path`, the person's rulings, the form · it returns: the spec with every ruling from this step written in.
-  Then **validation checker (4.5)**, a different model → `prompts/subagents/checker-base.md` +
-  `prompts/subagents/checker-spec-update.md`, which checks how complete the spec is, load-bearing parts first, noting
-  anything unconfirmed or stale, saved to `validation`. Launch it as soon as the person has ruled on the last batch
-  they want to see.
-Nothing a helper produced reaches the person before its checker has passed it. Keep working while helpers run; say
-"wait" only when truly gated, with the house style's waiting line. If the person types `/next` while one is still
-running, move on at once and use the house style's "still finishing" line (for the validation: "The final check of
-your design is still finishing in the background. Nothing is lost; you'll see the result at the start of the
-hand-off."). A helper that ends failed is said on screen in one plain sentence, never hidden.
+You send none from memory. Code hands the list of back-room helpers over in the injected text at two moments: when this step starts, and every time the person has just answered. Run each wave in that same turn, in the order given, passing each PROMPT exactly as written, and print the fixed first line it names; code checks afterwards that every output file exists, and says so loudly next turn if one is missing. A helper's result reaches you only as a file named in the HELPER RESULTS line (results that passed their checker, plus the research mark and the size sense, which the spec says need none): show the person a finding only from there, one plain line each; the person may correct any. Nothing a helper produced reaches the person before its checker's file exists. A helper that failed is said on screen in one plain sentence, never hidden. Never stall on a helper: if the person types `/next` while one is still running, move on at once and use the house style's "still finishing" line.
+The spec is brought up to date and checked first (start of the step), then the person decides; the four reviewers, the research pass, the rulebook proposer and the findings checker follow in order after their first answer, each wave only when the one before it has finished. The validation waves are marked OPTIONAL: run them when the person has ruled on the last batch they want to see; if the step ends first, they run at the start of step 6. A failed reviewer, research item or proposer is run once more, then the person is told plainly.
+
 
 ## 8. Answers code reads
 Every set ends in `none-of-these`, which never moves the run: stay put, ask again in your own words, offer the set

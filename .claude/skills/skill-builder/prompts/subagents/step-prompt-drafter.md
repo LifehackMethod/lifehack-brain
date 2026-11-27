@@ -47,7 +47,7 @@ section **step-prompts** (§5), one draft per agreed step.
 `failed (<reason>)`. A failure is shown, never a quiet success. Last line.
 
 ## Who checks you
-The checker for step-prompt drafts (`checker-base.md` + `checker-step-prompts.md`), a different model.
+The checker for step-prompt drafts (`checker-base.md` + `checker-step-prompts.md`).
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)
 - **Desired result:** a draft for step 2 only, opening with the reset, using only section names from the

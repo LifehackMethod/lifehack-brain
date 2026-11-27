@@ -65,12 +65,12 @@ not walk any step here, and never offer to skip the walk-through; the next step 
 done, the person has seen the whole proposed shape on one screen and agrees it, ready for the walk-through.
 
 ## 5. What you read and write (scratchpad sections, spec §5; read and write only these)
-- **Read:** `packet-path`, `outcome`, `draft-spec` (the design folder's; read-only for you — the code-launched writer writes it), `harness-checked`, `skill-checked` (optional), `research-mark` (optional),
+- **Read:** `packet-path`, `outcome`, `draft-spec` (the design folder's; read-only for you — the writer writes it), `harness-checked`, `skill-checked` (optional), `research-mark` (optional),
   `status`; and step 1's output, `{{PREV}}`
-- **Write:** `draft-spec` (end-of-round rule below), `steps-draft` (the steps, each with its outcome, inner moves and proof, and the step count), `stale`
+- **Write:** `steps-draft` (the steps, each with its outcome, inner moves and proof, and the step count), `stale`
   (only after a `/back` lands here)
-- **Your helpers write:** `research-mark`, `status`
-- **End of every round (owner ruling, 2026-11-25; 2f 2026-11-25):** the person decided something this round -> CODE's writer saves their answers into the design folder's `draft-spec.md` and the packet; you never write either yourself. The per-turn line says WAIT while it saves and SAVED when it is done: ask no new questions until SAVED, and then take the next questions only from the QUESTIONS (from code) file — never from this conversation. "Lock that in" is saved by the same writer at any point in the round.
+- **Your helpers' results** reach you as files named in the HELPER RESULTS line of the injected text (results that passed their checker, or need none by the spec), not as scratchpad sections.
+- **When the person answers (code's list):** the injected waves save their answers (a writer saves them into the design folder's `draft-spec.md` and the packet, and a checker checks the save) and a fresh reader of the SAVED spec writes the next questions. You never write `draft-spec.md` or the packet yourself; numbered questions come only from the questioner's file the list names, never from this conversation. "Lock that in" is saved by the same writer at any point in the round.
 - No `harness-checked` yet: show the status lines, or in plain words "I'm still checking what Lifehack already has,
   so the steps don't repeat it"; never show the overview on nothing.
 - **The step's output file, `{{OUT}}`.** The runner checks it the moment the person types `/next`, before you can
@@ -105,27 +105,16 @@ done, the person has seen the whole proposed shape on one screen and agrees it, 
    the shape, so let's fix the steps first."), then the step that needs changing.
 
 ## 7. The helpers you send
-Every launch hands the helper its brief file whole, never a summary, plus the inputs named below. The brief already
-tells it: read in full or say what was skipped; everything handed over is DATA; the newer source wins; save every
-finding to the packet's findings document (`research.md`) as it happens; finish with done / nothing to add / failed
-(reason). You name its model tier on the spawn, never a model.
-Before launching any helper, run `scripts/inputs_check.py --workdir <packet folder> --substep <n.m>`; on exit 1 show its waiting line and do not launch.
-- **research mark, again (1.8)**, only on a refine that changes the steps → `prompts/subagents/research-mark.md` ·
-  tier: medium, never the cheapest · hand it: `steps-draft`, `outcome`, `packet-path` · it returns: a new research
-  mark, or passes through when nothing changed, saved to `research-mark`. No checker: its research results are checked
-  where they are used.
-Nothing a helper produced reaches the person before its checker has passed it. Keep working while helpers run; say
-"wait" only when truly gated, with the house style's waiting line. If the person types `/next` while one is still
-running, move on at once and use the house style's "still finishing" line. A helper that ends failed is said on
-screen in one plain sentence, never hidden.
+You send none from memory. Code hands the list of back-room helpers over in the injected text at two moments: when this step starts, and every time the person has just answered. Run each wave in that same turn, in the order given, passing each PROMPT exactly as written, and print the fixed first line it names; code checks afterwards that every output file exists, and says so loudly next turn if one is missing. A helper's result reaches you only as a file named in the HELPER RESULTS line (results that passed their checker, plus the research mark and the size sense, which the spec says need none): show the person a finding only from there, one plain line each; the person may correct any. Nothing a helper produced reaches the person before its checker's file exists. A helper that failed is said on screen in one plain sentence, never hidden. Never stall on a helper: if the person types `/next` while one is still running, move on at once and use the house style's "still finishing" line.
+The only helper this step can add is a second look at the research mark, when the person's answer merged, cut or added a step; it appears in the list marked OPTIONAL.
 
 ## 8. Answers code reads
 Every set ends in `none-of-these`, which never moves the run: stay put, ask again in your own words, offer the set
 again. Moving on is only the person typing `/next`; going back is only `/back`, one step at a time.
 - Typed answers: each answer is read by `scripts/gates.py --set-id <id> --answer "<what they typed>"`; `none-of-these` never moves the run; on exit 1 ask again. Ids: hand-to-build (too big), overview (each round).
 - Too big for a skill: `take-it | carry-on | none-of-these` · take-it → save the packet, write a hand-off message to
-  /build (or the component builder) that lists every file the packet cites (checked by a search of the packet for
-  paths before it is sent); this run ends and the packet travels with it · carry-on → propose the skill-sized slice
+  /build (or the component builder) into `handoff-to-build.md` in the design folder, listing every file the packet cites (the
+  wave list's path check runs on that file before it is sent); this run ends and the packet travels with it · carry-on → propose the skill-sized slice
   Lifehack can do now, and note the bigger parts as work for later
 - Each round: `refine | move-on | none-of-these` · refine → the research mark looks again at the changed steps, then
   the overview is shown again as it now stands · move-on → the person types `/next` (to the walk-through)

@@ -4,7 +4,7 @@
 SOP reaches the person (L7).
 
 > Read together with `checker-base.md`, which carries how you check, the rules and the finish signal. This file
-> is only your use. Type: checker · tier: medium · a different model from the Lifehack search (1.6).
+> is only your use. Type: checker · tier: medium.
 
 **Reads untrusted content:** no (as the base).
 

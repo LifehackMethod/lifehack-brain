@@ -1,12 +1,12 @@
 #!/bin/bash
-# test_spec_reporter.sh -- round 2b-Y: the spec REPORTER (B2), the spec WRITER (B3) and the BARS from code (B4);
-# 2c (2026-11-25): the background writer is SWITCHED OFF (Stop starts no spec_write), the B2 line checks decision
-# words (DECISION_RE) and warns when the person decided and the spec did not change; the writer cases below still
-# exercise lib/spec_write.sh directly (the file is kept, not wired).
-# Files under test: system/hooks/lib/sb_spec.py, lib/spec_write.sh, lib/sb_start.py (activate + per-turn bars), observe_ups.sh
-# (the merged systemMessage), end_of_turn_checks.sh (the Stop launch + bar check), scripts/completion.py (counts).
-# No real model call: LIFEHACK_MODEL_STUB. NO-RUN / UNARMED cases first. After the real tree passes, each check is shown
-# FAILING on a deliberately broken copy (a copy of the plugin pieces with ONE edit).
+# test_spec_reporter.sh -- round 2b-Y: the spec REPORTER (B2), the spec WRITER's apply (B3) and the BARS from code (B4);
+# 2c (2026-11-26): the background writer, its lock/pid, the questioner chain and the WAIT/SAVED gate are gone. The writer is a
+# helper the turn's wave list sends (tested in test_waves.sh); what is tested here is what stays in code: the changed/not-changed
+# line (and the unchanged-spec warning), the bars, and `sb_spec.py apply` (the guards on the writer's records, the receipt).
+# Files under test: system/hooks/lib/sb_spec.py, lib/sb_start.py (activate + per-turn bars), observe_ups.sh (the merged
+# systemMessage), end_of_turn_checks.sh (the bar check), scripts/completion.py (counts).
+# No model call at all. NO-RUN / UNARMED cases first. After the real tree passes, each check is shown FAILING on a deliberately
+# broken copy (a copy of the plugin pieces with ONE edit).
 # Run: bash system/hooks/tests/test_spec_reporter.sh   (SPEC_PLUG=<plugin root> points it at a copy)
 PLUG="${SPEC_PLUG:-$(cd "$(dirname "$0")/../../.." && pwd -P)}"
 T="$(cd "$(mktemp -d)" && pwd -P)"; trap '[ -n "$KEEP" ] || rm -rf "$T"' EXIT
@@ -14,16 +14,6 @@ pass=0; fail=0
 ok()  { pass=$((pass+1)); printf '   ok   %s\n' "$1"; }
 bad() { fail=$((fail+1)); printf '  FAIL  %s\n' "$1"; }
 chk() { if eval "$2"; then ok "$1"; else bad "$1  <<$2>>"; fi; }
-
-cat > "$T/stub.sh" <<'EOF'
-#!/bin/bash
-sleep "${STUB_SLEEP:-0}"
-echo "$1" >> "$STUB_LOG"
-cp "$2" "$STUB_PROMPT_COPY" 2>/dev/null
-[ "${STUB_FAIL:-0}" = 1 ] && exit 1
-if [ -n "${STUB_REPLY_FILE:-}" ]; then cat "$STUB_REPLY_FILE" > "$3"; else echo NOTHING > "$3"; fi
-if [ "${STUB_NO_MARKER:-0}" = 1 ]; then :; elif [ "${STUB_INLINE:-0}" = 1 ]; then printf 'END-WRITE' >> "$3"; else echo END-WRITE >> "$3"; fi
-EOF
 
 ms_of() { python3 - "$@" <<'PY'
 import subprocess, sys, time
@@ -40,17 +30,12 @@ suite() {   # suite <plugin-root-under-test>
   unset CLAUDE_CODE_SESSION_ID
   local H="$R/system/hooks" EOT UPS MOVER SC
   EOT="$H/end_of_turn_checks.sh"; UPS="$H/observe_ups.sh"; MOVER="$H/run_step_hook.sh"; SC="$R/.claude/skills/skill-builder/scripts"
-  export LIFEHACK_MODEL_STUB="$T/stub.sh" STUB_LOG="$HM/stub.log" STUB_PROMPT_COPY="$HM/prompt.seen" SPEC_WAIT=0
-  unset STUB_FAIL STUB_REPLY_FILE STUB_SLEEP
   local OD="$HM/.claude/run/observe" SID="sess-spec-0001" S0="sess-spec-none"
   jq_() { python3 -c "import json,sys; d=json.load(sys.stdin); print(eval(sys.argv[1]))" "$1"; }
   upsj() { python3 -c 'import json,sys; print(json.dumps({"session_id":sys.argv[1],"prompt_id":"p"+sys.argv[3],"cwd":sys.argv[4],"hook_event_name":"UserPromptSubmit","prompt":sys.argv[2],"transcript_path":"/x"}))' "$1" "$2" "${3:-1}" "${4:-/x}"; }
   ups() { upsj "$1" "$2" "$3" "$4" | bash "$UPS" 2>/dev/null; }
   mover() { upsj "$1" "$2" "$3" "$HM/elsewhere" | sh "$MOVER" 2>&1; }
   stopj() { python3 -c 'import json,sys; print(json.dumps({"session_id":sys.argv[1],"prompt_id":"p1","hook_event_name":"Stop","stop_hook_active":False,"last_assistant_message":sys.argv[2],"cwd":"/x","transcript_path":sys.argv[3]}))' "$1" "$2" "$3"; }
-  waitdone() { local i=0; while [ -f "$OD/spec-write-$1.pid" ] && kill -0 "$(cat "$OD/spec-write-$1.pid" 2>/dev/null)" 2>/dev/null && [ $i -lt 100 ]; do sleep 0.2; i=$((i+1)); done; sleep 0.3; }
-  waitq() { local i=0; while [ -f "$OD/spec-questions-$1.pid" ] && kill -0 "$(cat "$OD/spec-questions-$1.pid" 2>/dev/null)" 2>/dev/null && [ $i -lt 100 ]; do sleep 0.2; i=$((i+1)); done; sleep 0.3; }
-  drain() { local i=0; waitdone "$1"; waitq "$1"; while [ $i -lt 20 ]; do L="$(ups "$1" "drain $3" "$3" "$WD" | jq_ "d[\"systemMessage\"]" 2>/dev/null)"; case "$L" in *WAIT*|*SAVED*) sleep 0.2; i=$((i+1));; *) break;; esac; done; }
   tline() { python3 -c 'import json,sys; print(json.dumps({"type":sys.argv[1],"message":{"role":sys.argv[1],"content":json.loads(sys.argv[2])}}))' "$1" "$2"; }
 
   echo "== NO RUN =="
@@ -59,18 +44,16 @@ suite() {   # suite <plugin-root-under-test>
   stopj "$S0" "done" "$HM/none.jsonl" > "$HM/stop0.json"
   read MS RC LEN < <(ms_of "$HM/stop0.json" "$EOT")
   for _i in 1 2 3; do read M2 R2_ L2_ < <(ms_of "$HM/stop0.json" "$EOT"); [ "$M2" -lt "$MS" ] && MS="$M2"; done
-  chk "[N2] no run: Stop exits 0 with no output, nothing launched or written" '[ "$RC" = 0 ] && [ "$LEN" = 0 ] && [ ! -e "$OD" ] && [ ! -e "$STUB_LOG" ]'
+  chk "[N2] no run: Stop exits 0 with no output, nothing written" '[ "$RC" = 0 ] && [ "$LEN" = 0 ] && [ ! -e "$OD" ]'
   chk "[N3] no run: the whole Stop hook ($MS ms) stays under 250 ms (the check itself is one file test)" '[ "$MS" -lt 250 ]'
 
   echo "== START: the run starter makes the draft spec and flags the session =="
   OUT="$(mover "$SID" "/skill-builder demo-skill" 1)"
   local WD="$HM/brain/drafts/builds/demo-skill" SPEC="$HM/brain/drafts/builds/demo-skill/draft-spec.md"
-  chk "[S1] starting the skill builder creates draft-spec.md from the form, header says code's gated writer saves it (2f)" '[ -f "$SPEC" ] && grep -q "gated writer" "$SPEC" && grep -q "^## 1. WHAT THIS SKILL IS FOR" "$SPEC"' 
+  chk "[S1] starting the skill builder creates draft-spec.md from the form, header says the in-turn writer saves it (2c)" '[ -f "$SPEC" ] && grep -q "in-turn writer" "$SPEC" && grep -q "^## 1. WHAT THIS SKILL IS FOR" "$SPEC"' 
   chk "[S2] the session is flagged (spec-sess flag names the run folder)" '[ "$(python3 "$H/lib/sb_spec.py" flag-wd "$SID")" = "$WD" ]'
   chk "[S3] the fresh shell counts 0 filled, 0 confirmed" 'python3 "$SC/completion.py" --spec "$SPEC" --counts | grep -q "^[0-9]* 0 0$"'
 
-  OUT="$(SPEC_WRITER_RUNNING=1 mover "sess-nested" "/skill-builder nested-x quoted from the person's words" 1)"
-  chk "[X1] the writer's own nested model session (which quotes /skill-builder) never starts a run or flags a session (found live: it looped)" '[ -z "$OUT" ] && [ ! -d "$HM/brain/drafts/builds/nested-x" ] && [ ! -f "$OD/spec-sess-sess-nested.flag" ]'
 
   O1="$(mover "sess-twin" "/skill-builder twin-x" 77)"; O2="$(mover "sess-twin" "/skill-builder twin-x" 77)"
   chk "[D1] a twin copy of the hook (plugin AND repo settings both registered) on the same prompt starts no second run and prints nothing" '[ -n "$O1" ] && [ "$(ls "$HM/brain/drafts/builds/twin-x/runs" | wc -l | tr -d " ")" = 1 ] && [ -z "$(printf "%s" "$O2" | tr -d "[:space:]")" ]'
@@ -125,23 +108,22 @@ chk "[M3] the model gets both" 'printf "%s" "$OUT" | jq_ "d[\"hookSpecificOutput
   chk "[B3] the line tells the model to print the bars exactly as given" 'printf "%s" "$OUT" | grep -q "exactly as given"'
   stopj "$SID" "Here is page 1.
 $GOODBAR
-more" "$HM/t.jsonl" > "$HM/stopb.json"; bash "$EOT" < "$HM/stopb.json" >/dev/null 2>&1; waitdone "$SID"
+more" "$HM/t.jsonl" > "$HM/stopb.json"; bash "$EOT" < "$HM/stopb.json" >/dev/null 2>&1
 OUT="$(mover "$SID" "ok" 7)"
 chk "[B4] a reply bar that matches code: no mismatch said" '! printf "%s" "$OUT" | grep -q "BAR MISMATCH"'
 chk "[B5] the per-turn line lists the files read last turn (Read tool call and a cat)" 'printf "%s" "$OUT" | grep -q "READ LAST TURN" && printf "%s" "$OUT" | grep -q "x/handoff-in.md" && printf "%s" "$OUT" | grep -q "y/known.md"'
 stopj "$SID" "Here is page 1.
 Walk-through · page 2 of 3   ✅ ▶ ⬜
-more" "$HM/t.jsonl" > "$HM/stopc.json"; bash "$EOT" < "$HM/stopc.json" >/dev/null 2>&1; waitdone "$SID"
+more" "$HM/t.jsonl" > "$HM/stopc.json"; bash "$EOT" < "$HM/stopc.json" >/dev/null 2>&1
 OUT="$(mover "$SID" "ok again" 8)"
 chk "[B6] a hand-drawn bar that does not match code: the next line says BAR MISMATCH" 'printf "%s" "$OUT" | grep -q "BAR MISMATCH"'
 OUT="$(mover "$SID" "ok once more" 9)"
 chk "[B7] the mismatch is said once" '! printf "%s" "$OUT" | grep -q "BAR MISMATCH"'
-stopj "$SID" "▰▰▰▰▰▰▰▰▰▰ 99% · *probably okay to move on*" "$HM/t.jsonl" > "$HM/stopd.json"; bash "$EOT" < "$HM/stopd.json" >/dev/null 2>&1; waitdone "$SID"
+stopj "$SID" "▰▰▰▰▰▰▰▰▰▰ 99% · *probably okay to move on*" "$HM/t.jsonl" > "$HM/stopd.json"; bash "$EOT" < "$HM/stopd.json" >/dev/null 2>&1
 OUT="$(mover "$SID" "ok and again" 10)"
 chk "[B8] a made-up figure bar is a mismatch too" 'printf "%s" "$OUT" | grep -q "BAR MISMATCH"'
 
-  echo "== B3: the writer =="
-  rm -f "$HM/stub.log" "$OD/spec-offset-$SID"
+  echo "== B3: the writer's apply (the in-turn writer's one command; the records come from a helper, the guards are code) =="
   python3 - "$SPEC" "$HM" <<'PY'
 import re, sys
 p, hm = sys.argv[1], sys.argv[2]; t = open(p, encoding="utf-8").read()
@@ -150,9 +132,10 @@ open(hm + "/blanks.txt", "w").write("\n".join(b.replace("\n", " ") for b in blan
 PY
   local B1 B2 B3; B1="$(sed -n 1p "$HM/blanks.txt" | cut -c1-60)"; B2="$(sed -n 2p "$HM/blanks.txt" | cut -c1-60)"; B3="$(sed -n 3p "$HM/blanks.txt" | cut -c1-60)"
   cp "$SPEC" "$HM/spec.before"
-  local CONF; CONF="$(grep -m1 'What it saves' "$SPEC")"
-  { tline user '"I want something that sorts my weekly receipts. Yes, that is exactly it: one list per category."'
-    tline assistant '[{"type":"text","text":"So a receipt sorter. Is that right?"}]'; } > "$HM/t2.jsonl"
+  local CONF TD; CONF="$(grep -m1 'What it saves' "$SPEC")"; TD="$HM/turn1"; mkdir -p "$TD"
+  evid() { python3 -c 'import json,sys; json.dump({"person":[sys.argv[1]],"all":"PERSON: "+sys.argv[1]}, open(sys.argv[2],"w"))' "$1" "$TD/evidence.json"; }
+  wapply() { cp "$1" "$TD/writer.md"; rm -f "$TD/writer.md.applied"; python3 "$H/lib/sb_spec.py" apply "$TD/writer.md" "$SID" "$WD"; }
+  evid "I want something that sorts my weekly receipts. Yes, that is exactly it: one list per category."
   cat > "$HM/reply.txt" <<EOF
 SLOT: $B1
 VALUE: a weekly receipt sorter
@@ -175,51 +158,44 @@ BY: INFERRED
 EVIDENCE: Yes, that is exactly it
 END-WRITE
 EOF
-  export STUB_REPLY_FILE="$HM/reply.txt"
-  stopj "$SID" "ok" "$HM/t2.jsonl" > "$HM/stop2.json"
-  CLAUDE_CODE_SESSION_ID="$SID" bash "$R/system/hooks/lib/spec_write.sh" "$HM/stop2.json" "$SID"
-  chk "[W1] the writer ran the model at the small tier (2f)" 'grep -q "$(bash -c ". \"$R/system/tools/model.lib.sh\"; model_id_for_tier small")" "$STUB_LOG"' 
+  RES="$(wapply "$HM/reply.txt")"
+  chk "[W1] apply prints one APPLIED line and writes the receipt next to the records (code writes it, the AI cannot forge it)" 'printf "%s" "$RES" | grep -q "^APPLIED spec=" && [ "$(cat "$TD/writer.md.applied")" = "$RES" ]'
   chk "[W2] an evidenced PERSON line is written with a D-citation and a D line in DECISIONS" 'grep -q "a weekly receipt sorter (D2)" "$SPEC" && grep -q "^D2 · .* · a weekly receipt sorter · the person" "$SPEC"'
   chk "[W3] a PERSON claim whose quote is not the person's words is written [inferred], not confirmed" 'grep -q "one list per category \[inferred\]" "$SPEC"'
   chk "[W4] a made-up blank is rejected and logged; nothing else changed" 'grep -q "REJECTED" "$WD/spec-evidence.md" && ! grep -q "nope" "$SPEC"'
   chk "[W5] a confirmed line is never overwritten or deleted" '[ -n "$CONF" ] && grep -qxF -- "$CONF" "$SPEC" && ! grep -q "should never overwrite" "$SPEC"'
   chk "[W6] every added line has its quoted evidence in spec-evidence.md" 'grep -q "I want something that sorts my weekly receipts" "$WD/spec-evidence.md" && grep -q "FILLED \[inferred\]" "$WD/spec-evidence.md"'
-  chk "[W7] the file is whole (no temp files left, header intact)" '[ -z "$(ls -a "$WD" | grep "^\.tmp-")" ] && grep -q "gated writer" "$SPEC"'
-  W8D="$(comm -23 <(sort "$HM/spec.before") <(sort "$SPEC"))"; W8N="$(printf "%s" "$W8D" | grep -c .)"; printf "W8 diff (%s lines):\n%s\n" "$W8N" "$W8D" > "$HM/w8diff.txt"
-chk "[W8] the person never lost a line: every old line is still there except the two blanks replaced" '[ "$(comm -23 <(sort "$HM/spec.before") <(sort "$SPEC") | wc -l | tr -d " ")" -le 2 ]'
+  chk "[W7] the file is whole (no temp files left, header intact)" '[ -z "$(ls -a "$WD" | grep "^\.tmp-")" ] && grep -q "in-turn writer" "$SPEC"'
+  chk "[W8] the person never lost a line: every old line is still there except the two blanks replaced" '[ "$(comm -23 <(sort "$HM/spec.before") <(sort "$SPEC") | wc -l | tr -d " ")" -le 2 ]'
   # CONFIRM an [inferred] line
-  { tline user '"yes, that is it: saves an hour is right"'; } > "$HM/t3.jsonl"
+  evid "yes, that is it: saves an hour is right"
   printf 'CONFIRM: %s\nEVIDENCE: yes, that is it: saves an hour is right\nEND-WRITE\n' "$(grep -m1 'saves an hour \[inferred\]' "$SPEC" | cut -c1-60)" > "$HM/reply2.txt"
-  export STUB_REPLY_FILE="$HM/reply2.txt"; stopj "$SID" ok "$HM/t3.jsonl" > "$HM/stop3.json"
-  rm -f "$OD/spec-offset-$SID"
-  CLAUDE_CODE_SESSION_ID="$SID" bash "$R/system/hooks/lib/spec_write.sh" "$HM/stop3.json" "$SID"
+  wapply "$HM/reply2.txt" > /dev/null
   chk "[W9] the person's yes confirms an [inferred] line: mark removed, D-citation added" '! grep -q "saves an hour \[inferred\]" "$SPEC" && grep -q "saves an hour (D[0-9]*)" "$SPEC"'
-  waitq "$SID"
-  OUT="$(ups "$SID" "after the writer" 11 "$WD")"
-  chk "[W10] after the writer, the gate shows SAVED with the exact marker counts (2f)" 'printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]" | grep -qE "📋 Spec: SAVED — saved [0-9]+ spec lines · [0-9]+ packet lines"'
-  drain "$SID" after 11
-  OUT="$(ups "$SID" "after the writer again" 11b "$WD")"
-  chk "[W10b] the marker consumed: the plain changed/not-changed line returns, no gate line" 'printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]" | grep -qE "📋 Spec: (not )?changed this turn$" '
-  # model failure
-  export STUB_FAIL=1; stopj "$SID" ok "$HM/t3.jsonl" > "$HM/stop4.json"
-  CLAUDE_CODE_SESSION_ID="$SID" bash "$R/system/hooks/lib/spec_write.sh" "$HM/stop4.json" "$SID"; unset STUB_FAIL
-  chk "[W11] a failed model call leaves the spec as it was, says why in the evidence file and on the next spec line" 'grep -q "WRITER FAILED" "$WD/spec-evidence.md" && ups "$SID" "x" 12 "$WD" | jq_ "d[\"systemMessage\"]" | grep -q "COULD NOT SAVE"'
-
+  # a records file that was never written is a FAILED receipt and an unchanged spec, never a quiet success
+  cp "$SPEC" "$HM/spec.keep"; rm -f "$TD/writer.md" "$TD/writer.md.applied"
+  RES="$(python3 "$H/lib/sb_spec.py" apply "$TD/writer.md" "$SID" "$WD")"
+  chk "[W10] no records file: the receipt says FAILED, the spec is unchanged" 'printf "%s" "$RES" | grep -q "^FAILED" && grep -q "^FAILED" "$TD/writer.md.applied" && cmp -s "$SPEC" "$HM/spec.keep"'
+  mkdir -p "$HM/cwd-probe"; RES="$(cd "$HM/cwd-probe" && python3 "$H/lib/sb_spec.py" apply "$TD/writer.md" "$SID" "" 2>&1)"
+  chk "[W11] an empty run folder is a FAILED receipt and writes nothing into the cwd" 'printf "%s" "$RES" | grep -q "^FAILED" && [ -z "$(ls -A "$HM/cwd-probe")" ]'
   # the marker (found live in a real window: "model output missing marker" on the NOTHING reply)
-  rm -f "$OD/spec-offset-$SID" "$OD/spec-fail-$SID.txt"; printf 'NOTHING\n' > "$HM/reply3.txt"
-  export STUB_REPLY_FILE="$HM/reply3.txt" STUB_NO_MARKER=1; stopj "$SID" ok "$HM/t2.jsonl" > "$HM/stop6.json"
-  NF0="$(grep -c "WRITER FAILED" "$WD/spec-evidence.md")"
-  CLAUDE_CODE_SESSION_ID="$SID" bash "$R/system/hooks/lib/spec_write.sh" "$HM/stop6.json" "$SID"; unset STUB_NO_MARKER
-  chk "[K1] a NOTHING reply with no END-WRITE marker at all is not a failure (no fail file, no new WRITER FAILED, offset advanced)" '[ ! -f "$OD/spec-fail-$SID.txt" ] && [ "$(grep -c "WRITER FAILED" "$WD/spec-evidence.md")" = "$NF0" ] && [ -s "$OD/spec-offset-$SID" ]'
-  rm -f "$OD/spec-offset-$SID"; BL="<[ask] the problem it solves and the result, in the person's"; grep -qF -- "$BL" "$SPEC" || BL=""
-  printf 'SLOT: %s\nVALUE: when the receipt photo is blurry\nBY: INFERRED\nEVIDENCE: I want something that sorts my weekly receipts' "$BL" > "$HM/reply4.txt"
-  export STUB_REPLY_FILE="$HM/reply4.txt" STUB_INLINE=1; stopj "$SID" ok "$HM/t2.jsonl" > "$HM/stop7.json"
-  CLAUDE_CODE_SESSION_ID="$SID" bash "$R/system/hooks/lib/spec_write.sh" "$HM/stop7.json" "$SID"; unset STUB_INLINE
+  printf 'NOTHING\n' > "$HM/reply3.txt"
+  RES="$(wapply "$HM/reply3.txt")"
+  chk "[K1] a NOTHING reply with no END-WRITE marker at all is not a failure" 'printf "%s" "$RES" | grep -q "^APPLIED spec=0 packet=0"'
+  BL="<[ask] the problem it solves and the result, in the person's"; grep -qF -- "$BL" "$SPEC" || BL=""
+  evid "I want something that sorts my weekly receipts"
+  printf 'SLOT: %s\nVALUE: when the receipt photo is blurry\nBY: INFERRED\nEVIDENCE: I want something that sorts my weekly receipts' "$BL" > "$HM/reply4.txt"; printf 'END-WRITE' >> "$HM/reply4.txt"
+  wapply "$HM/reply4.txt" > /dev/null
   chk "[K2] the marker glued onto the last line of a record is read as the marker: the record is applied, no marker text in the spec or the evidence" '[ -n "$BL" ] && grep -q "when the receipt photo is blurry \[inferred\]" "$SPEC" && ! grep -q "END-WRITE" "$SPEC" && ! grep -q "END-WRITE" "$WD/spec-evidence.md"'
-  chk "[K3] the writer prompt tells the model to end every reply, NOTHING included, with END-WRITE" 'grep -q "END-WRITE on its own last line" "$HM/prompt.seen"'
+  python3 - "$R" "$WD" "$TD" <<'PY'
+import os, sys
+sys.path.insert(0, os.path.join(sys.argv[1], "system", "hooks", "lib"))
+import sb_spec
+print(sb_spec.build_turn_input(sys.argv[1], sys.argv[2], "s", sys.argv[3], "hello", ""))
+PY
+  chk "[K3] the writer's input tells the helper to end every reply, NOTHING included, with END-WRITE" 'grep -q "END-WRITE on its own last line" "$TD/writer-input.md"'
 
 # 2c task 4: the decision check. The warning reads the PREVIOUS prompt (the state stores that prompt's decision look):
-drain "$SID" pre 49
 OUT="$(ups "$SID" "catching the baseline up" 50 "$WD")" # sync the state to the spec as the writer runs left it
 OUT="$(ups "$SID" "lock that in: keep that wording" 51 "$WD")"
 chk "[R6a] decision words, spec unchanged: the line is still the plain not-changed line this turn" '[ "$(printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]")" = "📋 Spec: not changed this turn" ]'
@@ -239,26 +215,14 @@ OUT="$(ups "$SID" "hmm" 55 "$WD")"
 chk "[R6e] a later turn with the spec unchanged again warns (the decision at 54 was never written either)" 'printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]" | grep -q "⚠ You decided something this turn"'
 OUT="$(ups "$SID" "right" 56 "$WD")"
 chk "[R6f] one plain prompt later the line is plain again (state reset for the tests below)" 'printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]" = "📋 Spec: not changed this turn" 2>/dev/null || printf "%s" "$OUT" | jq_ "d[\"systemMessage\"]" | grep -q "not changed this turn"'
-  echo "== one writer at a time; the Stop launch (2f) =="
-  printf 'NOTHING\nEND-WRITE\n' > "$HM/reply-nothing.txt"
-  rm -f "$HM/stub.log"; export STUB_REPLY_FILE="$HM/reply-nothing.txt" STUB_SLEEP=2
-  stopj "$SID" ok "$HM/t3.jsonl" > "$HM/stop5.json"
-  printf 'stale saved lines\n' > "$OD/spec-saved-$SID.txt"
-  bash "$EOT" < "$HM/stop5.json" >/dev/null 2>&1; sleep 0.6
-  local PIDF="$OD/spec-write-$SID.pid"
-  chk "[L0] a new launch removes the stale done-marker first (the gate never shows SAVED twice)" '[ ! -f "$OD/spec-saved-$SID.txt" ]'
-  chk "[L1] a live run: Stop starts the gated writer (2f): its pid file written, the writer running" '[ -e "$PIDF" ] && kill -0 "$(cat "$PIDF" 2>/dev/null)" 2>/dev/null'
-  chk "[L1b] while the writer works, the spec line says WAIT (2f)" 'ups "$SID" "while the writer works" 21 "$WD" | jq_ "d[\"systemMessage\"]" | grep -q "WAIT — saving your answers from the last round"'
-  local PID1; PID1="$(cat "$PIDF")"
-  bash "$EOT" < "$HM/stop5.json" >/dev/null 2>&1
-  chk "[L2] a second Stop while it works launches no second writer (one at a time)" '[ "$(cat "$PIDF")" = "$PID1" ]'
-  waitdone "$SID"; waitq "$SID"; unset STUB_SLEEP
-  chk "[L3] the writer wrote the done-marker and chained the questioner (2f)" 'grep -qE "saved [0-9]+ spec lines · [0-9]+ packet lines|nothing to save" "$OD/spec-saved-$SID.txt" && [ -s "$OD/spec-questions-$SID.txt" ] && grep -q "$(bash -c ". \"$R/system/tools/model.lib.sh\"; model_id_for_tier medium")" "$STUB_LOG"'
-  # a finished run: flag cleared, nothing launched
+  echo "== the Stop check starts nothing (2c) =="
   P="$(python3 "$R/system/parts/stage_runner.py" status --json --workdir "$WD" 2>/dev/null)"
   echo "$P" | grep -q '"skill"' && ok "[L4] (the runner reports the live run)" || bad "[L4] runner status unreadable"
-  rm -f "$OD/spec-sess-$SID.flag"; rm -f "$HM/stub.log"; bash "$EOT" < "$HM/stop5.json" >/dev/null 2>&1; sleep 0.5
-  chk "[L5] flag gone (run over or never started): Stop launches nothing" '[ ! -e "$STUB_LOG" ]'
+  stopj "$SID" ok "$HM/t.jsonl" > "$HM/stop5.json"
+  bash "$EOT" < "$HM/stop5.json" >/dev/null 2>&1; sleep 0.3
+  chk "[L1] a live run: Stop runs the check and launches no background writer, lock or pid file" '[ -z "$(ls "$OD" | grep -E "spec-(write|launch|questions|saved)")" ] && [ -z "$(pgrep -f "spec_write.sh|spec_questions.sh")" ]'
+  rm -f "$OD/spec-sess-$SID.flag" "$OD/spec-wave-$SID.json"; bash "$EOT" < "$HM/stop5.json" >/dev/null 2>&1; sleep 0.3
+  chk "[L5] flag and pointer gone (run over or never started): Stop does nothing" '[ -z "$(ls "$OD" | grep -E "spec-(write|launch|questions|saved)")" ]'
   OUT="$(ups "$SID" "no flag now" 13 "$WD")"
   chk "[L6] flag gone: no spec line" '[ -z "$OUT" ]'
 }
@@ -315,10 +279,6 @@ PY
             is_page' B6
   broken person-unchecked system/hooks/lib/sb_spec.py 'who = "person" if by == "PERSON" and qn in persons else "inferred"' 'who = "person" if by == "PERSON" else "inferred"' W3
   broken no-inferred-mark system/hooks/lib/sb_spec.py 'rep = value + " [inferred]"' 'rep = value' W3
-  broken stop-no-writer system/hooks/end_of_turn_checks.sh 'rm -f "$OBSD/spec-questions-$SID.pid" "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"' ':' L0
-  broken no-chain system/hooks/lib/spec_write.sh 'nohup bash "$_SELF_DIR/spec_questions.sh" "$SID" </dev/null >/dev/null 2>&1 &' ':' L3
-  broken gate-wait system/hooks/lib/sb_spec.py 'return GATE_WAIT_SCREEN, GATE_WAIT_MODEL' 'return None, None' L1b
-  broken no-marker-removal system/hooks/end_of_turn_checks.sh 'rm -f "$OBSD/spec-questions-$SID.pid" "$OBSD/spec-saved-$SID.txt" "$OBSD/spec-saved-$SID.txt.shown"' ':' L0
   broken no-decision system/hooks/lib/sb_spec.py 'state["decided"] = bool(DECISION_RE.search(prompt)) if prompt else False' 'state["decided"] = False' R6b
   broken no-bars system/hooks/lib/sb_start.py 'out += sb_spec.turn_lines(hooks, a[0], sid)' 'pass' B1
   broken silent-error system/hooks/lib/sb_spec.py 'return "📋 Spec line unavailable: %s" % _log("spec report", e)[:160]' 'return None' E1
@@ -326,9 +286,13 @@ PY
         _write_atomic(flag_path' '        _write_atomic(flag_path' S1
   broken twin-begin system/hooks/lib/sb_start.py 'if not sb_spec.claim("begin", sid, pid):' 'if False:' D1
   broken twin-report system/hooks/lib/sb_spec.py 'if not claim("report", sid, pid):' 'if False:' D2
-  broken marker-demanded system/hooks/lib/spec_write.sh 'run_model small "$PROMPT" "$REPLY" 2>&1' 'run_model small "$PROMPT" "$REPLY" END-WRITE 2>&1' K1
+  broken receipt-forgeable system/hooks/lib/sb_spec.py '    try:
+        res = apply_reply(plug, reply_file, wd, sid)
+    except Exception as e:' '    return "APPLIED spec=0 packet=0"
+    try:
+        res = apply_reply(plug, reply_file, wd, sid)
+    except Exception as e:' W1
   broken marker-inline system/hooks/lib/sb_spec.py 'if line.endswith("END-WRITE"):' 'if line == "END-WRITE":' K2
-  broken nested-loop system/hooks/lib/sb_start.py 'if os.environ.get("SPEC_WRITER_RUNNING"):' 'if False:' X1
   echo "passed=$pass failed=$fail"
   [ "$fail" = 0 ]
 else

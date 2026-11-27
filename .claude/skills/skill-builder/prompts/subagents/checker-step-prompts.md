@@ -4,7 +4,7 @@
 step by an instruction that matches what the person agreed.
 
 > Read together with `checker-base.md`, which carries how you check, the rules and the finish signal. This file
-> is only your use. Type: checker · tier: medium · a different model from the step-prompt drafter.
+> is only your use. Type: checker · tier: medium.
 
 **Reads untrusted content:** no (as the base).
 

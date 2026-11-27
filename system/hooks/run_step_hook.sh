@@ -23,7 +23,9 @@ trap 'lhb_journal_fire "$?" "run_step_hook.sh" "UserPromptSubmit" "" 2>/dev/null
 # SIGNPOST: runner contract in system/parts/stage_runner.py header + RUNNER.md; the spec is the
 #      run-pickup spec (G2). The AI-side rule lives in /next and /back's own text: no [RUN STEP]
 #      line this turn means the mover did not run — tell the person.
-# UPDATED: 2026-11-25 (also the plugin forms /lifehack-brain:next and :back, exact; round 2b B1/B5: the /skill-builder prompt starts or resumes the skill builder's run via
+# UPDATED: 2026-11-26 (round 2c waves: per_turn hands over the ANSWER-moment wave list and, after a typed /next or /back, handover() prints the
+#      START-moment list of the step now begun; the lists come from lib/sb_waves.py via lib/sb_start.py; no new hook, no background writer).
+#      2026-11-25 (also the plugin forms /lifehack-brain:next and :back, exact; round 2b B1/B5: the /skill-builder prompt starts or resumes the skill builder's run via
 #      lib/sb_start.py; per-turn RUN line while it is live; /skill-builder catch-up; SB-10: run pointer second door; no-run line for an exact command).
 #      2026-11-23 (Phase 4c fix pass: person.log for every person prompt,
 #      mover.log written before person-turn, damaged-marker line, capped failure
@@ -132,7 +134,7 @@ if not isinstance(prompt, str) or prompt.strip() not in STEP_CMDS:
     # the person's word, but not a step command: logged above, nothing moves. While a skill-builder run is live the
     # turn carries its state (B1.4), so the model cannot drift; observe/note/wrap turns belong to observe_ups.sh.
     if sb_start and sb_mode != "other":
-        _l = sb_start.per_turn(stage_runner, hooks, cwd, sid)
+        _l = sb_start.per_turn(stage_runner, hooks, cwd, sid, pid, ptext, j.get("transcript_path") if isinstance(j.get("transcript_path"), str) else "")
         if _l:
             print(TAG)
             print("\n".join(_l))
@@ -185,6 +187,10 @@ print(TAG)
 emit(q.stdout + q.stderr)
 if cmd == "next" and q.returncode == 0 and sb_start:  # a catch-up run: stage the next finished step's file (code only)
     _l = sb_start.after_move(hooks, wd, run_dir, q.stdout + q.stderr, sid)
+    if _l:
+        print("\n".join(_l))
+if q.returncode == 0 and sb_start and sb_mode != "other":  # 2c: the START-moment wave list of the step now begun (the mover already moved it: never held by a helper)
+    _l = sb_start.handover(stage_runner, hooks, wd, sid, pid)
     if _l:
         print("\n".join(_l))
 PY`

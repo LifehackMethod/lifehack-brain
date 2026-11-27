@@ -22,7 +22,6 @@ SPEC = """# Draft spec
 def load():
     home = tempfile.mkdtemp(prefix="sbspec-pkt-")
     os.environ["HOME"] = home
-    os.environ.pop("SPEC_WRITER_RUNNING", None)
     if LIB not in sys.path:
         sys.path.insert(0, LIB)
     import sb_spec
@@ -36,10 +35,8 @@ def setup(sb, wd, notes="", rulings="", research=""):
     for name, body in (("notes.md", notes), ("rulings.md", rulings), ("research.md", research)):
         with open(os.path.join(wd, name), "w", encoding="utf-8") as f:
             f.write(body)
-    od = sb.od()
-    os.makedirs(od, exist_ok=True)
     person = "it should also tell me when a receipt has no date"
-    with open(os.path.join(od, "spec-turn-%s.json" % SID), "w", encoding="utf-8") as f:
+    with open(os.path.join(wd, "evidence.json"), "w", encoding="utf-8") as f:   # 2c: the evidence sits beside the reply file
         json.dump({"person": [person], "all": "PERSON: " + person}, f)
     return person
 
@@ -48,7 +45,7 @@ def run_apply(sb, wd, reply):
     rf = os.path.join(wd, "_reply.md")
     with open(rf, "w", encoding="utf-8") as f:
         f.write(reply)
-    return sb.apply_reply(REPO, rf, wd, SID, "")
+    return sb.apply_reply(REPO, rf, wd, SID)
 
 
 class PacketTest(unittest.TestCase):

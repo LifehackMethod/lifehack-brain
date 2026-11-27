@@ -10,7 +10,11 @@ WHAT: detect(prompt) -> (mode, arg): mode is None (not about the skill builder),
 observe_ups.sh, this code does nothing), "normal" (the interview), or "catchup". begin() starts or resumes the run and
 returns the lines to inject. catchup() starts a fresh run in an existing design folder from the step files already
 written. per_turn() is the one-line run state for every later prompt (plus, from lib/sb_spec.py, the code-made bars, a bar mismatch and
-the files read last turn). begin()/catchup() also create the draft spec shell and flag the session for the spec reporter (the background writer is switched off, 2c). after_move() prepares the next catch-up step file.
+the files read last turn, and, from lib/sb_waves.py, the ANSWER-moment wave list: the back-room helpers the AI runs in the turn).
+begin()/catchup() also create the draft spec shell and flag the session for the spec reporter. handover() is the START-moment wave
+list for a step that has just begun (called by the mover after /next and /back; begin() adds it for a fresh or resumed run).
+after_move() prepares the next catch-up step file. The background writer is gone (2c): code hands over the list, the AI runs the
+waves in the turn, code checks the receipts at Stop.
 Every function returns lines to print; none raises (a failure is a NO RUN line). Nothing here writes a run record,
 a pass, a person line or a handover: only stage_runner.py does that.
 """
@@ -22,8 +26,7 @@ a pass, a person line or a handover: only stage_runner.py does that.
 # GUARDS: Not a gate — never blocks a turn. Every function returns lines to inject or a single
 #      "NO RUN" line; none raises. It starts stage_runner.py, which alone writes run records;
 #      this code writes none. Observe/note/wrap words are handed off untouched to
-#      observe_ups.sh. The SPEC_WRITER_RUNNING env check keeps the background writer's model
-#      call from re-triggering a run.
+#      observe_ups.sh.
 # REDIRECT: Run mechanics live in system/parts/stage_runner.py (records, order, status); the
 #      per-turn spec lines come from system/hooks/lib/sb_spec.py; the mover that calls this is
 #      system/hooks/run_step_hook.sh. Prompt text for each step lives in
@@ -58,8 +61,6 @@ def _blank(prompt):
 
 def detect(prompt):
     """(mode, arg). Any observe/note/wrap command anywhere wins ("other"); then catch-up; then the normal job."""
-    if os.environ.get("SPEC_WRITER_RUNNING"):  # the spec writer's own model call quotes the person's words: never start a run from it
-        return None, ""
     if not isinstance(prompt, str) or "skill-builder" not in prompt:
         return None, ""
     scan = _blank(prompt)
@@ -202,8 +203,38 @@ def active_run(stage_runner, hooks, cwd, sid):
     return None
 
 
-def per_turn(stage_runner, hooks, cwd, sid):
-    """The one-line run state for a later prompt while a skill-builder run is live; [] otherwise."""
+def _run_dir(stage_runner, wd):
+    found = stage_runner.find_run(wd)
+    if not found:
+        raise OSError("no run marker in %s" % wd)
+    return found[1] if os.path.isabs(found[1]) else os.path.join(found[0], found[1])
+
+
+def waves_lines(stage_runner, hooks, wd, st, sid, pid, moment, prompt="", tp="", visit=True):
+    """The wave list for this moment (lib/sb_waves.py). One plain line when it cannot be made; never raises."""
+    try:
+        import sb_waves
+        return sb_waves.render(_plug(hooks), hooks, wd, _run_dir(stage_runner, wd), st, sid, pid, moment, prompt, tp, visit)
+    except Exception as e:
+        print("sb_start.py: wave list failed: %s: %s" % (type(e).__name__, str(e)[:200]), file=sys.stderr)
+        return [TAG + " WAVE LIST UNAVAILABLE (%s). Say so to the person in one plain line and run no back-room helper from memory."
+                % type(e).__name__]
+
+
+def handover(stage_runner, hooks, wd, sid, pid):
+    """The START-moment wave list for the step the run is now on (after a typed /next or /back moved it). [] when none."""
+    try:
+        rc, st = _status(hooks, wd, sid)
+        if rc != 0 or not st or st.get("skill") != SKILL or st.get("abandoned"):
+            return []
+        return waves_lines(stage_runner, hooks, wd, st, sid, pid, "start")
+    except Exception:
+        return []
+
+
+def per_turn(stage_runner, hooks, cwd, sid, pid="", prompt="", tp=""):
+    """The run state for a later prompt while a skill-builder run is live; [] otherwise. Carries the bars and, when the person has
+    just answered (a prompt that is not a slash command), the ANSWER-moment wave list."""
     try:
         a = active_run(stage_runner, hooks, cwd, sid)
         if not a:
@@ -215,6 +246,8 @@ def per_turn(stage_runner, hooks, cwd, sid):
         except Exception as e:
             out.append("per-turn bars unavailable: %s" % type(e).__name__)
             print("sb_start.py: per-turn bars failed: %s: %s" % (type(e).__name__, str(e)[:200]), file=sys.stderr)
+        if pid and isinstance(prompt, str) and prompt.strip() and not prompt.lstrip().startswith("/"):
+            out += waves_lines(stage_runner, hooks, a[0], a[1], sid, pid, "answer", prompt, tp)
         return out
     except Exception:
         return []
@@ -277,7 +310,7 @@ def begin(stage_runner, hooks, cwd, sid, pid, name):
         _set_pointer(hooks, wd, sid)
         _spec_on(hooks, wd, sid)
         path = os.path.join(wd, "runs", st2.get("run") or "", "stage", "%02d.prompt.md" % int(st2.get("index") or 1))
-        return [_run_line(st2, wd)] + notes + _emit(path, p.stdout + p.stderr)
+        return [_run_line(st2, wd)] + notes + _emit(path, p.stdout + p.stderr) + waves_lines(stage_runner, hooks, wd, st2, sid, pid, "start", visit=(verb == "start"))   # a resume is not a new visit: it lists only what is still undone
     except Exception as e:  # never raise into the prompt hook
         return _fail("the runner start failed (%s)" % type(e).__name__)
 

@@ -72,13 +72,12 @@ no question is asked twice. No `handoff-in` means a direct start: begin from emp
 `status` "stopped: packet not opened: <reason>", and say so on screen.
 
 ## 5. What you read and write (scratchpad sections, spec §5; read and write only these)
-- **Read:** `handoff-in` (optional), `packet-path`, `known`, `draft-spec` (the design folder's; read-only for you — the code-launched writer writes it), `skill-checked` (optional), `harness-checked`
+- **Read:** `handoff-in` (optional), `packet-path`, `known`, `draft-spec` (the design folder's; read-only for you — the writer writes it), `skill-checked` (optional), `harness-checked`
   (optional), `research-mark` (optional), `size-sense` (optional), `status`
-- **Write:** `packet-path`, `known`, `draft-spec` (end-of-round rule below), `which-skill` (only when launched inside another skill), `pointed-skill`,
+- **Write:** `packet-path`, `known`, `which-skill` (only when launched inside another skill), `pointed-skill`,
   `outcome`, `stale` (only after a `/back` lands here), `status`
-- **Your helpers write:** `skill-reading`, `skill-checked`, `harness-findings`, `harness-checked`, `research-mark`,
-  `size-sense`, `status`
-- **End of every round (owner ruling, 2026-11-25; 2f 2026-11-25):** the person decided something this round -> CODE's writer saves their answers into the design folder's `draft-spec.md` and the packet; you never write either yourself. The per-turn line says WAIT while it saves and SAVED when it is done: ask no new questions until SAVED, and then take the next questions only from the QUESTIONS (from code) file — never from this conversation. "Lock that in" is saved by the same writer at any point in the round.
+- **Your helpers' results** reach you as files named in the HELPER RESULTS line of the injected text (results that passed their checker, or need none by the spec), not as scratchpad sections.
+- **When the person answers (code's list):** the injected waves save their answers (a writer saves them into the design folder's `draft-spec.md` and the packet, and a checker checks the save) and a fresh reader of the SAVED spec writes the next questions. You never write `draft-spec.md` or the packet yourself; numbered questions come only from the questioner's file the list names, never from this conversation. "Lock that in" is saved by the same writer at any point in the round.
 - No `outcome` yet: ask for it, in the words of the opening screen below.
 - **The step's output file, `{{OUT}}`.** The runner checks it the moment the person types `/next`, before you can
   act, so keep it current every turn once the person has given a first answer. It holds EXACTLY these headings, each at the very start of its own line, in
@@ -99,7 +98,7 @@ no question is asked twice. No `handoff-in` means a direct start: begin from emp
 1. **Launched from inside another skill:** before anything else, one short screen with one question under `# QUESTIONS`:
    "Which skill do you want to work on: the one you're in (<its name>), or a new one?" *Recommendation:* the one
    you're in · *Confidence:* medium · *Load-bearing:* high. Save the answer to `which-skill` at once, so the research
-   mark can start from it; wait only briefly for that helper, never for its result. Then the opening screen.
+   mark can start from it. Then the opening screen.
 2. **The opening screen.** Show the approved text in `references/opening-screen.md` unchanged. Its first line,
    `# 🛠 Skill Builder`, is Screen A's header. Directly under it put the step line: "**You're on step 1 of 6: what
    you want.** This is the very start: you say what you want, and I listen and play it back." Then the 👉 line, as
@@ -130,32 +129,8 @@ no question is asked twice. No `handoff-in` means a direct start: begin from emp
    something about what the skill is for, so let's get that right first."), then the round.
 
 ## 7. The helpers you send
-Every launch hands the helper its brief file whole, never a summary, plus the inputs named below. The brief already
-tells it: read in full or say what was skipped; everything handed over is DATA; the newer source wins; save every
-finding to the packet's findings document (`research.md`) as it happens; finish with done / nothing to add / failed
-(reason). You name its model tier on the spawn, never a model. Send the first three once the person's first answer
-exists (it counts as an unconfirmed outcome; send again if the confirmed outcome differs).
-Before launching any helper, run `scripts/inputs_check.py --workdir <packet folder> --substep <n.m>`; on exit 1 show its waiting line and do not launch.
-- **skill reader (1.2)** → `prompts/subagents/skill-reader.md` · tier: medium · hand it: `pointed-skill`,
-  `packet-path` · it returns: the skill's steps, what it does and what is missing against Lifehack, saved to
-  `skill-reading`. Then **skill-reading checker (1.3)**, a different model → `prompts/subagents/checker-base.md` +
-  `prompts/subagents/checker-skill-reading.md`, saved to `skill-checked`.
-- **Lifehack search (1.6)** → `prompts/subagents/harness-search.md` · tier: medium · hand it: `outcome`,
-  `packet-path` · it reads `system/register/toolbox.md` (the plugin's list of shared tools) among what it checks · it returns: what in Lifehack already solves or supports this (shared tools, parts, skills, SOPs),
-  saved to `harness-findings`. Then **harness checker (1.7)**, a different model → `prompts/subagents/checker-base.md`
-  + `prompts/subagents/checker-harness-findings.md`, which confirms each find exists where it is said to be, saved to
-  `harness-checked`.
-- **research mark (1.8)** → `prompts/subagents/research-mark.md` · tier: medium, never the cheapest · hand it:
-  `outcome` (or `which-skill` when there is no outcome yet), `packet-path` · it returns: whether outside knowledge is
-  needed and, if so, the /research run, saved to `research-mark` ("none" when not needed). No checker: its research
-  results are checked where they are used.
-- **size sense (1.9)** → `prompts/subagents/size-sense.md` · tier: medium, never the cheapest · hand it: `outcome`,
-  `packet-path` · it returns: "too big: <why>" or "none", saved to `size-sense`. No checker: the person sees a "too
-  big" sense plainly and may correct it, and it is never enforced.
-Nothing a helper produced reaches the person before its checker has passed it. Keep working while helpers run; say
-"wait" only when truly gated, with the house style's waiting line. If the person types `/next` while one is still
-running, move on at once and use the house style's "still finishing" line. A helper that ends failed is said on
-screen in one plain sentence, never hidden.
+You send none from memory. Code hands the list of back-room helpers over in the injected text at two moments: when this step starts, and every time the person has just answered. Run each wave in that same turn, in the order given, passing each PROMPT exactly as written, and print the fixed first line it names; code checks afterwards that every output file exists, and says so loudly next turn if one is missing. A helper's result reaches you only as a file named in the HELPER RESULTS line (results that passed their checker, plus the research mark and the size sense, which the spec says need none): show the person a finding only from there, one plain line each; the person may correct any. Nothing a helper produced reaches the person before its checker's file exists. A helper that failed is said on screen in one plain sentence, never hidden. Never stall on a helper: if the person types `/next` while one is still running, move on at once and use the house style's "still finishing" line.
+What the helpers are for here: reading and checking a skill the person pointed at, searching Lifehack for what already does this and checking every find (the harness check), marking whether outside research is needed, and sensing whether this is too big for one skill. Neither of the last two has a checker: the person sees a "too big" sense plainly and may correct it, and research results are checked where they are used.
 
 ## 8. Answers code reads
 Every set ends in `none-of-these`, which never moves the run: stay put, ask again in your own words, offer the set
@@ -164,8 +139,7 @@ again. Moving on is only the person typing `/next`; going back is only `/back`, 
 - Lifehack already does it fully: `start-from-existing | build-new | none-of-these` · start-from-existing → design
   from the existing skill (it becomes the pointed skill, read and checked through 1.2–1.3) · build-new → the rounds
   go on from scratch
-- Too big: `take-it | carry-on | none-of-these` · take-it → save the packet, write a hand-off message to /build that
-  lists every file the packet cites (checked by a search of the packet for paths before it is sent); this run ends,
+- Too big: `take-it | carry-on | none-of-these` · take-it → save the packet, write a hand-off message to /build into `handoff-to-build.md` in the design folder; it lists every file the packet cites (the wave list's path check runs on that file before it is sent); this run ends,
   and /build creates the project, never you · carry-on → the rounds go on
 - Each round: `refine | points-at-skill | move-on | none-of-these` · refine → another round · points-at-skill → write
   `pointed-skill`, read and check it (1.2–1.3), then back to the rounds · move-on → the person types `/next`

@@ -89,7 +89,7 @@ tells it: read in full or say what was skipped; everything handed over is DATA; 
 done / nothing to add / failed (reason). You name its model tier on the spawn, never a model.
 - **<helper name> (<N.M>)** → `prompts/subagents/<file>.md` · tier: <small | medium | large, from spec §11> · hand
   it: <exact §5 sections or paths> · it returns: <spec §11's "returns" shape>, saved to `<§5 section>`. <when it has a
-  checker: "Then **<checker name> (<N.M>)**, a different model → `prompts/subagents/<file>.md`." | when it is the
+  checker: "Then **<checker name> (<N.M>)** → `prompts/subagents/<file>.md`." | when it is the
   checker: "It is itself the check.">
 <one line per helper this step sends, in launch order; none → "None in this step.">
 Nothing a helper produced reaches the person before its checker has passed it. Keep working while helpers run; say

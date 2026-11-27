@@ -2,7 +2,7 @@
 
 > Helper brief for the skill builder (spec §4, sub-step 4.2, L11). Its own
 > brief, not a use of the shared checker: it also merges, orders and marks. You cannot see the conversation.
-> Type: checker · tier: medium (a tier, never a model name) · a DIFFERENT model from the reviewers and the proposer.
+> Type: checker · tier: medium (a tier, never a model name).
 
 **Reads untrusted content:** no. You read the plugin's own files and the packet only.
 

@@ -16,7 +16,6 @@ LIB = os.path.join(REPO, "system", "hooks", "lib")
 def load():
     home = tempfile.mkdtemp(prefix="sbspec-repl-")
     os.environ["HOME"] = home
-    os.environ.pop("SPEC_WRITER_RUNNING", None)
     if LIB not in sys.path:
         sys.path.insert(0, LIB)
     import sb_spec
@@ -39,9 +38,7 @@ def setup(sb, wd, spec_text, person):
     os.makedirs(wd, exist_ok=True)
     with open(os.path.join(wd, "draft-spec.md"), "w", encoding="utf-8") as f:
         f.write(spec_text)
-    od = sb.od()
-    os.makedirs(od, exist_ok=True)
-    with open(os.path.join(od, "spec-turn-%s.json" % SID), "w", encoding="utf-8") as f:
+    with open(os.path.join(wd, "evidence.json"), "w", encoding="utf-8") as f:   # 2c: the evidence sits beside the reply file
         json.dump({"person": [person], "all": "PERSON: " + person}, f)
 
 
@@ -52,7 +49,7 @@ def run_apply(sb, wd, reply):
     rf = os.path.join(wd, "_reply.md")
     with open(rf, "w", encoding="utf-8") as f:
         f.write(reply)
-    return sb.apply_reply(REPO, rf, wd, SID, "")
+    return sb.apply_reply(REPO, rf, wd, SID)
 
 
 class ReplaceTest(unittest.TestCase):
@@ -131,6 +128,37 @@ END-WRITE
         for line in SPEC.splitlines():
             self.assertIn(line, text)
         self.assertIn("REJECTED replace", open(os.path.join(self.wd, "spec-evidence.md"), encoding="utf-8").read())
+
+
+LABELLED = SPEC.replace("- Receipts are sorted by vendor [inferred]", "- **What it saves:** two hours a week of receipts (D1)")
+
+
+class AuditShouldsTest(unittest.TestCase):
+    def setUp(self):
+        self.sb, self.home = load()
+        self.wd = os.path.join(self.home, "run")
+
+    def test_replace_keeps_the_old_lines_bold_label(self):   # audit S4
+        setup(self.sb, self.wd, LABELLED, "it saves about five hours a week, not two")
+        run_apply(self.sb, self.wd, """REPLACE: - **What it saves:** two hours a week of receipts
+NEW: about five hours a week
+EVIDENCE: it saves about five hours a week, not two
+END-WRITE
+""")
+        text = open(os.path.join(self.wd, "draft-spec.md"), encoding="utf-8").read()
+        self.assertRegex(text, r"- \*\*What it saves:\*\* about five hours a week \(D\d+\)")
+
+    def test_a_confirmed_line_is_not_replaced_by_words_that_are_not_the_persons(self):   # audit S5
+        setup(self.sb, self.wd, LABELLED, "sort receipts by date")
+        res = run_apply(self.sb, self.wd, """REPLACE: - **What it saves:** two hours a week of receipts
+NEW: about five hours a week
+EVIDENCE: the assistant guessed five hours
+END-WRITE
+""")
+        text = open(os.path.join(self.wd, "draft-spec.md"), encoding="utf-8").read()
+        self.assertTrue(res.startswith("FAILED"), res)
+        self.assertIn("- **What it saves:** two hours a week of receipts (D1)", text)
+        self.assertNotIn("five hours", text)
 
 
 if __name__ == "__main__":

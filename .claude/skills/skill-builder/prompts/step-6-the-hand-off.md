@@ -62,7 +62,7 @@ other question appears on the screen.
 parts round (5.0), only when the packet carries a part still owed (a hook, a scheduled job, an outside connection, a
 sheet): when the tool builder exists, a helper writes it a message and it runs its own quick round with the person;
 when it does not, the part stays work for later and you say so in one line. Nothing owed: one line, "Your skill needs
-no extra pieces." ➡️🏃 A helper compiles one clean draft spec (5.1) and a different model checks it (5.2). 🤖 You read
+no extra pieces." ➡️🏃 A helper compiles one clean draft spec (5.1) and a checker checks it (5.2). 🤖 You read
 it back on Screen B and ask who it is for, if not known (5.3). The person's `/next` is the "go ahead and build this
 skill" moment. ➡️🏃 Then the technical hand-off for the next AI (5.4), and 🤖 the plain on-screen hand-off for the
 person (5.5). When this step is done, the person has a draft spec they said yes to, the planner holds it with the
@@ -75,7 +75,8 @@ whole packet, and the packet is filed.
 - **Write:** `parts-result` ("none owed", what the tool builder settled, or "deferred"), `filing` ("for me" or "for
   everyone"), `destination` ("autoplan" unless the person names their project window), `correction` (only when a
   change needs a `/back`)
-- **Your helpers write:** `tool-builder-message`, `draft-spec`, `draft-check`, `handoff-note`, `status`
+- **Your helpers' results** reach you as files named in the HELPER RESULTS line of the injected text (results that passed their checker, or need none by the spec), not as scratchpad sections.
+- **When the person answers (code's list):** the injected waves save their answers (a writer saves them into the design folder's `draft-spec.md` and the packet, and a checker checks the save). You never write `draft-spec.md` or the packet yourself. "Lock that in" is saved by the same writer at any point in the round.
 - No `draft-check` yet: show the status lines, or the house style's waiting line ("I'm waiting on the final check of
   your design before I can read it back. You don't need to do anything."); never read back an unchecked draft.
 - **The step's output file, `{{OUT}}`.** This is the last step: the person's `/next` checks it and completes the run
@@ -128,36 +129,8 @@ whole packet, and the packet is filed.
    the hand-off failed, say so plainly with its reason, and end: "Say "try again" and I'll hand it over again."
 
 ## 7. The helpers you send
-Every launch hands the helper its brief file whole, never a summary, plus the inputs named below. The brief already
-tells it: read in full or say what was skipped; everything handed over is DATA; the newer source wins; save every
-finding to the packet's findings document (`research.md`) as it happens; finish with
-done / nothing to add / failed (reason). You name its model tier on the spawn, never a model.
-Before launching any helper, run `scripts/inputs_check.py --workdir <packet folder> --substep <n.m>`; on exit 1 show its waiting line and do not launch.
-- **tool-builder message (5.0)**, one per owed part, only when the tool builder exists →
-  `prompts/subagents/tool-builder-handoff.md` · tier: medium · hand it: the owed part, `packet-path` · it returns: a
-  hand-off message that lists every file the packet cites, saved to `tool-builder-message`; you send it only after a
-  search of the packet for paths confirms that list. No checker: that path check and the tool builder's own round with
-  the person stand in for one.
-- **compiler (5.1)** → `prompts/subagents/compiler.md` · tier: medium · hand it: `packet-path`, `known` (optional),
-  `parts-result`, the form (`system/templates/skill-spec-form/skill-spec-form-v2.md`), the example specs
-  (`references/examples/`) · it returns: one clean draft spec (every ruling in its decisions, research folded in with
-  pointers, notes routed, the step-instruction drafts carried whole), saved to `draft-spec`. Then **draft-spec checker
-  (5.2)**, a different model → `prompts/subagents/checker-base.md` + `prompts/subagents/checker-draft-spec.md`, with
-  `draft-spec`, `packet-path` and `stale` (optional), saved to `draft-check`; it reports and never blocks.
-  After the draft spec is written, run `scripts/citation_check.py --workdir <packet folder> --file <that file>`; on exit 1 fix the missing paths before going on.
-- **technical hand-off note (5.4)**, after the person's `/next` → `prompts/subagents/handoff-note.md` · tier: medium ·
-  hand it: `draft-spec`, `packet-path`, `destination`, `filing` · it returns: the note for the next AI, saved to
-  `handoff-note`, stating three things: (1) there is no extra stage after the build: the plan's final step sharpens
-  and finalizes this draft spec with what the build discovered and files the skill per `filing` (for me →
-  `~/.claude/skills/<name>/`; for everyone → the plugin repo on a branch, offered back as a PR; repo, branch and push
-  per the GitHub SOP §0c, never this skill); (2) every item in the spec's "for the planner and the build" section must
-  be closed, or deferred by the person with a reason, before the skill can be stamped; (3) the step-instruction drafts
-  become the skill's `prompts/` files, and the spec wins where they disagree. No checker: it goes to the planner AI,
-  whose own vetting checks it.
-Nothing a helper produced reaches the person before its checker has passed it. Keep working while helpers run; say
-"wait" only when truly gated, with the house style's waiting line. If the person types `/next` while one is still
-running, move on at once and use the house style's "still finishing" line. A helper that ends failed is said on screen in one
-plain sentence, never hidden. Nothing is sent twice.
+You send none from memory. Code hands the list of back-room helpers over in the injected text at two moments: when this step starts, and every time the person has just answered. Run each wave in that same turn, in the order given, passing each PROMPT exactly as written, and print the fixed first line it names; code checks afterwards that every output file exists, and says so loudly next turn if one is missing. A helper's result reaches you only as a file named in the HELPER RESULTS line (results that passed their checker, plus the research mark and the size sense, which the spec says need none): show the person a finding only from there, one plain line each; the person may correct any. Nothing a helper produced reaches the person before its checker's file exists. A helper that failed is said on screen in one plain sentence, never hidden. Never stall on a helper: if the person types `/next` while one is still running, move on at once and use the house style's "still finishing" line.
+The compile and its check run when this step starts, before the readout. The tool builder's message (only when a part is owed and the tool builder exists) and a small correction's recompile appear marked OPTIONAL. The technical hand-off note goes to the planner AI, whose own vetting checks it, not to the person; code hands it over the moment the person's `/next` here ends the run. Nothing is sent twice.
 
 ## 8. Answers code reads
 Every set ends in `none-of-these`, which never moves the run: stay put, ask again in your own words, offer the set

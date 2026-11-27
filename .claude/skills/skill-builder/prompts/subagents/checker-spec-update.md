@@ -4,7 +4,7 @@
 how complete the spec now is. The caller's target line says which: `target: 4.0a` or `target: 4.5`.
 
 > Read together with `checker-base.md`, which carries how you check, the rules and the finish signal. This file
-> is only your use. Type: checker · tier: medium · a different model from the spec updater. You report and
+> is only your use. Type: checker · tier: medium. You report and
 > inform; you never block (L9).
 
 **Reads untrusted content:** no (as the base).

@@ -42,7 +42,7 @@ Your final message is the scratchpad section **heal-proposal** (§5), in this sh
 `failed (<reason>)`; the main window shows "stopped: heal failed: <reason>". Last line.
 
 ## Who checks you
-The checker at 3.3 (`checker-base.md` + `checker-heal.md`), a different model, confirms the fix against the
+The checker at 3.3 (`checker-base.md` + `checker-heal.md`), confirms the fix against the
 plugin and your "kind". A clear fix then goes to the packet; a flow-changing one comes back to the person.
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)

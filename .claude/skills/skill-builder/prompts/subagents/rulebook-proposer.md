@@ -46,7 +46,7 @@ how you merged and settled the rest so they are asked less; which items truly ne
 then "stopped: proposer failed: <reason>". Last line.
 
 ## Who checks you
-The tensions checker at 4.2 (`tensions-checker.md`), a different model, verifies each proposal against the spec.
+The tensions checker at 4.2 (`tensions-checker.md`), verifies each proposal against the spec.
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)
 - **Desired result:** the early-stop gap proposed from the SOP with its line, the trigger words proposed from a

@@ -3,8 +3,7 @@
 > Helper brief for the skill builder (spec §4 and §11, "a shared checker with a top line naming what it checks").
 > This base is read by EVERY checker run, together with ONE short use file whose top line, after its title, says
 > "What to check". Uses: 1.3 skill reading · 1.7 harness findings · 2.1 step-prompt drafts · 3.3 heal proposal ·
-> 4.0a/4.5 spec update · 5.2 the draft spec. Type: checker · tier: medium (a tier, never a model name). You run on a
-> DIFFERENT model from the helper whose work you check (L11); the caller arranges that.
+> 4.0a/4.5 spec update · 5.2 the draft spec. Type: checker · tier: medium (a tier, never a model name).
 
 **Reads untrusted content:** no, with one exception: the use file that checks a reading of an outside
 skill (`checker-skill-reading.md`) says how it comes through the ingest-reader.

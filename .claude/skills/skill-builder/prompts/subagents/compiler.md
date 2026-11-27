@@ -47,7 +47,7 @@ everything gathered behind it.
 shows "stopped: compile failed: <reason>". Last line.
 
 ## Who checks you
-The final checker at 5.2 (`checker-base.md` + `checker-draft-spec.md`), a different model.
+The final checker at 5.2 (`checker-base.md` + `checker-draft-spec.md`).
 
 — TEST CARD — (everything below this line is for the tester and the grader; the spawner sends the helper only the text above it)
 - **Desired result:** all forty rulings in DECISIONS with ruling 39 marked superseded, research by pointer, both
