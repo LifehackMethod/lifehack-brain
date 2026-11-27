@@ -31,7 +31,7 @@ comes first.
 
 **The canonical layer works like case law, not statute.** Code is logic — if-then, numbers, coded friction. The canonical layer is meaning — terms and what they signify. This Vision is the founding charter: it fixes the load-bearing terms and declares their intent. The rulings (the rulings records, the vetting records) are the case records — each settles a real dispute in Enver's words, and precedents *weigh, they don't bind*. The SOPs are the jurisprudence. The map, manual, and elements are the as-built record — facts, not meanings. Definitions here are deliberately incomplete: a term's full meaning accretes in its applications, so each glossary entry carries the term, its intent, and pointers to the rulings that have applied it.
 
-**No outranking — tensions stay alive (his doctrine, 2026-11-10).** Nothing in canon outranks anything else: there are only levels of confidence, and evidence accumulates as points (COMPASS P-134, point-space). When two documents disagree, the tension stays alive and is surfaced to Enver, never settled by a precedence rule. His words: "There is no such thing as outranking. There's just levels of confidence and gradation." And: "There is no card in the canon that nullifies all the other things."
+**No outranking — tensions stay alive (his doctrine, 2026-11-10).** Nothing in canon outranks anything else: there are only levels of confidence, and evidence accumulates as points. When two documents disagree, the tension stays alive and is surfaced to Enver, never settled by a precedence rule. His words: "There is no such thing as outranking. There's just levels of confidence and gradation." And: "There is no card in the canon that nullifies all the other things."
 
 **Designated trusted locations (his ruling, 2026-11-11).** COMPASS and this Vision are designated trusted locations: a line in them is canon because of where it sits, so the doubt bias never starts them from doubt. Everywhere else starts from doubt.
 
@@ -115,8 +115,8 @@ specified, the only leverage is a few strong high-altitude principles plus hard 
 
 *(Moved 2026-11-10 from the canonical-system rulings record, item 15.)*
 
-There is no human-out-of-the-loop, and that is the product, not the limitation (see COMPASS P-111). The floor is irreducible — articulate vision, rule on
-exceptions, hold the ranking — and it includes coordination and light housekeeping: a billionaire running many projects still has coordination overhead, and being treated like a billionaire does not mean zero admin (see the intelligence map below, HUMAN only, 3. Coordination and 4. Housekeeping). The harness's measure is the one in COMPASS P-24 (a large machine output per small human attention),
+There is no human-out-of-the-loop, and that is the product, not the limitation (the floor below is what no machine can supply). The floor is irreducible — articulate vision, rule on
+exceptions, hold the ranking — and it includes coordination and light housekeeping: a billionaire running many projects still has coordination overhead, and being treated like a billionaire does not mean zero admin (see the intelligence map below, HUMAN only, 3. Coordination and 4. Housekeeping). The harness's measure is a large machine output per small human attention,
 with nothing below that floor ever needing the human.
 
 ### The INTENTION doctrine (LOCKED 21)
@@ -145,7 +145,7 @@ matching an unconstrained frontier model on the same task.
   in the debt ledger (the root `debt-ledger.md`).
 - **The friction-not-impossibility constraint:** friction is for the unsophisticated user and the
   well-meaning dumb LLM; the system does not prevent a determined person from breaking their own system
-  (P-91 / P-127 / P-76 territory). Shipped canon holds in this sense: each plugin update replaces it
+  (the system guards against accident, not against a person's own deliberate choices). Shipped canon holds in this sense: each plugin update replaces it
   whole; a determined student can still edit it locally, giving up updates.
 - **The no-enforcement constraint (his doctrine, 2026-11-10):** there is no enforcement in the system, only
   acceptable conformance and performance; a test's final result that reaches acceptable conformance is valid
@@ -169,7 +169,7 @@ own UI. V2 deliberately doesn't. The honest shape:
 - **Two layers we own:** shared code and business logic.
 - **One interface we serve:** the headless data contract — architected *into* the shared code layer.
 - **One thing we delegate and do not own:** rendering — the CLI, the app, VS Code, any renderer a user
-  builds, and the LLM's stochastic act of displaying within them. Out of scope, unpolicied (P-85: "the CLI
+  builds, and the LLM's stochastic act of displaying within them. Out of scope, unpolicied (his words: "the CLI
   and app. Stochastic, so it isn't something conformance polices" — conformance polices writes, not
   rendering; but a view that writes is a write, and the rule applies). We birth the healthiest baby — a clean
   contract, honest data — and what anyone does to display it is their business.
@@ -217,7 +217,7 @@ write-guard on platform paths exists to make the attempt visible at the moment i
 tells you when to use the repo, not a wall the repo makes redundant. (The guard's exact coverage is
 as-built detail: the map's runner notes.) The one exception is the operator's own hands at the terminal,
 structurally distinguishable from model input and logged: it bypasses approval, never the pen, and there is no
-administrator-key machinery (P-90 and its 2026-11-10 note).
+administrator-key machinery.
 
 **Technical summary:** the **platform layer** — shared, deterministic services, one implementation of each
 capability (**single source of truth**, copy-blocked and commit-gated). A single **register** lists every hook,
@@ -610,7 +610,7 @@ either side is cheap.
 <!-- SEAM-RULE-v1 BEGIN -->
 **Code hands the model a bounded set of outcomes. The middle is unbounded — the model, alone or in
 conversation with a human, works however it needs to. What comes back is one of those outcomes, and the set
-must contain one meaning NO OUTCOME WAS REACHED. Code checks membership on every path in; anything off-list
+includes one meaning NO OUTCOME WAS REACHED, so a stall never reads as success; otherwise a stalled step looks identical to a finished one. Code checks membership on every path in; anything off-list
 is surfaced, never silently absorbed.**
 <!-- SEAM-RULE-v1 END -->
 
@@ -683,13 +683,13 @@ functional, not an air-gap that lobotomizes it.
   **fine china protection B**, "can't delete it" (no delete); **fine china protection C**, a speed bump with
   a sign in front of a mass delete — a whole folder or hundreds of files — on any folder, to slow a possible
   catastrophic event down; it is never a hard block or a pop-up (his ruling, 2026-11-13). Which things get
-  protection A or B is chosen by the person (narrow and human-named, COMPASS P-4); protection C covers any
-  folder; what each protection does is fixed (for canon and fine china outside git, protection B is COMPASS
-  P-136's no-override hard block). One rule governs every mode that quiets the guards (overnight, long-chain
+  protection A or B is chosen by the person (narrow and human-named); protection C covers any
+  folder; what each protection does is fixed (for canon and fine china outside git, protection B is a
+  hard block with no override). One rule governs every mode that quiets the guards (overnight, long-chain
   runs): anything de-prompted resolves to **silent-deny-with-sign** — never silent-allow, never
   timeout-allow. A guard that quietly stops asking should answer "no" on the occupant's behalf, with a note
   left on the counter. Why: a de-prompted guard that answers "yes", or waits out a timeout, turns the absence of a person into permission. Fine china protections A and B are denied with a sign and parked for the morning, and
-  the run carries on; protection C's sign is logged and the mass delete waits for the morning; hard blocks
+  the run carries on; protection C's sign refuses the first attempt to delete a whole folder and names the safe route (move it into an `_archive` beside it), and a later attempt is an ask, which with nobody at the screen is a refusal, so the session stops and tells the person; hard blocks
   are always denied.
 
 *Why two planes and not one perimeter:* inbound content and outbound actions fail differently — content
@@ -707,7 +707,7 @@ prevention should never degrade**.
 
 External providers (Google, Microsoft, Dropbox) are **tenant choices**. The platform defines the interfaces
 and suggests **Google**: the system was built for Google, and other providers have worked with light
-customization; it stays off until the person sets it up (P-94). Alternatives are permitted but unsupported. **Graceful
+customization; it stays off until the person sets it up. Alternatives are permitted but unsupported. **Graceful
 degradation:** the core works without any provider. *Why:* provider churn is the tenant's life, not the
 platform's; the platform's job is the socket, not the appliance.
 
@@ -841,10 +841,7 @@ is kept alive and surfaced to Enver (No outranking, in Read This First). Never a
   changed behind the operator's back. Whether the Vision ever ships stays Enver's call. *(Moved 2026-11-10
   from the canonical-system rulings record, item 19.)* COMPASS (`canon/COMPASS.md`, same repo) is the
   seedling they grew from and retires once its
-  content is persisted into the lower-altitude documents. The vetting notes (`records/2026-11-07-vetting-notes-all-23-items.md`, LOCKED 1–21) and this
-  document's rulings file (`records/canon-files/v2-architecture-draft/run-2026-11-08/rulings.md`, rounds
-  1–12) are numbered decision sequences. One decision per entry, his words verbatim, never edited, only
-  superseded.
+  content is persisted into the lower-altitude documents. The vetting notes (`records/2026-11-07-vetting-notes-all-23-items.md`, LOCKED 1–21) and This document's rulings file was a scratch pad; its decisions now live in the places named above.
 - **One register for his rulings (LOCKED 19, B5; revised 2026-11-10).** The sandbox's principles SOP points at
   the rulings records rather than claiming to hold them. A flat index maps ruling number → location, so a
   sous-chef lookup is instant and the 120-second Drive grep never gates a citation. *Why:* two registers of
@@ -909,11 +906,11 @@ the rulings that have applied it; full meaning accretes in the applications.
 - **Diary** — the append-only, dated event log. **Tiles** — materialized snapshot caches, producer-named.
   **Working state** — briefs and tiles, stored, staleness visible. *(LOCKED 16.)*
 - **Diary roll-up** — a summary of the diary at any resolution (week, month, quarter, year), assembled on demand
-  (P-129). Earlier called a "throughline". *(His ruling, 2026-11-16.)*
+  Earlier called a "throughline". *(His ruling, 2026-11-16.)*
 - **Throughline** — the `/throughline` skill only: a four-beat read of a plot's tension. *(His ruling, 2026-11-16.)*
 - **Pantry / pie** — the knowledge doctrine: fact-files are the pantry; every session bakes a fresh pie
   (context window) and the pie is never stored. *(LOCKED 19.)*
-- **Knowledge domain** — a body of a person's knowledge that gets its own folder because loading it together with its neighbours would be too large for one conversation (then nest: more shelves beneath) or too mixed (then separate: siblings, each irrelevant to the other's questions). A desk is a knowledge domain of a person's life. How a folder states what it is for: the parent intent doctrine, `system/intent-doctrine.md` in the harness. *(P-71; the split test, 2026-08-05; his ruling 2026-11-16, U1, round five.)*
+- **Knowledge domain** — a body of a person's knowledge that gets its own folder because loading it together with its neighbours would be too large for one conversation (then nest: more shelves beneath) or too mixed (then separate: siblings, each irrelevant to the other's questions). A desk is a knowledge domain of a person's life. How a folder states what it is for: the parent intent doctrine, `system/intent-doctrine.md` in the harness. *(the split test, 2026-08-05; his ruling 2026-11-16, U1, round five.)*
 - **Credibility window** — a present-tense claim's trust horizon: `stale_after_s` rhythm, reader-derived
   staleness, STALE-never-deleted. *(LOCKED 15.)*
 - **Unproven** — the word a status label reads when the receipt behind it is STALE, past its credibility window:
@@ -923,7 +920,7 @@ the rulings that have applied it; full meaning accretes in the applications.
   level (context = the map, containers = the manual); gray cases (shipped, not central) are Enver's call. Replaces
   "element" for new pages. *(Round five C4 ruling, 2026-11-16.)*
 - **Component page** — a component's reference page: intent (a pointer up to canon), as-built (generated from origin),
-  status (stamped from a check's receipt), read side by side for the delta. Not an SOP (P-14). *(Definition approved
+  status (stamped from a check's receipt), read side by side for the delta. Not an SOP. *(Definition approved
   2026-11-16.)*
 - **As-built** — the machine-generated list of what is committed for a component, read from origin, never typed. The
   human-authored parts of a page are not as-built. *(Definition approved 2026-11-16.)*

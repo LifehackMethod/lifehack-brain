@@ -82,3 +82,73 @@ missing-count held, the denominator was stale. Wording also varies slightly (som
   honour-system.
 ~~~~
 
+
+## 2026-11-27 - reason: C4 landing item 1: altitudes table + closing paragraph
+
+~~~~
+| # | Altitude / Artifact | Metaphor | File | Loads | Spec |
+|---|---|---|---|---|---|
+| 1 (tip) | **The organism map** | a MAP (schematic) | the harness brief the plugin delivers (`CLAUDE.md` at the plugin root, a fenced block) | **EVERY session** | §2 |
+| 2 (middle) | **The Manual** | a MANUAL (how-to) | `canon/manual.md` | on demand, never auto | §4 |
+| 3 (base) | **Encyclopedia entry** | an ENCYCLOPEDIA | `system/organism/elements/<slug>.md`, one file each | on demand | §1 |
+| 4 (ground) | **The artifact itself** | the live executable | the actual skill / hook / tool | — | — |
+
+The map is a **regenerable slice** of the manual; the manual points DOWN to the encyclopedia; the
+~~~~
+
+## 2026-11-27 - reason: C4 landing item 1: section 8.6 body
+
+~~~~
+A machine unsure how its own system works reads top-down only as far as it needs: **MAP** (does it
+exist, how do I reach it) → **MANUAL** (how it operates with the others) → **ELEMENT** (full
+mechanics) → **the live artifact** (ground truth). Each level is self-sufficient at its depth and
+points cleanly DOWN. Higher levels **point down, never copy** — the stability gradient: churn-prone
+~~~~
+
+## 2026-11-27 - reason: C4 landing item 1: altitudes closing paragraph (rest)
+
+~~~~
+encyclopedia points down to the running code, which is the ground truth.
+~~~~
+
+## 2026-11-27 - reason: C4 landing item 1: section 8.6 body (rest)
+
+~~~~
+points cleanly DOWN. Higher levels **point down, never copy** — the stability gradient: churn-prone
+~~~~
+
+## 2026-11-27 - reason: landing the four-level altitudes table, approved 2026-11-27
+
+~~~~
+| # | Altitude / Artifact | Metaphor | File | Loads | Spec |
+|---|---|---|---|---|---|
+| 1 (tip) | **The organism map** | a MAP (schematic) | the harness brief the plugin delivers (`CLAUDE.md` at the plugin root, a fenced block) | **EVERY session** | §2 |
+| 2 (middle) | **The Manual** | a MANUAL (how-to) | `canon/manual.md` | on demand, never auto | §4 |
+| 3 (base) | **Encyclopedia entry** | an ENCYCLOPEDIA | `system/organism/elements/<slug>.md`, one file each | on demand | §1 |
+| 4 (ground) | **The artifact itself** | the live executable | the actual skill / hook / tool | — | — |
+
+The map is a **regenerable slice** of the manual; the manual points DOWN to the encyclopedia; the
+~~~~
+
+## 2026-11-27 - reason: landing the four-level progressive disclosure, approved 2026-11-27
+
+~~~~
+A machine unsure how its own system works reads top-down only as far as it needs: **MAP** (does it
+exist, how do I reach it) → **MANUAL** (how it operates with the others) → **ELEMENT** (full
+mechanics) → **the live artifact** (ground truth). Each level is self-sufficient at its depth and
+points cleanly DOWN. Higher levels **point down, never copy** — the stability gradient: churn-prone
+~~~~
+
+## 2026-11-27 - reason: landing the altitudes closing paragraph, approved 2026-11-27
+
+~~~~
+The map is a **regenerable slice** of the manual; the manual points DOWN to the encyclopedia; the
+encyclopedia points down to the running code, which is the ground truth.
+~~~~
+
+## 2026-11-27 - reason: landing the progressive disclosure tail, approved 2026-11-27
+
+~~~~
+points cleanly DOWN. Higher levels **point down, never copy** — the stability gradient: churn-prone
+specifics live only at the base.
+~~~~

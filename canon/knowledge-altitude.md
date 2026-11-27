@@ -134,6 +134,14 @@ and an easier bar. A piece never just "belongs" somewhere — it has to **earn i
 crowding that canon**, and the crowding tightens as you climb. (Why the top is scarce: a higher file loads into
 far more conversations, which is exactly what makes its space precious — *the air thins as you climb.*)
 
+## 2b. Pointers up high, content down low (the C4 idea)
+
+Our altitudes follow the four zoom levels of the C4 model of software: Context (the map, always loaded), Containers (the manual and the middle maps, opened when a whole area matters), Components (one page per part, `canon/components/`), Code (the live files). Each level stands alone at its own depth and points DOWN; it never copies what is below.
+
+Why: the high levels are loaded into the most conversations, so every line there is paid for most often and has the least room. A copy of a detail up high is paid for every turn and goes stale the first time the detail changes below it. A pointer costs one line and cannot go stale in the same way. So the top holds the shape and the way down; the base holds the facts. A reader unpacks only as far as the question needs.
+
+This is the same scarcity as §2, seen from the reader's side: §2 says the top has little room, so a piece must earn it; this says what earns it there, which is a pointer, not the content.
+
 ## 3. The canon admission test — difficulty by level, judged by a plain question (concrete)
 A canon line belongs at the **highest** level where it can still win its fight for a slot. The difficulty rises
 as you climb; judge each level by its concrete question:

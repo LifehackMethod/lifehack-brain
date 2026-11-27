@@ -57,3 +57,35 @@ on Enver's yes).**
 The user/build modes and the invisible line are carried in COMPASS P-115.
 
 ~~~~
+
+## 2026-11-27 - reason: plain words for private note labels, approved 2026-11-27
+
+~~~~
+administrator-key machinery (P-90 and its 2026-11-10 note).
+~~~~
+
+## 2026-11-27 - reason: plain words for private note labels, approved 2026-11-27 second
+
+~~~~
+  protection A or B is chosen by the person (narrow and human-named, COMPASS P-4); protection C covers any
+  folder; what each protection does is fixed (for canon and fine china outside git, protection B is COMPASS
+  P-136's no-override hard block). One rule governs every mode that quiets the guards (overnight, long-chain
+~~~~
+
+## 2026-11-27 - reason: plain words for the rulings file sentence, approved 2026-11-27
+
+~~~~
+  seedling they grew from and retires once its
+  content is persisted into the lower-altitude documents. The vetting notes (`records/2026-11-07-vetting-notes-all-23-items.md`, LOCKED 1–21) and this
+  document's rulings file (`records/canon-files/v2-architecture-draft/run-2026-11-08/rulings.md`, rounds
+  1–12) are numbered decision sequences. One decision per entry, his words verbatim, never edited, only
+  superseded.
+- **One register for his rulings (LOCKED 19, B5; revised 2026-11-10).** The sandbox's principles SOP points at
+~~~~
+
+## 2026-11-27 - reason: what protection C really does unattended, approved 2026-11-27
+
+~~~~
+  left on the counter. Why: a de-prompted guard that answers "yes", or waits out a timeout, turns the absence of a person into permission. Fine china protections A and B are denied with a sign and parked for the morning, and
+  the run carries on; protection C's sign is logged and the mass delete waits for the morning; hard blocks
+~~~~

@@ -514,3 +514,21 @@ carries on; protection C's sign is logged and the action waits for the morning r
 ~~~~
 - If cron builds weekly, monthly, quarterly or annual roll-ups → they are low-confidence computer assumptions until a human validates them. → §6
 ~~~~
+
+## 2026-11-27 - reason: what protection C really does unattended, approved 2026-11-27
+
+~~~~
+- If nobody is at the screen → protections A and B are denied with a sign and parked for the morning, and the run carries on; protection C's sign is logged and the action waits for the morning rather than being blocked outright. → §5
+~~~~
+
+## 2026-11-27 - reason: what protection C really does unattended, second copy
+
+~~~~
+With nobody at the screen, the ask of protection A becomes a refusal (the session stops and tells the person), and protection B stays a refusal; protection C's sign is logged and the action waits for the morning rather than being blocked outright.
+~~~~
+
+## 2026-11-27 - reason: tracked not capped wording, approved 2026-11-27
+
+~~~~
+in its own file as the desk's seventh item, with a total size budget across the three — carrying the two biases: lean toward the newer; read trust by location (canon by where it sits, a
+~~~~

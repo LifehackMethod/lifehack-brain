@@ -199,8 +199,8 @@ answer is yes; say no only for a pure script or migration with no model at runti
 
 **The code/LLM seam** — binds any hybrid build (classify the product, not the change). Code hands the
 model a bounded set of outcomes; the middle is unbounded; what comes back is one of those outcomes, and
-the set must contain one meaning NO OUTCOME WAS REACHED. Code checks membership on every path in;
-anything off-list is surfaced, never absorbed. **The no-outcome member is for the model, not the
+the set includes one meaning NO OUTCOME WAS REACHED, so a stall never reads as success; otherwise a stalled step looks identical to a finished one. Code checks membership on every path in;
+anything off-list is surfaced, never silently absorbed. **The no-outcome member is for the model, not the
 human** — with no legal way to say "nothing was decided" the model manufactures a decision code cannot
 tell from a real one. Name the slot, never the words. Perimeter only: it governs the shape that crosses
 the boundary, never how the model reasons inside it. *(src: system/build-rules-index.md:66-80)*

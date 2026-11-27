@@ -29,3 +29,15 @@ Every real thing this SOP points at, with what it is and does. Paths are relativ
 ~~~~
 5. **Do:** let the daily diary carry the day: one entry per day, written by the diary job, with weekly and longer roll-ups drafted from it (`canon/data-layout.md:242`).
 ~~~~
+
+## 2026-11-27 - reason: landing canon-update routing, approved 2026-11-27
+
+~~~~
+- If the change is to the harness's own `canon/` folders → route it through a full canon-files run instead of `/save` (the SOP gives no order between these; the SOP does not settle this). → SOP Procedure, Move 6; Desired Outcome
+~~~~
+
+## 2026-11-27 - reason: landing canon-update routing, approved 2026-11-27 second line
+
+~~~~
+6. **Do:** for the harness's own `canon/` folders, route the change through a full canon-files run instead of `/save`.
+~~~~

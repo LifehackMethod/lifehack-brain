@@ -28,15 +28,16 @@ authority: agent
 
 ## The altitudes — where each artifact sits
 
+Four zoom levels, in the C4 style (Context, Containers, Components, Code): each stands alone at its own depth and points DOWN to the next, so a reader stops as soon as they have what they need.
+
 | # | Altitude / Artifact | Metaphor | File | Loads | Spec |
 |---|---|---|---|---|---|
-| 1 (tip) | **The organism map** | a MAP (schematic) | the harness brief the plugin delivers (`CLAUDE.md` at the plugin root, a fenced block) | **EVERY session** | §2 |
-| 2 (middle) | **The Manual** | a MANUAL (how-to) | `canon/manual.md` | on demand, never auto | §4 |
-| 3 (base) | **Encyclopedia entry** | an ENCYCLOPEDIA | `system/organism/elements/<slug>.md`, one file each | on demand | §1 |
-| 4 (ground) | **The artifact itself** | the live executable | the actual skill / hook / tool | — | — |
+| 1 (tip), Context | **The organism map** | a MAP (schematic) | the harness brief the plugin delivers (`CLAUDE.md` at the plugin root, a fenced block); generated | **EVERY session** | §2 |
+| 2 (middle), Containers | **The Manual** and the middle maps | a MANUAL (how-to) | `canon/manual.md` | opened when a whole area matters, never auto | §4 |
+| 3 (base), Components | **One page per part** | a component page | `canon/components/<slug>.md`, one file each (replaces "element") | on demand | §1 |
+| 4 (ground), Code | **The artifact itself** | the live executable | the actual skill / hook / tool | — | — |
 
-The map is a **regenerable slice** of the manual; the manual points DOWN to the encyclopedia; the
-encyclopedia points down to the running code, which is the ground truth.
+Each level says what it needs to say at its depth and points down; it never copies the level below. The reason: whatever is copied upward goes stale the moment the lower level changes, and the top is the part loaded into every session, so a stale copy there is paid for every turn. The tip points to the base; the reader unpacks only as far as the question needs.
 
 ---
 
@@ -544,11 +545,7 @@ line from the element file.
 
 ### §8.6 — The escalation is progressive disclosure
 
-A machine unsure how its own system works reads top-down only as far as it needs: **MAP** (does it
-exist, how do I reach it) → **MANUAL** (how it operates with the others) → **ELEMENT** (full
-mechanics) → **the live artifact** (ground truth). Each level is self-sufficient at its depth and
-points cleanly DOWN. Higher levels **point down, never copy** — the stability gradient: churn-prone
-specifics live only at the base.
+A machine unsure how its own system works reads top-down only as far as it needs: **Context, the map** (does it exist, how do I reach it) → **Containers, the manual** (how it operates with the others) → **Components, one page per part** (full mechanics) → **Code, the live artifact** (ground truth). Each level is self-sufficient at its depth and points cleanly DOWN. Higher levels **point down, never copy**: the more often something changes, the lower it should live, so a change touches one place and everything above stays true.
 
 ---
 

@@ -68,7 +68,7 @@ Every line traces to `canon/desk-building-sop.md`.
 - If choosing protection for a desk's things → the person chooses which get fine china protection A (an ask before an edit) or B (no delete); protection C (a speed bump with a sign before a mass delete — a whole folder or hundreds of files) covers every folder. → §5
 - If it is fine china outside git (canon always lives in git) → protection B is a hard block with no override. → §5
 - If protection C applies → it is a speed bump with a sign, never a hard block or a pop-up. → §5
-- If nobody is at the screen → protections A and B are denied with a sign and parked for the morning, and the run carries on; protection C's sign is logged and the action waits for the morning rather than being blocked outright. → §5
+- If nobody is at the screen → protections A and B are denied with a sign and parked for the morning, and the run carries on; protection C's sign refuses the first attempt to delete a whole folder and names the safe route (move it into an `_archive` beside it), and a later attempt is an ask, which with nobody at the screen is a refusal, so the session stops and tells the person. → §5
 - If someone wants to see the desk (dashboard, alert) → that is the person's business, not the desk's or the plugin's; looking is free, touching goes through the door. → §3; §9
 - If this SOP and Enver's words differ → the difference goes to him to settle; no precedence rule settles it. → the header at the top
 
@@ -221,7 +221,7 @@ from a misguided agent" (`canon/build-conformance-sop.md` §2 (the asks) and §5
 
 The guards are the hooks `system/hooks/guard_fine_china_ask.sh` and `system/hooks/guard_canon_write.sh`, with the helpers `system/hooks/lib/fine_china_ask.py` and `system/hooks/lib/fc_sign.py`.
 
-With nobody at the screen, the ask of protection A becomes a refusal (the session stops and tells the person), and protection B stays a refusal; protection C's sign is logged and the action waits for the morning rather than being blocked outright.
+With nobody at the screen, the ask of protection A becomes a refusal (the session stops and tells the person), and protection B stays a refusal; protection C's sign refuses the first attempt to delete a whole folder and names the safe route (move it into an `_archive` beside it), and a later attempt is an ask, which with nobody at the screen is a refusal, so the session stops and tells the person.
 
 ---
 
@@ -236,7 +236,7 @@ low-confidence computer assumptions; they become high-confidence only when a hum
 summarization never touches hard-to-summarize work; the unattended step only handles what was already spare.
 
 **The skeleton is three pieces:** the glasses (CLAUDE.md — plural: plugin, personal root, per desk, the per-desk one
-in its own file as the desk's seventh item, with a total size budget across the three — carrying the two biases: lean toward the newer; read trust by location (canon by where it sits, a
+in its own file as the desk's seventh item, with their combined size tracked, not capped — carrying the two biases: lean toward the newer; read trust by location (canon by where it sits, a
 default of doubt elsewhere)), the card, and the diary (§6). Everything else exists or flows from these.
 
 ---

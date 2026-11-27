@@ -105,7 +105,7 @@ Every line traces to `canon/circulatory-system-sop.md`.
 - If a finding might deserve a higher shelf → it climbs by shelf: scratchpad, then journal and story log, then a record, then — only if it passes both tests — a canon proposal on the proposals shelf. Which record type and canon level → `canon/data-layout.md` and `canon/knowledge-altitude.md`. → SOP Procedure, Move 1
 - If it is a lesson about how the system itself performed → `/save`'s self-learning step appends it to the learnings file. → SOP Procedure, Move 1
 - If it is a canon candidate for a student's notes canon → run `system/tools/canon_conflict_scan.py` (tags NEW, DUPLICATE or CONFLICT) and show the framed panel; on a CONFLICT, nothing is written until the person has seen both texts and said yes; write it only on the person's explicit yes (or through `/ingest`'s placement preview). `system/hooks/guard_canon_write.sh` refuses fast-stale or oversized notes canon and asks before a whole-file replace. → SOP Procedure, Move 2, 3; Desired Outcome
-- If the change is to the harness's own `canon/` folders → route it through a full canon-files run instead of `/save` (the SOP gives no order between these; the SOP does not settle this). → SOP Procedure, Move 6; Desired Outcome
+- If the change is to the harness's own `canon/` folders → a ruled change lands through the canon-update skill; the full canon-files run is the deep clean. → SOP Procedure, Move 6; Desired Outcome
 - If grading a finding → use THE FRAME's tiers in `canon/canonical-principles-sop.md`; one build's receipts stay OBSERVED (two receipts from one build are not reproduction). → SOP Procedure, Move 4; Principles
 - If marking anything vetted → only a person vets; nothing the machine writes is marked vetted. → SOP Procedure, Move 1
 - If it is the day's diary → the diary carries the day, as `canon/desk-building-sop.md` §6 says; weekly and longer roll-ups are drafted from it and stay unverified drafts until a person's check-in stamps them. → SOP Procedure, Move 5; Principles
@@ -258,7 +258,7 @@ A session that opens cold can read one short session handoff (the message `/save
 4. **Do:** grade it by THE FRAME's tiers in `canon/canonical-principles-sop.md`; one build's receipts stay OBSERVED.
 5. **Do:** let the diary carry the day, as `canon/desk-building-sop.md` §6 says, with weekly and longer roll-ups drafted from it (`canon/data-layout.md:242`).
    - **Expect:** a roll-up is an unverified draft until a person's check-in stamps it.
-6. **Do:** for the harness's own `canon/` folders, route the change through a full canon-files run instead of `/save`.
+6. **Do:** for the harness's own `canon/` folders, a ruled change lands through the canon-update skill; the full canon-files run is the deep clean.
    - **Why:** nothing lands in those folders until it has passed one (Enver, 2026-11-14).
 
 ### Plan and build

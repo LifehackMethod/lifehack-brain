@@ -209,3 +209,15 @@ The harness knows a person through two pointers only: their brain folder (the kn
 ~~~~
 11. **Layers go lightest first,** as friction levels chosen by the person: a sign, a speed bump, a reason gate (the session can proceed only by stating why), a door, a pop-up (a box the person has to answer, used sparingly because it can hang an unattended session for hours), then a hard block (refused every time, kept for a few particular things). Add the next only where the lighter one fails. Fine china protection C (§2) sits at the speed-bump level, with a sign: never a pop-up or a hard block. (owner's ruling; the sign MEASURED, the reason gate and popup not)
 ~~~~
+
+## 2026-11-27 - reason: what protection C really does unattended, approved 2026-11-27
+
+~~~~
+- If nobody is at the screen → A and B are denied with a sign and parked for the morning. For C, the sign is logged and the mass delete waits for the morning instead of being blocked. → SOP §8.13
+~~~~
+
+## 2026-11-27 - reason: what protection C really does unattended, other copy
+
+~~~~
+13. **Changing every ask to a hard block.** Withdrawn: lighter layers first (§5.11). (owner's ruling) Which things get which fine china protection is chosen by the person; what each protection does is not. With nobody at the screen, protections A and B are denied with a sign and parked for the morning; for C, the sign is logged and the mass delete waits for the morning rather than being blocked outright. Skills get a speed bump and signs, not a block.
+~~~~

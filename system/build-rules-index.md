@@ -81,7 +81,7 @@ authority: user
 >
 > **Code hands the model a bounded set of outcomes. The middle is unbounded — the model, alone or in
 > conversation with a human, works however it needs to. What comes back is one of those outcomes, and the
-> set must contain one meaning NO OUTCOME WAS REACHED. Code checks membership on every path in; anything
+> set includes one meaning NO OUTCOME WAS REACHED, so a stall never reads as success; otherwise a stalled step looks identical to a finished one. Code checks membership on every path in; anything
 > off-list is surfaced, never silently absorbed.**
 >
 > **The no-outcome member is for the MODEL, not the human.** A human can say anything at any time — the
