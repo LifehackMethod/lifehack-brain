@@ -185,7 +185,7 @@
     },
     "spec-check-a": {
       "kind": "agent",
-      "tier": "other",
+      "tier": "medium",
       "label": "a checker checks every ruling landed (4.0a)",
       "out": "spec-update-checked.md",
       "shows": "spec-update-checked",
@@ -286,7 +286,7 @@
     },
     "validation-check": {
       "kind": "agent",
-      "tier": "other",
+      "tier": "medium",
       "label": "a checker checks how complete the spec is (4.5)",
       "out": "validation.md",
       "shows": "validation",
@@ -315,7 +315,7 @@
     },
     "draft-check": {
       "kind": "agent",
-      "tier": "other",
+      "tier": "medium",
       "label": "a checker checks the compiled spec (5.2)",
       "out": "draft-check.md",
       "shows": "draft-check",

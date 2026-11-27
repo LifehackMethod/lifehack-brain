@@ -357,6 +357,37 @@ def results_line(table, ctx, step):
             + "; ".join(names))
 
 
+NUDGE = ("FIRST, before any wave: write the `outcome` section now from what the person has said (your best framing; they will "
+         "correct it). The harness, research and size checks cannot run until it exists.")
+
+
+def _earlier_answers(run_dir, pid):
+    """How many answer-moment turns this run has already handed a list for (not counting this one)."""
+    n = 0
+    try:
+        for d in os.scandir(waves_dir(run_dir)):
+            if d.is_dir() and d.name != _safe(pid):
+                try:
+                    with open(os.path.join(d.path, "turn.json"), encoding="utf-8") as f:
+                        if json.load(f).get("moment") == "answer":
+                            n += 1
+                except (OSError, ValueError):
+                    pass
+    except OSError:
+        pass
+    return n
+
+
+def _wants_nudge(wd, run_dir, step, moment, pid):
+    """The outcome nudge: from the person's SECOND answer in step 1 on, and at any later step start or answer, while `outcome` is
+    unwritten. The first answer keeps only the NOT RUN YET line."""
+    if section(wd, "outcome")[1] is not None or step in ("done",):
+        return False
+    if step == "1":
+        return moment == "answer" and _earlier_answers(run_dir, pid) >= 1
+    return True
+
+
 def render(plug, hooks, wd, run_dir, st, sid, pid, moment, prompt="", tp="", visit=True):
     """The lines to inject for this moment, [] when the step has nothing to run. Writes this turn's folder (the person's words,
     the writer's input, turn.json) and the pointer the Stop check reads. visit=False (a resume of a live run) lists what is still
@@ -399,9 +430,12 @@ def render(plug, hooks, wd, run_dir, st, sid, pid, moment, prompt="", tp="", vis
         else:
             warn_line = ("RECEIPT CHECK FAILED LAST TURN: %s Say so to the person in one plain sentence; the list below asks for the "
                          "jobs that still matter again." % warn) if warn else ""
+        nudge = _wants_nudge(wd, run_dir, step, moment, pid)
         if not waves:
             if warn_line:
                 lines.append(warn_line)
+            if nudge:
+                lines.append(NUDGE)
             lines += ["NOT RUN YET: %s" % n for n in notes]
             lines += ["HELD BACK BY CODE: %s (%s). Say plainly in one line that it did not run." % h for h in held]
             return lines
@@ -435,6 +469,8 @@ def render(plug, hooks, wd, run_dir, st, sid, pid, moment, prompt="", tp="", vis
         lines.append("1. Your reply's FIRST line, exactly: %s" % (table.get("screen") or {}).get(moment, ""))
         if warn_line:
             lines.append("2. " + warn_line + " Put it as the line right AFTER that first line.")
+        if nudge:
+            lines.append(NUDGE)
         if "%s/%s" % (step, moment) in (table.get("long_chains") or []):   # a long chain: tell the person how to move on at once
             lines.append("This list is a LONG chain (several minutes). After the lines above, say once in plain words: \"This can take a "
                          "few minutes; press Esc, then type /next, to move on now.\"")

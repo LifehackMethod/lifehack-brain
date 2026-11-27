@@ -199,7 +199,7 @@ PY
   chk "[H2] a start list has no writer and no demand to save answers" '! printf "%s" "$OUT" | grep -q "^  • writer — " && ! printf "%s" "$OUT" | grep -q "saving your answers"'
   OUT="$(mover "$CS" "/next" pcu4 "$OUTSIDE")"
   chk "[H3] /next into step 5 (step 4 skipped by the person): the spec is brought up to date and checked before the questions, in that order" 'a=$(printf "%s" "$OUT" | grep -n "^  • spec-updater-a — " | cut -d: -f1); b=$(printf "%s" "$OUT" | grep -n "^  • spec-check-a — " | cut -d: -f1); c=$(printf "%s" "$OUT" | grep -n "^  • questioner — " | cut -d: -f1); [ -n "$a" ] && [ "$a" -lt "$b" ] && [ "$b" -lt "$c" ]'
-  chk "[H4] each helper of the start list names its listed model (spec update: sonnet; its check: opus)" 'printf "%s" "$OUT" | grep "^  • spec-updater-a — " | grep -q "model sonnet" && printf "%s" "$OUT" | grep "^  • spec-check-a — " | grep -q "model opus"'
+  chk "[H4] each helper of the start list names its listed model (spec update and its check: sonnet)" 'printf "%s" "$OUT" | grep "^  • spec-updater-a — " | grep -q "model sonnet" && printf "%s" "$OUT" | grep "^  • spec-check-a — " | grep -q "model sonnet"'
   local CRUN="$CU/runs/$(ls "$CU/runs" | head -1)"
   chk "[H5] its files go to the run folder, named by the turn id" '[ -f "$CRUN/waves/pcu4/turn.json" ] && [ -f "$CRUN/waves/visits.log" ]'
   chk "[H5b] step 5's start list is a long chain: it tells the person to press Esc then /next" 'printf "%s" "$OUT" | grep -q "press Esc, then type /next, to move on now"'

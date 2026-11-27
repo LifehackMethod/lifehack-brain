@@ -550,6 +550,35 @@ class ProofTest(Base):
         self.assertEqual(self.wv.check(SID, self.tp), [])
 
 
+class OutcomeNudgeTest(Base):
+    """The outcome nudge: said from the second step-1 answer on (and at later steps) while `outcome` is unwritten."""
+
+    FIRST = "FIRST, before any wave: write the `outcome` section now"
+
+    def test_the_first_answer_has_no_nudge_only_not_run_yet(self):
+        text = "\n".join(self.render(1, "answer", pid="a1"))
+        self.assertNotIn(self.FIRST, text)
+        self.assertIn("NOT RUN YET: `outcome`", text)
+
+    def test_the_second_step_1_answer_without_outcome_gets_the_nudge_after_the_first_line_and_warning(self):
+        self.render(1, "answer", pid="a1")
+        os.makedirs(os.path.join(self.run, "waves"), exist_ok=True)
+        with open(os.path.join(self.run, "waves", "receipt-warn.txt"), "w", encoding="utf-8") as f:
+            f.write("1 back-room job problem(s) from last turn: x.")
+        lines = self.render(1, "answer", pid="a2")
+        i = next(n for n, l in enumerate(lines) if l.startswith("1. Your reply's FIRST line"))
+        self.assertTrue(lines[i + 1].startswith("2. RECEIPT CHECK FAILED"))
+        self.assertTrue(lines[i + 2].startswith(self.FIRST), lines[i + 2][:80])
+        self.assertIn("cannot run until it exists.", lines[i + 2])
+        self.assertTrue(any(self.FIRST in l for l in self.render(2, "start", pid="s2")))   # and at a later step start
+
+    def test_no_nudge_once_outcome_is_written(self):
+        self.render(1, "answer", pid="a1")
+        self.section("outcome", "a receipt sorter")
+        self.assertNotIn(self.FIRST, "\n".join(self.render(1, "answer", pid="a2")))
+        self.assertNotIn(self.FIRST, "\n".join(self.render(3, "answer", pid="a3")))
+
+
 class ReoffersAndOrderTest(Base):
     """Round 2c, coordinator fixes 1-4."""
 
