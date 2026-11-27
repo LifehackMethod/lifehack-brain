@@ -13,6 +13,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import read_harness as rh  # noqa: E402
 
+os.environ["LH_READER_VISIBLE"] = "1"  # the visibility gate in main(); tests are automated callers
+
 # The REAL call_model, captured before any test replaces it (the pointer tests exercise the
 # real function against a stub command, never a real model).
 REAL_CALL_MODEL = rh.call_model

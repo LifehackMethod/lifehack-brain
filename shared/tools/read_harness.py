@@ -89,6 +89,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -1324,6 +1325,15 @@ def main(argv):
     ap.add_argument("--task")
     ap.add_argument("--model")
     args = ap.parse_args(argv)
+
+    if os.environ.get("LH_READER_VISIBLE") != "1":
+        cmd = "LH_READER_VISIBLE=1 python3 %s %s" % (os.path.abspath(__file__), " ".join(shlex.quote(a) for a in argv))
+        print("REFUSED: read_harness.py must run inside a visible, named sub-agent so the person can see the work "
+              "in his agent list. Do not run it directly or in the background. Relaunch: spawn a named Haiku "
+              "sub-agent with the Agent tool (model: haiku, description: \"Reader <letter>: <what it reads>\") "
+              "whose whole prompt is: Run this single Bash command in the foreground (not background), unchanged, "
+              "with timeout 600000, then reply with only the last lines it printed.\n\n%s" % cmd, file=sys.stderr)
+        return 2
 
     if args.whole:
         missing = [f for f, v in (("--plans", args.plans), ("--docs", args.docs),
