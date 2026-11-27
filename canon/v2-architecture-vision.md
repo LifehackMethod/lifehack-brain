@@ -552,7 +552,7 @@ but we can still leverage pieces of Code+ inside it. The handoffs between LLM an
 
 **The modes overlay**
 
-The user/build modes and the invisible line are carried in COMPASS P-115.
+Using the system and building it are two modes, with an invisible line between them. The detailed rulebooks stay in the background and are read when someone moves into building, rather than loaded into every conversation. *(Approved by Enver, 2026-11-27.)*
 
 **Standing rules for the map**
 

@@ -50,3 +50,10 @@ on Enver's yes).**
 ~~~~
 > **Status: DRAFT (evolving toward canon on Enver's yes).** Born 2026-11-06 from the desk/presentation SOP
 ~~~~
+
+## 2026-11-27 - reason: Modes overlay pointer replaced by the rule in plain words (Enver approved 2026-11-27; public canon never cites COMPASS)
+
+~~~~
+The user/build modes and the invisible line are carried in COMPASS P-115.
+
+~~~~
